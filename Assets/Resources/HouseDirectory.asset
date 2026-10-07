@@ -1,0 +1,502 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61f4096f71b0c4fb6899e95ac181a3d0, type: 3}
+  m_Name: HouseDirectory
+  m_EditorClassIdentifier: Assembly-CSharp::HouseDirectory
+  sceneName: Neighborhood
+  houses:
+  - stopId: bb-offshore-106
+    address: 106 Offshore Account Ave
+    capacity: 6
+    wealth: 0.9996527
+    position: {x: 238, y: 0.15, z: 555.8}
+    districtId: billionaire_bluffs
+  - stopId: bb-offshore-107
+    address: 107 Offshore Account Ave
+    capacity: 6
+    wealth: 0.64687324
+    position: {x: 290, y: 0.15, z: 544.2}
+    districtId: billionaire_bluffs
+  - stopId: bb-offshore-20
+    address: 20 Offshore Account Ave
+    capacity: 6
+    wealth: 0.9952113
+    position: {x: 74, y: 0.15, z: 555.8}
+    districtId: billionaire_bluffs
+  - stopId: bb-offshore-21
+    address: 21 Offshore Account Ave
+    capacity: 6
+    wealth: 0.96674
+    position: {x: 22, y: 0.15, z: 544.2}
+    districtId: billionaire_bluffs
+  - stopId: bb-offshore-48
+    address: 48 Offshore Account Ave
+    capacity: 6
+    wealth: 0.9555328
+    position: {x: 94, y: 0.15, z: 555.8}
+    districtId: billionaire_bluffs
+  - stopId: bb-offshore-49
+    address: 49 Offshore Account Ave
+    capacity: 6
+    wealth: 0.7284359
+    position: {x: 94, y: 0.15, z: 544.2}
+    districtId: billionaire_bluffs
+  - stopId: bb-offshore-76
+    address: 76 Offshore Account Ave
+    capacity: 6
+    wealth: 0.8037474
+    position: {x: 218, y: 0.15, z: 555.8}
+    districtId: billionaire_bluffs
+  - stopId: bb-offshore-77
+    address: 77 Offshore Account Ave
+    capacity: 6
+    wealth: 0.75629526
+    position: {x: 166, y: 0.15, z: 544.2}
+    districtId: billionaire_bluffs
+  - stopId: birch-18
+    address: 18 Birch St
+    capacity: 6
+    wealth: 0.7568491
+    position: {x: 42.3587, y: 0.15, z: 175.8}
+    districtId: mildly_pleasant
+  - stopId: birch-19
+    address: 19 Birch St
+    capacity: 4
+    wealth: 0.24083422
+    position: {x: 46.7, y: 0.15, z: 164.2}
+    districtId: mildly_pleasant
+  - stopId: birch-27
+    address: 27 Birch St
+    capacity: 4
+    wealth: 0.32835865
+    position: {x: 61.3, y: 0.15, z: 164.2}
+    districtId: mildly_pleasant
+  - stopId: birch-28
+    address: 28 Birch St
+    capacity: 4
+    wealth: 0.55843323
+    position: {x: 70.633865, y: 0.15, z: 175.8}
+    districtId: mildly_pleasant
+  - stopId: birch-36
+    address: 36 Birch St
+    capacity: 6
+    wealth: 0.75610673
+    position: {x: 92.775505, y: 0.15, z: 175.8}
+    districtId: mildly_pleasant
+  - stopId: birch-39
+    address: 39 Birch St
+    capacity: 6
+    wealth: 0.7502409
+    position: {x: 96.09709, y: 0.15, z: 164.2}
+    districtId: mildly_pleasant
+  - stopId: birch-46
+    address: 46 Birch St
+    capacity: 3
+    wealth: 0.23015386
+    position: {x: 119.36667, y: 0.15, z: 175.8}
+    districtId: mildly_pleasant
+  - stopId: birch-47
+    address: 47 Birch St
+    capacity: 4
+    wealth: 0.59616876
+    position: {x: 117.583244, y: 0.15, z: 164.2}
+    districtId: mildly_pleasant
+  - stopId: birch-56
+    address: 56 Birch St
+    capacity: 5
+    wealth: 0.4593981
+    position: {x: 137.23466, y: 0.15, z: 175.8}
+    districtId: mildly_pleasant
+  - stopId: birch-57
+    address: 57 Birch St
+    capacity: 4
+    wealth: 0.32541302
+    position: {x: 142.7, y: 0.15, z: 164.2}
+    districtId: mildly_pleasant
+  - stopId: birch-8
+    address: 8 Birch St
+    capacity: 4
+    wealth: 0.57619286
+    position: {x: 17.3, y: 0.15, z: 175.8}
+    districtId: mildly_pleasant
+  - stopId: birch-9
+    address: 9 Birch St
+    capacity: 4
+    wealth: 0.5422078
+    position: {x: 22.498346, y: 0.15, z: 164.2}
+    districtId: mildly_pleasant
+  - stopId: depot-9
+    address: 9 Depot Rd
+    capacity: 5
+    wealth: 0.45340395
+    position: {x: -5.8, y: 0.15, z: 37.073128}
+    districtId: mildly_pleasant
+  - stopId: elm-13
+    address: 13 Elm Ave
+    capacity: 5
+    wealth: 0.7981933
+    position: {x: -5.8, y: 0.15, z: 92.0863}
+    districtId: mildly_pleasant
+  - stopId: elm-22
+    address: 22 Elm Ave
+    capacity: 4
+    wealth: 0.3056462
+    position: {x: 5.8, y: 0.15, z: 124.7}
+    districtId: mildly_pleasant
+  - stopId: elm-23
+    address: 23 Elm Ave
+    capacity: 4
+    wealth: 0.33963132
+    position: {x: -5.8, y: 0.15, z: 119.7}
+    districtId: mildly_pleasant
+  - stopId: elm-3
+    address: 3 Elm Ave
+    capacity: 3
+    wealth: 0.2633348
+    position: {x: -5.8, y: 0.15, z: 62.3}
+    districtId: mildly_pleasant
+  - stopId: elm-33
+    address: 33 Elm Ave
+    capacity: 6
+    wealth: 0.82789814
+    position: {x: -5.8, y: 0.15, z: 137.98074}
+    districtId: mildly_pleasant
+  - stopId: elm-43
+    address: 43 Elm Ave
+    capacity: 4
+    wealth: 0.22587352
+    position: {x: -5.8, y: 0.15, z: 167.7}
+    districtId: mildly_pleasant
+  - stopId: maple-18
+    address: 18 Maple St
+    capacity: 4
+    wealth: 0.49624002
+    position: {x: 39.3, y: 0.15, z: 65.8}
+    districtId: mildly_pleasant
+  - stopId: maple-19
+    address: 19 Maple St
+    capacity: 4
+    wealth: 0.4622549
+    position: {x: 43.923786, y: 0.15, z: 54.2}
+    districtId: mildly_pleasant
+  - stopId: maple-26
+    address: 26 Maple St
+    capacity: 4
+    wealth: 0.4956369
+    position: {x: 63.119556, y: 0.15, z: 65.8}
+    districtId: mildly_pleasant
+  - stopId: maple-29
+    address: 29 Maple St
+    capacity: 6
+    wealth: 0.8858605
+    position: {x: 71.485245, y: 0.15, z: 54.2}
+    districtId: mildly_pleasant
+  - stopId: maple-38
+    address: 38 Maple St
+    capacity: 4
+    wealth: 0.5714297
+    position: {x: 98.7, y: 0.15, z: 65.8}
+    districtId: mildly_pleasant
+  - stopId: maple-39
+    address: 39 Maple St
+    capacity: 4
+    wealth: 0.4554148
+    position: {x: 93.90445, y: 0.15, z: 54.2}
+    districtId: mildly_pleasant
+  - stopId: maple-46
+    address: 46 Maple St
+    capacity: 4
+    wealth: 0.5221706
+    position: {x: 118.29062, y: 0.15, z: 65.8}
+    districtId: mildly_pleasant
+  - stopId: maple-49
+    address: 49 Maple St
+    capacity: 6
+    wealth: 0.8702153
+    position: {x: 121.39572, y: 0.15, z: 54.2}
+    districtId: mildly_pleasant
+  - stopId: maple-56
+    address: 56 Maple St
+    capacity: 4
+    wealth: 0.5159336
+    position: {x: 142.7, y: 0.15, z: 65.8}
+    districtId: mildly_pleasant
+  - stopId: maple-59
+    address: 59 Maple St
+    capacity: 3
+    wealth: 0.24600811
+    position: {x: 148.70001, y: 0.15, z: 54.2}
+    districtId: mildly_pleasant
+  - stopId: maple-8
+    address: 8 Maple St
+    capacity: 5
+    wealth: 0.4557883
+    position: {x: 23.940212, y: 0.15, z: 65.8}
+    districtId: mildly_pleasant
+  - stopId: maple-9
+    address: 9 Maple St
+    capacity: 5
+    wealth: 0.7897734
+    position: {x: 24.313797, y: 0.15, z: 54.2}
+    districtId: mildly_pleasant
+  - stopId: mm-carpool-10
+    address: 10 Carpool Ln
+    capacity: 6
+    wealth: 0.4878173
+    position: {x: 271.7, y: 0.15, z: -0.19999981}
+    districtId: minivan_meadows
+  - stopId: mm-carpool-22
+    address: 22 Carpool Ln
+    capacity: 6
+    wealth: 0.70309937
+    position: {x: 301.2, y: 0.15, z: -0.19999981}
+    districtId: minivan_meadows
+  - stopId: mm-carpool-42
+    address: 42 Carpool Ln
+    capacity: 4
+    wealth: 0.6724073
+    position: {x: 338.8, y: 0.15, z: -0.19999981}
+    districtId: minivan_meadows
+  - stopId: mm-carpool-54
+    address: 54 Carpool Ln
+    capacity: 4
+    wealth: 0.64849097
+    position: {x: 368.3, y: 0.15, z: -0.19999981}
+    districtId: minivan_meadows
+  - stopId: mm-glutenfree-102
+    address: 102 Gluten-Free Ct
+    capacity: 6
+    wealth: 0.7151454
+    position: {x: 332.8, y: 0.15, z: 62.2}
+    districtId: minivan_meadows
+  - stopId: mm-glutenfree-103
+    address: 103 Gluten-Free Ct
+    capacity: 6
+    wealth: 0.7436167
+    position: {x: 307.2, y: 0.15, z: 49.8}
+    districtId: minivan_meadows
+  - stopId: mm-juicebox-11
+    address: 11 Juice Box Blvd
+    capacity: 5
+    wealth: 0.4169457
+    position: {x: 271.7, y: 0.15, z: 144.2}
+    districtId: minivan_meadows
+  - stopId: mm-juicebox-210
+    address: 210 Juice Box Blvd
+    capacity: 4
+    wealth: 0.4911704
+    position: {x: 274.7, y: 0.15, z: 155.8}
+    districtId: minivan_meadows
+  - stopId: mm-juicebox-224
+    address: 224 Juice Box Blvd
+    capacity: 4
+    wealth: 0.48755515
+    position: {x: 290.3, y: 0.15, z: 155.8}
+    districtId: minivan_meadows
+  - stopId: mm-juicebox-23
+    address: 23 Juice Box Blvd
+    capacity: 5
+    wealth: 0.79779863
+    position: {x: 287.3, y: 0.15, z: 144.2}
+    districtId: minivan_meadows
+  - stopId: mm-juicebox-240
+    address: 240 Juice Box Blvd
+    capacity: 6
+    wealth: 0.62674814
+    position: {x: 349.7, y: 0.15, z: 155.8}
+    districtId: minivan_meadows
+  - stopId: mm-juicebox-254
+    address: 254 Juice Box Blvd
+    capacity: 6
+    wealth: 0.6303634
+    position: {x: 387.2, y: 0.15, z: 155.8}
+    districtId: minivan_meadows
+  - stopId: mm-juicebox-43
+    address: 43 Juice Box Blvd
+    capacity: 6
+    wealth: 0.65136224
+    position: {x: 352.7, y: 0.15, z: 144.2}
+    districtId: minivan_meadows
+  - stopId: mm-juicebox-55
+    address: 55 Juice Box Blvd
+    capacity: 6
+    wealth: 0.4554316
+    position: {x: 382.2, y: 0.15, z: 144.2}
+    districtId: minivan_meadows
+  - stopId: mm-playdate-102
+    address: 102 Playdate Pl
+    capacity: 6
+    wealth: 0.51694196
+    position: {x: 332.8, y: 0.15, z: 81.8}
+    districtId: minivan_meadows
+  - stopId: mm-playdate-103
+    address: 103 Playdate Pl
+    capacity: 5
+    wealth: 0.5549036
+    position: {x: 307.2, y: 0.15, z: 94.2}
+    districtId: minivan_meadows
+  - stopId: mm-soccermom-21
+    address: 21 Soccer Mom Way
+    capacity: 6
+    wealth: 0.64343095
+    position: {x: 394.2, y: 0.15, z: 50.866665}
+    districtId: minivan_meadows
+  - stopId: mm-soccermom-33
+    address: 33 Soccer Mom Way
+    capacity: 4
+    wealth: 0.6398157
+    position: {x: 394.2, y: 0.15, z: 66.46667}
+    districtId: minivan_meadows
+  - stopId: mm-soccermom-43
+    address: 43 Soccer Mom Way
+    capacity: 5
+    wealth: 0.31946447
+    position: {x: 394.2, y: 0.15, z: 93.13333}
+    districtId: minivan_meadows
+  - stopId: mm-trampoline-20
+    address: 20 Trampoline Ct
+    capacity: 6
+    wealth: 0.5520924
+    position: {x: 245.8, y: 0.15, z: 50.866665}
+    districtId: minivan_meadows
+  - stopId: mm-trampoline-32
+    address: 32 Trampoline Ct
+    capacity: 6
+    wealth: 0.7030302
+    position: {x: 245.8, y: 0.15, z: 66.46667}
+    districtId: minivan_meadows
+  - stopId: mm-trampoline-42
+    address: 42 Trampoline Ct
+    capacity: 4
+    wealth: 0.56524485
+    position: {x: 245.8, y: 0.15, z: 93.13333}
+    districtId: minivan_meadows
+  - stopId: oak-12
+    address: 12 Oak Ave
+    capacity: 3
+    wealth: 0.29858655
+    position: {x: 165.8, y: 0.15, z: 95.7}
+    districtId: mildly_pleasant
+  - stopId: oak-2
+    address: 2 Oak Ave
+    capacity: 3
+    wealth: 0.28299156
+    position: {x: 165.8, y: 0.15, z: 71.7}
+    districtId: mildly_pleasant
+  - stopId: oak-22
+    address: 22 Oak Ave
+    capacity: 6
+    wealth: 0.8112606
+    position: {x: 165.8, y: 0.15, z: 116.50847}
+    districtId: mildly_pleasant
+  - stopId: oak-23
+    address: 23 Oak Ave
+    capacity: 5
+    wealth: 0.47727546
+    position: {x: 154.2, y: 0.15, z: 113.6667}
+    districtId: mildly_pleasant
+  - stopId: oak-32
+    address: 32 Oak Ave
+    capacity: 4
+    wealth: 0.2831428
+    position: {x: 165.8, y: 0.15, z: 134.3}
+    districtId: mildly_pleasant
+  - stopId: oak-42
+    address: 42 Oak Ave
+    capacity: 5
+    wealth: 0.82156974
+    position: {x: 165.8, y: 0.15, z: 162.32254}
+    districtId: mildly_pleasant
+  - stopId: sh-hedgerow-12
+    address: 12 Hedgerow Crescent
+    capacity: 6
+    wealth: 0.50123554
+    position: {x: 18.4, y: 0.15, z: 245.8}
+    districtId: snootington_hills
+  - stopId: sh-hedgerow-32
+    address: 32 Hedgerow Crescent
+    capacity: 6
+    wealth: 0.62414867
+    position: {x: 91.6, y: 0.15, z: 245.8}
+    districtId: snootington_hills
+  - stopId: sh-hedgerow-48
+    address: 48 Hedgerow Crescent
+    capacity: 6
+    wealth: 0.8976211
+    position: {x: 136.6, y: 0.15, z: 245.8}
+    districtId: snootington_hills
+  - stopId: sh-hedgerow-68
+    address: 68 Hedgerow Crescent
+    capacity: 6
+    wealth: 0.6289274
+    position: {x: 181.6, y: 0.15, z: 245.8}
+    districtId: snootington_hills
+  - stopId: sh-monocle-13
+    address: 13 Monocle Mews
+    capacity: 6
+    wealth: 0.69097865
+    position: {x: 46.6, y: 0.15, z: 414.2}
+    districtId: snootington_hills
+  - stopId: sh-monocle-33
+    address: 33 Monocle Mews
+    capacity: 6
+    wealth: 0.43440554
+    position: {x: 63.4, y: 0.15, z: 414.2}
+    districtId: snootington_hills
+  - stopId: sh-monocle-49
+    address: 49 Monocle Mews
+    capacity: 6
+    wealth: 0.5704984
+    position: {x: 108.4, y: 0.15, z: 414.2}
+    districtId: snootington_hills
+  - stopId: sh-monocle-69
+    address: 69 Monocle Mews
+    capacity: 6
+    wealth: 0.65367126
+    position: {x: 153.4, y: 0.15, z: 414.2}
+    districtId: snootington_hills
+  - stopId: sh-oldmoney-328
+    address: 328 Old Money Rd
+    capacity: 6
+    wealth: 0.7749237
+    position: {x: 5.8, y: 0.15, z: 321.6}
+    districtId: snootington_hills
+  - stopId: sh-oldmoney-329
+    address: 329 Old Money Rd
+    capacity: 6
+    wealth: 0.868481
+    position: {x: -5.8, y: 0.15, z: 321.6}
+    districtId: snootington_hills
+  - stopId: sh-oldmoney-344
+    address: 344 Old Money Rd
+    capacity: 6
+    wealth: 0.56278497
+    position: {x: 5.8, y: 0.15, z: 338.4}
+    districtId: snootington_hills
+  - stopId: sh-oldmoney-345
+    address: 345 Old Money Rd
+    capacity: 6
+    wealth: 0.7248233
+    position: {x: -5.8, y: 0.15, z: 361.6}
+    districtId: snootington_hills
+  - stopId: sh-pinkyup-29
+    address: 29 Pinky-Up Place
+    capacity: 6
+    wealth: 0.56423336
+    position: {x: 194.2, y: 0.15, z: 298.4}
+    districtId: snootington_hills
+  - stopId: sh-pinkyup-45
+    address: 45 Pinky-Up Place
+    capacity: 6
+    wealth: 0.5088496
+    position: {x: 194.2, y: 0.15, z: 338.4}
+    districtId: snootington_hills

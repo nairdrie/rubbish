@@ -1,0 +1,5 @@
+# Known log errors that aren't networking bugs, for `audit.py --allow-file Tools/bots/known_errors.txt` (one regex per line).
+# Each entry names its owner and fix; delete it the moment the fix lands. Never add networking errors here.
+#
+# (empty) W2, 1 Oct 2026: the ShopScene Cloth error ("CollisionMeshData couldn't be created … group2013451613" / "Cannot
+# initialize Cloth") is fixed: its mesh comes from Assets/Models/Office.fbx, which is now Read/Write enabled.

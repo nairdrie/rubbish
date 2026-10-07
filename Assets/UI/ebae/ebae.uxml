@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+  <ui:Style src="ebae.uss" />
+  <!-- the template's own <Style> isn't carried through <Instance>, so the laptop attaches Scrapazon's sheet too -->
+  <ui:Style src="../shop/scrapazon.uss" />
+  <ui:Template name="ScrapazonPage" src="../shop/scrapazon.uxml" />
+  <ui:VisualElement name="ebaeScreen" class="ebae-screen">
+    <ui:VisualElement name="window" class="window">
+
+      <!-- laptop app strip: one browser, two apps (ebae sells, Scrapazon buys). Tabs switch apps. -->
+      <ui:VisualElement name="appStrip" class="app-strip">
+        <ui:VisualElement name="closeButton" class="chrome-dot chrome-dot--red" tooltip="close (Esc)" />
+        <ui:VisualElement class="chrome-dot chrome-dot--yellow" />
+        <ui:VisualElement class="chrome-dot chrome-dot--green" />
+        <ui:VisualElement name="appTabEbae" class="app-tab">
+          <ui:Label text="e" class="app-tab-icon app-tab-icon--ebae" picking-mode="Ignore" />
+          <ui:Label name="appTabEbaeLabel" text="ebae - Your Junk" class="app-tab-label" picking-mode="Ignore" />
+          <ui:Label name="appTabEbaeBadge" text="0" class="app-tab-badge app-tab-badge--hidden" picking-mode="Ignore" />
+        </ui:VisualElement>
+        <ui:VisualElement name="appTabShop" class="app-tab">
+          <ui:Label name="appTabShopIcon" text="a" class="app-tab-icon app-tab-icon--shop" picking-mode="Ignore" />
+          <ui:Label name="appTabShopLabel" text="Scrapazon" class="app-tab-label" picking-mode="Ignore" />
+          <ui:Label name="appTabShopBadge" text="NEW" class="app-tab-badge app-tab-badge--new app-tab-badge--hidden" picking-mode="Ignore" />
+        </ui:VisualElement>
+        <ui:Label name="appTabPlus" text="+" class="app-tab-plus" />
+        <ui:VisualElement class="app-strip-spacer" />
+        <ui:Label name="osClockLabel" text="7:00 AM · Day 1" class="os-clock" />
+      </ui:VisualElement>
+
+      <!-- fake browser chrome -->
+      <ui:VisualElement name="chrome" class="chrome">
+        <ui:Label text="&lt;" class="chrome-nav" />
+        <ui:Label text="&gt;" class="chrome-nav" />
+        <ui:VisualElement name="addressBar" class="address-bar">
+          <ui:Label text="https://" class="address-scheme" />
+          <ui:Label name="addressLabel" text="www.ebae.com/my-junk" class="address-label" />
+        </ui:VisualElement>
+        <ui:Label name="logoffButton" text="log off [Esc]" class="btn btn-logoff" />
+      </ui:VisualElement>
+
+      <!-- app: ebae (sell-side) -->
+      <ui:VisualElement name="ebaePage" class="app-page">
+        <!-- header: logo, fake search, wallet -->
+        <ui:VisualElement name="header" class="header">
+          <ui:VisualElement name="logo" class="logo">
+            <ui:Label text="e" class="logo-letter logo-letter--e1" />
+            <ui:Label text="b" class="logo-letter logo-letter--b" />
+            <ui:Label text="a" class="logo-letter logo-letter--a" />
+            <ui:Label text="e" class="logo-letter logo-letter--e2" />
+          </ui:VisualElement>
+          <ui:VisualElement class="header-middle">
+            <ui:VisualElement class="search-bar">
+              <ui:Label name="searchLabel" text="Search for anything (it's all garbage)" class="search-text" />
+              <ui:Label text="Search" class="search-button" />
+            </ui:VisualElement>
+            <ui:Label name="tagline" text="the internet's #1 pawn shop for stuff found in bins" class="tagline" />
+          </ui:VisualElement>
+          <ui:VisualElement name="wallet" class="wallet">
+            <ui:Label text="your balance" class="wallet-caption" />
+            <ui:Label name="balanceLabel" text="$0.00" class="wallet-balance" />
+            <ui:Label name="sellerLabel" text="new seller (no feedback)" class="wallet-seller" />
+          </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- tabs + live ticker -->
+        <ui:VisualElement name="tabBar" class="tab-bar">
+          <ui:VisualElement name="tabJunk" class="tab">
+            <ui:Label name="tabJunkLabel" text="Your Junk" class="tab-label" />
+          </ui:VisualElement>
+          <ui:VisualElement name="tabListings" class="tab">
+            <ui:Label name="tabListingsLabel" text="Listings" class="tab-label" />
+            <ui:Label name="tabListingsBadge" text="0" class="tab-badge tab-badge--hidden" picking-mode="Ignore" />
+          </ui:VisualElement>
+          <ui:VisualElement name="tabSold" class="tab">
+            <ui:Label name="tabSoldLabel" text="Sold" class="tab-label" />
+          </ui:VisualElement>
+          <ui:VisualElement class="tab-spacer" />
+          <ui:VisualElement class="ticker">
+            <ui:Label text="LIVE" class="ticker-live" />
+            <ui:Label name="tickerLabel" text="loading garbage..." class="ticker-text" />
+          </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- tab content (built in EbaeUI.cs) -->
+        <ui:ScrollView name="contentScroll" class="content-scroll" />
+
+        <ui:VisualElement name="footer" class="footer">
+          <ui:Label name="footerLabel" text="ebae (c) 1997-2026 · all sales final · not responsible for curses · our 8% fee funds the CEO's boat" class="footer-text" />
+        </ui:VisualElement>
+      </ui:VisualElement>
+
+      <!-- app: Scrapazon (buy-side; Assets/UI/shop/scrapazon.uxml, driven by ScrapazonApp.cs) -->
+      <ui:Instance template="ScrapazonPage" name="scrapazonPage" class="app-page app-page--hidden" />
+
+      <ui:VisualElement name="toastLayer" class="toast-layer" picking-mode="Ignore" />
+    </ui:VisualElement>
+
+    <ui:VisualElement name="fxLayer" class="fx-layer" picking-mode="Ignore" />
+  </ui:VisualElement>
+</ui:UXML>

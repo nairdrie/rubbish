@@ -1,0 +1,201 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb21c7232dc6f4f23a524f8c0b8a7ed3, type: 3}
+  m_Name: RubbishAssets
+  m_EditorClassIdentifier: Assembly-CSharp::RubbishAssets
+  prefabs:
+  - key: net/session
+    prefab: {fileID: 729349096695533756, guid: 4e8e31b3d777a465b8b80ece202ca7a1, type: 3}
+  - key: item/tire
+    prefab: {fileID: 1046467634423176303, guid: 643ab9788ce96e246818c33678bc88d3, type: 3}
+  - key: item/car_battery
+    prefab: {fileID: 3976742514918582389, guid: 6dcd05967549b8f4281629798a7dde9e, type: 3}
+  - key: item/paint_bucket
+    prefab: {fileID: 7251873686478808852, guid: 58e289529da1653468bff7e56f40f106, type: 3}
+  - key: item/paint_bucket_2
+    prefab: {fileID: 1166080946356876873, guid: 1c8e2eee768d7584b9ad15bc7b018ba9, type: 3}
+  - key: item/paint_bucket_3
+    prefab: {fileID: 1739498107634338432, guid: 56638e2f30a3dc9469ce6832c386f389, type: 3}
+  - key: item/jerrycan
+    prefab: {fileID: 5466102868991947080, guid: 94d214ee0228351418d8109414f4f047, type: 3}
+  - key: item/propane
+    prefab: {fileID: 5959153428460471941, guid: 08c83159c6eaf124fa5fa2a3f07057e6, type: 3}
+  - key: item/extinguisher
+    prefab: {fileID: 8433639067143517980, guid: 26f81c7bd8bc3214eb22f964a4054892, type: 3}
+  - key: item/toolbox
+    prefab: {fileID: 8221867808111164059, guid: a1ae896f252775e4f877c7e7040ec3df, type: 3}
+  - key: item/hammer
+    prefab: {fileID: 3128852790458346578, guid: 9409adfa70dab704695a0f8dd7107113, type: 3}
+  - key: item/drill
+    prefab: {fileID: 1044911354158492321, guid: 567f93ae24e2af0458376225d3e536ac, type: 3}
+  - key: item/duct_tape
+    prefab: {fileID: 2850453082717971548, guid: de38ae48853e69147a019d1edcbc2f8c, type: 3}
+  - key: item/spray_bottle
+    prefab: {fileID: 344629808695598519, guid: f9729020462fb7c4dbcac6e99bdde20a, type: 3}
+  - key: item/box_small
+    prefab: {fileID: 2100394020415936150, guid: 903b11d51b397a948bfb75a24a7645a0, type: 3}
+  - key: item/lemon
+    prefab: {fileID: 7927992823550515929, guid: a579ba43c3552254fb7f9ae894f188e8, type: 3}
+  - key: sack/0
+    prefab: {fileID: 619798325022587035, guid: d9f8af54374b32941937cbb4b7c04cc2, type: 3}
+  - key: sack/1
+    prefab: {fileID: 5452293534546909774, guid: a6e42c420f892b149a5332e311862fee, type: 3}
+  - key: sack/2
+    prefab: {fileID: 3516316223198222668, guid: 70d61cfe6bd4d0140874e87ad9431f89, type: 3}
+  - key: ui/fonts
+    prefab: {fileID: 7025166156771985670, guid: 8ec02c3937dfc44b7958c64f34dc469a, type: 3}
+  - key: knock/SM_streetlamp_01
+    prefab: {fileID: 145554324600092690, guid: 3761011025ab649ad91ece53818fa9c7, type: 3}
+  - key: knock/SM_streetlamp_02
+    prefab: {fileID: 1224365724458195419, guid: b16be0d761d6141ab8e7a3be3a37df5e, type: 3}
+  - key: knock/SM_streetlamp_03
+    prefab: {fileID: 8535251289139618982, guid: 2dea02c4e286e45bc9b8b973474c2161, type: 3}
+  - key: knock/SM_mailbox_01
+    prefab: {fileID: 8031000015977638768, guid: 01f197f2e520f4d3ba193c32365c9482, type: 3}
+  - key: knock/SM_mailbox_02
+    prefab: {fileID: 1832448964224424393, guid: 4aba24f34db8e4430b9861f3bcd70189, type: 3}
+  - key: knock/SM_garbagecan_01
+    prefab: {fileID: 2587672103739365785, guid: 841d6793c21f64870a97a55a43959b3e, type: 3}
+  - key: knock/SM_garbagecan_02
+    prefab: {fileID: 2584511636803069971, guid: b1ba5150c00294e468d78decd966ecd6, type: 3}
+  - key: knock/SM_garbagecan_03
+    prefab: {fileID: 1211761641114464538, guid: b201141a8484a41858098eb46becca9f, type: 3}
+  - key: knock/SM_lemonade_shop
+    prefab: {fileID: 290808540662798850, guid: 3fab6209b0ad349ffa70f37d785682cc, type: 3}
+  - key: knock/SM_clothes_drying_rack_01
+    prefab: {fileID: 2608827163826107101, guid: 596679e56dc904f37a68743703ce213a, type: 3}
+  - key: knock/SM_clothes_drying_rack_02
+    prefab: {fileID: 1007280737170103617, guid: 5f34637956fd441908e2aa4b0ec00e0e, type: 3}
+  - key: knock/SM_clothes_drying_rack_03
+    prefab: {fileID: 2778583872725928059, guid: 20b67378b5a64475b962e0639e0f6b12, type: 3}
+  - key: knock/SM_clothes_drying_rack_04
+    prefab: {fileID: 7473687489115221159, guid: 2560dc7dbc41449eeae41499ceee87f1, type: 3}
+  - key: knock/SM_bench_playground
+    prefab: {fileID: 8652100877024501477, guid: aca7afe71b6084a2d8d71d4aa77523af, type: 3}
+  - key: knock/SM_trashbin_park
+    prefab: {fileID: 3740067495176456969, guid: 11c9fd1ea909a443a9426a26f865ee42, type: 3}
+  - key: knock/SM_lemon
+    prefab: {fileID: 6994993041502069691, guid: 92fbcc99a180040919e11574607fc1e5, type: 3}
+  materials:
+  - key: mat/sky_blend
+    material: {fileID: 2100000, guid: c5d973ae8d84546bbbff8953cb57041a, type: 2}
+  - key: mat/sky_SkyMidnight
+    material: {fileID: 2100000, guid: 97637a2a763b7f24b8da4e139e4144ca, type: 2}
+  - key: mat/sky_SkyNight
+    material: {fileID: 2100000, guid: 493bfb50af5d9424da505ba945c86600, type: 2}
+  - key: mat/sky_SkyMorning
+    material: {fileID: 2100000, guid: 9991b6265f7f87d43b7e3c676739f203, type: 2}
+  - key: mat/sky_SkyBrightMorning
+    material: {fileID: 2100000, guid: 0b846be1b116429409a7669cacf2a62e, type: 2}
+  - key: mat/sky_SkyNoon
+    material: {fileID: 2100000, guid: 3e56423e1fe71f94ea97f5bb2004a7e6, type: 2}
+  - key: mat/sky_SkyAfterNoon
+    material: {fileID: 2100000, guid: 1cf32c17fea93ef4fb120e8e0cdfbef1, type: 2}
+  - key: mat/sky_SkySunset
+    material: {fileID: 2100000, guid: ac2eeb98f1b423941b373f537bc56e18, type: 2}
+  - key: mat/sky_SkyEarlyDusk
+    material: {fileID: 2100000, guid: 82b660520bdecce4daf45d270ec93fe4, type: 2}
+  - key: mat/sky_window_glow
+    material: {fileID: 2100000, guid: e7ac51906ed44834190b14f04576b1f1, type: 2}
+  - key: mat/sky_lamp_bulb
+    material: {fileID: 2100000, guid: 986155f7ffa1f684f96ec03489b7773c, type: 2}
+  - key: mat/critters_lit
+    material: {fileID: 2100000, guid: 1edc9eef9e3f04c248bff28311e8dbc6, type: 2}
+  - key: mat/critters_lit_emissive
+    material: {fileID: 2100000, guid: aabdc05bb7cf9483ca7384c8d662b8dd, type: 2}
+  - key: mat/critters_unlit
+    material: {fileID: 2100000, guid: 66e74347501944cdd95e5effebb0f7a9, type: 2}
+  - key: mat/shop_headlamp_body
+    material: {fileID: 2100000, guid: b278a1a7f338945f2ad3c129d206af4f, type: 2}
+  - key: mat/shop_headlamp_lens
+    material: {fileID: 2100000, guid: 20b6ac0ae87c9400eb447cf3d310d60e, type: 2}
+  - key: mat/shop_chrome
+    material: {fileID: 2100000, guid: acb4469e4efee433ca1b74301546ebce, type: 2}
+  - key: mat/shop_red
+    material: {fileID: 2100000, guid: 44165881d688647bda4847827255c182, type: 2}
+  - key: mat/shop_wood
+    material: {fileID: 2100000, guid: 9acd8b5f674904702a263ef7047b81a1, type: 2}
+  - key: mat/shop_tape
+    material: {fileID: 2100000, guid: 50297e2680c0c479bbf55279904e928e, type: 2}
+  - key: mat/shop_box
+    material: {fileID: 2100000, guid: ee6d1897e7f0b44978437533962b36bf, type: 2}
+  - key: mat/shop_box_tape
+    material: {fileID: 2100000, guid: 02f16defeacc34885bc71d4a63a6595e, type: 2}
+  - key: mat/shop_orange
+    material: {fileID: 2100000, guid: a656163e089914c49b626f4e1e0f856a, type: 2}
+  - key: mat/shop_white
+    material: {fileID: 2100000, guid: 426aed3c79c4545eba7808d33f9f7f7b, type: 2}
+  - key: mat/item_base
+    material: {fileID: 2100000, guid: b9f34459cfa8e45b180c641300d5dda5, type: 2}
+  - key: mat/item_metal
+    material: {fileID: 2100000, guid: f17a669c6b5cb4bcfae7974453b5ff81, type: 2}
+  - key: mat/item_glass
+    material: {fileID: 2100000, guid: 7367d937b4f814921ab426108d6e5e5d, type: 2}
+  - key: mat/item_emissive
+    material: {fileID: 2100000, guid: b63d8bad223d94554a6665e328c21d27, type: 2}
+  - key: mat/pickup_marker
+    material: {fileID: 2100000, guid: cd358ac301f7c4541b66515c95861460, type: 2}
+  - key: mat/pickup_beam
+    material: {fileID: 2100000, guid: bec0408e5595b440699c715262af1ba9, type: 2}
+  - key: mat/pickup_bag
+    material: {fileID: 2100000, guid: a1f4a1542c9cf4027a898d3c932afbb0, type: 2}
+  - key: mat/pickup_mouth
+    material: {fileID: 2100000, guid: 16ebcf60669d34b45bd12081e537423e, type: 2}
+  - key: mat/pickup_hazard
+    material: {fileID: 2100000, guid: aafccc138279e4549b677e8d6ae54a98, type: 2}
+  - key: mat/fx_unlit
+    material: {fileID: 2100000, guid: 84e66227e15374e3d8f4fffdac684a07, type: 2}
+  - key: mat/fx_additive
+    material: {fileID: 2100000, guid: f6d1c31617e6244d690d0d2a1b58f69c, type: 2}
+  - key: mat/sorting_outline
+    material: {fileID: 2100000, guid: ccb233de52823495db79612fa21f7305, type: 2}
+  - key: mat/sorting_bale
+    material: {fileID: 2100000, guid: 7ce5338d2152446c9bc1222d586f7584, type: 2}
+  - key: mat/sorting_strap
+    material: {fileID: 2100000, guid: 044788f4356ba4b379a58741c0133650, type: 2}
+  - key: mat/sorting_sack_scrap
+    material: {fileID: 2100000, guid: f792b540347c647d596caacdff0d0e3a, type: 2}
+  - key: mat/garage_glint
+    material: {fileID: 2100000, guid: a01318622c45a4888b94bc2bbae6c480, type: 2}
+  - key: mat/worldlife_knock_red
+    material: {fileID: 2100000, guid: 66d7f9814c4db4c7f9865db74a7ed76f, type: 2}
+  - key: mat/worldlife_knock_darkred
+    material: {fileID: 2100000, guid: 4a60042a199204cec902b4b34ca676b9, type: 2}
+  - key: mat/worldlife_knock_orange
+    material: {fileID: 2100000, guid: 3042c37335be94bd5b3e68b51db20812, type: 2}
+  - key: mat/worldlife_knock_white
+    material: {fileID: 2100000, guid: 3e092f77215394eb9ae1df5f23ee48c6, type: 2}
+  - key: mat/worldlife_knock_pink
+    material: {fileID: 2100000, guid: 20eafc9af419b49a69edcc5e04e5398d, type: 2}
+  - key: mat/worldlife_knock_black
+    material: {fileID: 2100000, guid: 2550f0bd404bc4bd38aa0146792e411b, type: 2}
+  - key: mat/worldlife_knock_yellow
+    material: {fileID: 2100000, guid: e9a2e810cb7834bda8144e4dc28bed11, type: 2}
+  - key: mat/worldlife_knock_metal
+    material: {fileID: 2100000, guid: 1a6d68a7b763640b6b801e4575c69486, type: 2}
+  - key: mat/worldlife_knock_wood
+    material: {fileID: 2100000, guid: 17f231ec396e143fe831f5436145b515, type: 2}
+  - key: mat/worldlife_knock_bulb_off
+    material: {fileID: 2100000, guid: c2364e7f3b1ad4e3a8458368db2eaac8, type: 2}
+  - key: mat/worldlife_knock_water
+    material: {fileID: 2100000, guid: 5ce77be6b0da64c158a5830796607bd5, type: 2}
+  - key: mat/worldlife_knock_spray
+    material: {fileID: 2100000, guid: a0676b519b7374aae85b29f3dae6f817, type: 2}
+  - key: mat/worldlife_res_lit
+    material: {fileID: 2100000, guid: 676733e055da340cc83a4aa769483923, type: 2}
+  - key: mat/worldlife_res_emissive
+    material: {fileID: 2100000, guid: 53355e92465f1423e86c3520072b5a5d, type: 2}
+  - key: mat/worldlife_res_unlit
+    material: {fileID: 2100000, guid: d4904fcbec80d4cbaa718504360d2b38, type: 2}
+  - key: mat/worldlife_res_beam
+    material: {fileID: 2100000, guid: 8d2476ae1f57a4134a7ff4ee9e4c772f, type: 2}
+  clips: []

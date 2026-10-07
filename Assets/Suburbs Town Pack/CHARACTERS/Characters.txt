@@ -1,0 +1,2 @@
+Here you can find the base and skeletal meshes for the characters.
+Each character has multiple material variations. Open Materials/Character Materials and apply the according Materials onto the characters.

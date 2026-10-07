@@ -1,0 +1,30 @@
+{
+ "_doc": "Fixtures for Tools/coop_lint.sh --selftest. Files under Assets/Scripts here mirror the real layout (paths decide rule scopes) and are never compiled. counts = exact per file|rule hits with no baseline; allowsUsed / badAllows = file:line of the coop:allow comments.",
+ "counts": {
+  "Assets/Scripts/Ebae/EbaeMarketRunner.cs|save": 1,
+  "Assets/Scripts/Gameplay/Allowed.cs|cash": 1,
+  "Assets/Scripts/Gameplay/Allowed.cs|save": 2,
+  "Assets/Scripts/Gameplay/LegacyRules.cs|cash": 1,
+  "Assets/Scripts/Gameplay/LegacyRules.cs|current": 1,
+  "Assets/Scripts/Gameplay/LegacyRules.cs|find": 1,
+  "Assets/Scripts/Gameplay/LegacyRules.cs|guid": 1,
+  "Assets/Scripts/Gameplay/LegacyRules.cs|local": 1,
+  "Assets/Scripts/Gameplay/LegacyRules.cs|random": 1,
+  "Assets/Scripts/Gameplay/LegacyRules.cs|scene": 1,
+  "Assets/Scripts/Gameplay/LegacyRules.cs|timescale": 1,
+  "Assets/Scripts/Gameplay/LogsSecrets.cs|secrets": 5,
+  "Assets/Scripts/Gameplay/SaveViolations.cs|save": 9,
+  "Assets/Scripts/Gameplay/SteamOutside.cs|steamapi": 3,
+  "Assets/Scripts/Net/Core/Steam/LobbyInfo.cs|steamapi": 1,
+  "Assets/Scripts/Net/Session/UsesSingleton.cs|netsingleton": 2
+ },
+ "allowsUsed": [
+  "Assets/Scripts/Gameplay/Allowed.cs:7",
+  "Assets/Scripts/Gameplay/Allowed.cs:8",
+  "Assets/Scripts/Gameplay/Allowed.cs:10"
+ ],
+ "badAllows": [
+  "Assets/Scripts/Gameplay/Allowed.cs:12",
+  "Assets/Scripts/Gameplay/Allowed.cs:13"
+ ]
+}

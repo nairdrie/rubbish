@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Scrapazon: the buy-side app on the shop laptop (instanced inside Assets/UI/ebae/ebae.uxml).
+     Static skeleton only; products, logo letters and art are built by ScrapazonApp.cs. -->
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+  <ui:Style src="scrapazon.uss" />
+  <ui:VisualElement name="szPage" class="sz-page">
+
+    <!-- top header: logo, deliver-to, search, account, balance, "cart" -->
+    <ui:VisualElement name="szHeader" class="sz-header">
+      <ui:VisualElement name="szLogo" class="sz-logo">
+        <ui:VisualElement name="szLogoWord" class="sz-logo-word" />
+        <ui:VisualElement name="szLogoSmileHost" class="sz-logo-smile-host" picking-mode="Ignore" />
+      </ui:VisualElement>
+      <ui:VisualElement name="szDeliver" class="sz-deliver sz-header-link">
+        <ui:Label text="Deliver to" class="sz-header-caption" />
+        <ui:Label name="szDeliverLabel" text="Garage Bay 1" class="sz-header-value" />
+      </ui:VisualElement>
+      <ui:VisualElement name="szSearch" class="sz-search">
+        <ui:Label name="szSearchDept" text="All" class="sz-search-dept" />
+        <ui:Label name="szSearchLabel" text="Search Scrapazon" class="sz-search-text" />
+        <ui:VisualElement name="szSearchButton" class="sz-search-button" />
+      </ui:VisualElement>
+      <ui:VisualElement name="szAccount" class="sz-header-link">
+        <ui:Label name="szHelloLabel" text="Hello, trash person" class="sz-header-caption" />
+        <ui:Label text="Account &amp; Lists" class="sz-header-value" />
+      </ui:VisualElement>
+      <ui:VisualElement name="szReturns" class="sz-header-link">
+        <ui:Label text="Returns" class="sz-header-caption" />
+        <ui:Label text="&amp; Orders" class="sz-header-value" />
+      </ui:VisualElement>
+      <ui:VisualElement name="szWallet" class="sz-wallet">
+        <ui:Label text="your balance" class="sz-header-caption" />
+        <ui:Label name="szBalanceLabel" text="$0.00" class="sz-balance" />
+      </ui:VisualElement>
+      <ui:VisualElement name="szCart" class="sz-cart">
+        <ui:VisualElement name="szCartIconHost" class="sz-cart-icon-host" picking-mode="Ignore" />
+        <ui:Label name="szCartCount" text="0" class="sz-cart-count" picking-mode="Ignore" />
+        <ui:Label text="Stuff" class="sz-cart-label" picking-mode="Ignore" />
+      </ui:VisualElement>
+    </ui:VisualElement>
+
+    <!-- department strip (buttons built in code from ScrapazonCatalog.Departments) -->
+    <ui:VisualElement name="szNav" class="sz-nav">
+      <ui:VisualElement name="szNavButtons" class="sz-nav-buttons" />
+      <ui:VisualElement class="sz-nav-spacer" />
+      <ui:VisualElement class="sz-prime-strip">
+        <ui:Label text="prime" class="sz-prime-badge" />
+        <ui:Label name="szPrimeLabel" text="delivered in 0.3 seconds" class="sz-prime-text" />
+      </ui:VisualElement>
+    </ui:VisualElement>
+
+    <ui:ScrollView name="szScroll" class="sz-scroll">
+      <ui:VisualElement name="szHero" class="sz-hero">
+        <ui:VisualElement class="sz-hero-copy">
+          <ui:Label name="szHeroKicker" text="DEAL OF THE DAY" class="sz-hero-kicker" />
+          <ui:Label name="szHeroTitle" text="Everything you need. Nothing you deserve." class="sz-hero-title" />
+          <ui:Label name="szHeroSub" text="Scrapazon Prime: delivered in 0.3 seconds." class="sz-hero-sub" />
+        </ui:VisualElement>
+        <ui:VisualElement name="szHeroArtHost" class="sz-hero-art-host" picking-mode="Ignore">
+          <ui:Label text="0.3s" class="sz-hero-speed" picking-mode="Ignore" />
+        </ui:VisualElement>
+      </ui:VisualElement>
+
+      <ui:VisualElement class="sz-results-bar">
+        <ui:Label name="szResultsLabel" text="1-8 of 8 results for &quot;stuff&quot;" class="sz-results" />
+        <ui:Label name="szSortLabel" text="Sort by: Featured (by us, for money)" class="sz-sort" />
+      </ui:VisualElement>
+
+      <ui:VisualElement name="szGrid" class="sz-grid" />
+
+      <ui:VisualElement name="szAlso" class="sz-also">
+        <ui:Label name="szAlsoTitle" text="Customers who bought stuff also bought" class="sz-also-title" />
+        <ui:VisualElement name="szAlsoRow" class="sz-also-row" />
+      </ui:VisualElement>
+
+      <ui:Label name="szBackToTop" text="Back to top" class="sz-back-to-top" />
+      <ui:VisualElement class="sz-footer">
+        <ui:Label name="szFooterLabel" text="Scrapazon (c) 1997-2026" class="sz-footer-text" />
+      </ui:VisualElement>
+    </ui:ScrollView>
+  </ui:VisualElement>
+</ui:UXML>

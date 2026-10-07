@@ -1,0 +1,222 @@
+using System;
+using UnityEngine;
+
+/// <summary>One in-game day of company stats (Docs/Progression.md §9.5 A.2).</summary>
+public sealed class DayStats
+{
+    public int day;
+    public int bags, onTime, kevinBags, curbs, items, contamination, treasures, crushes;
+    /// <summary>Cash in (credits) / out (charges: fines, wages, hospital...). Purchases are <see cref="spent"/>, not charges.</summary>
+    public float credits, charges, spent, rep;
+    public float bestFindValue;
+    public string bestFindDefId;
+
+    /// <summary>"Net" income: credits − charges. Purchases (Ledger.Spend) are excluded.</summary>
+    public float Net => credits - charges;
+    public float OnTime01 => bags > 0 ? onTime / (float)bags : 0f;
+    public string BestFindName
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(bestFindDefId)) return null;
+            var d = ItemCatalog.Get(bestFindDefId);
+            return d != null ? d.name : bestFindDefId;
+        }
+    }
+}
+
+/// <summary>
+/// Today's and yesterday's numbers: bags, on-time %, curbs, items, contamination, treasures, best find, credits,
+/// charges and Rep. Persisted in <see cref="GameSession"/> counters ("st0_*" today, "st1_*" yesterday; money in cents,
+/// Rep in tenths) so the company file carries them. Cash is counted from <see cref="GameSession.CashChanged"/> so even
+/// not-yet-migrated AddCash call sites show up; <see cref="Ledger.Spend"/> postings are moved from "charges" to
+/// "spent", which keeps purchases out of net. Yesterday's net prices Work Orders.
+/// </summary>
+public static class DailyStats
+{
+    const string DayCounter = "stats_day";
+    const string T = "st0_", Y = "st1_";
+
+    static DayStats today, yesterday;
+
+    /// <summary>The day the stats are counting (0 before the first roll). It moves on in the midnight review, so it lags
+    /// Progression.Today between the clock's rollover and the review.</summary>
+    public static int Day => GameSession.GetCounter(DayCounter);
+
+    /// <summary>Today's stats (loaded from the counters on first use).</summary>
+    public static DayStats Today => today ??= Read(T, GameSession.GetCounter(DayCounter));
+
+    /// <summary>The previous in-game day's stats (zeros before the first midnight).</summary>
+    public static DayStats Yesterday => yesterday ??= Read(Y, Mathf.Max(0, GameSession.GetCounter(DayCounter) - 1));
+
+    /// <summary>Fired after any stat changes (Career page refresh).</summary>
+    public static event Action Changed;
+
+    /// <summary>Start a new day: today → yesterday, today cleared. No-op when already on that day.</summary>
+    public static void RollTo(int day)
+    {
+        int cur = GameSession.GetCounter(DayCounter);
+        if (cur == day) return;
+        if (cur != 0)
+        {
+            var t = Today;
+            yesterday = Copy(t);
+            yesterday.day = cur;
+            Write(Y, yesterday);
+        }
+        today = new DayStats { day = day };
+        Write(T, today);
+        GameSession.SetCounter(DayCounter, day);
+        Raise();
+    }
+
+    // ------------------------------------------------------------------ inputs
+
+    /// <summary>
+    /// The statics show someone else's world (a guest, or a guest who just left and whose own save isn't back yet): their
+    /// local cash/Rep moves are thrown away by SaveGuard.ReloadOwn, so they must not reach today's stats (Multiplayer.md rule 15).
+    /// Play mode only: a latch left over from a play session never mutes edit-mode evals.
+    /// </summary>
+    static bool NotOurs => GameSession.IsGuest || (Application.isPlaying && SaveGuard.Foreign);
+
+    public static void OnCashChanged(float amount, string reason, Vector3? pos)
+    {
+        if (NotOurs) return;
+        var t = Today;
+        if (amount > 0f) { t.credits += amount; SetMoney("credits", t.credits); }
+        else if (amount < 0f) { t.charges += -amount; SetMoney("charges", t.charges); }
+        Raise();
+    }
+
+    public static void OnLedgerPosted(LedgerEntry e)
+    {
+        if (e.kind != Ledger.KindSpend || NotOurs) return;
+        // The spend already arrived through CashChanged as a negative change: move it out of the charges.
+        var t = Today;
+        float x = -e.amount;
+        t.charges = Mathf.Max(0f, t.charges - x);
+        t.spent += x;
+        SetMoney("charges", t.charges);
+        SetMoney("spent", t.spent);
+        Raise();
+    }
+
+    public static void OnRep(float delta)
+    {
+        if (NotOurs) return;
+        var t = Today;
+        t.rep += delta;
+        GameSession.SetCounter(T + "rep", Mathf.RoundToInt(t.rep * 10f));
+        Raise();
+    }
+
+    public static void OnBag(BagCollectedFact f)
+    {
+        var t = Today;
+        if (f.byKevin) { t.kevinBags++; Set("kevin", t.kevinBags); }
+        else
+        {
+            t.bags++;
+            Set("bags", t.bags);
+            if (f.onTime) { t.onTime++; Set("ontime", t.onTime); }
+        }
+        Raise();
+    }
+
+    public static void OnCurb() { var t = Today; t.curbs++; Set("curbs", t.curbs); Raise(); }
+
+    public static void OnSorted(bool correct)
+    {
+        var t = Today;
+        if (correct) { t.items++; Set("items", t.items); }
+        else { t.contamination++; Set("contam", t.contamination); }
+        Raise();
+    }
+
+    public static void OnTreasure(ItemInstance item)
+    {
+        var t = Today;
+        t.treasures++;
+        Set("treasures", t.treasures);
+        float v = item != null ? Mathf.Max(item.value, 0f) : 0f;
+        if (item != null && (string.IsNullOrEmpty(t.bestFindDefId) || v > t.bestFindValue))
+        {
+            t.bestFindValue = v;
+            t.bestFindDefId = item.defId;
+            SetMoney("best", v);
+            Set("best_def", DefIndex(item.defId));
+        }
+        Raise();
+    }
+
+    public static void OnCrush() { var t = Today; t.crushes++; Set("crushes", t.crushes); Raise(); }
+
+    // ------------------------------------------------------------------ persistence (counters)
+
+    static void Set(string key, int v) => GameSession.SetCounter(T + key, v);
+    static void SetMoney(string key, float v) => GameSession.SetCounter(T + key, Mathf.RoundToInt(v * 100f));
+
+    static DayStats Read(string p, int day)
+    {
+        int Get(string k) => GameSession.GetCounter(p + k);
+        float Money(string k) => GameSession.GetCounter(p + k) / 100f;
+        int defIdx = Get("best_def");
+        return new DayStats
+        {
+            day = day,
+            bags = Get("bags"), onTime = Get("ontime"), kevinBags = Get("kevin"), curbs = Get("curbs"), items = Get("items"),
+            contamination = Get("contam"), treasures = Get("treasures"), crushes = Get("crushes"),
+            credits = Money("credits"), charges = Money("charges"), spent = Money("spent"), rep = Get("rep") / 10f,
+            bestFindValue = Money("best"), bestFindDefId = DefAt(defIdx),
+        };
+    }
+
+    static void Write(string p, DayStats s)
+    {
+        void W(string k, int v) => GameSession.SetCounter(p + k, v);
+        void M(string k, float v) => GameSession.SetCounter(p + k, Mathf.RoundToInt(v * 100f));
+        W("bags", s.bags); W("ontime", s.onTime); W("kevin", s.kevinBags); W("curbs", s.curbs); W("items", s.items);
+        W("contam", s.contamination); W("treasures", s.treasures); W("crushes", s.crushes);
+        M("credits", s.credits); M("charges", s.charges); M("spent", s.spent); W("rep", Mathf.RoundToInt(s.rep * 10f));
+        M("best", s.bestFindValue); W("best_def", DefIndex(s.bestFindDefId));
+    }
+
+    static DayStats Copy(DayStats s) => new DayStats
+    {
+        day = s.day, bags = s.bags, onTime = s.onTime, kevinBags = s.kevinBags, curbs = s.curbs, items = s.items,
+        contamination = s.contamination, treasures = s.treasures, crushes = s.crushes, credits = s.credits,
+        charges = s.charges, spent = s.spent, rep = s.rep, bestFindValue = s.bestFindValue, bestFindDefId = s.bestFindDefId,
+    };
+
+    // best find stored as (index into ItemCatalog.All) + 1; 0 = none
+    static int DefIndex(string defId)
+    {
+        if (string.IsNullOrEmpty(defId)) return 0;
+        var all = ItemCatalog.All;
+        for (int i = 0; i < all.Count; i++) if (all[i].id == defId) return i + 1;
+        return 0;
+    }
+
+    static string DefAt(int index1)
+    {
+        var all = ItemCatalog.All;
+        return index1 > 0 && index1 <= all.Count ? all[index1 - 1].id : null;
+    }
+
+    static void Raise()
+    {
+        var h = Changed;
+        if (h == null) return;
+        try { h(); } catch (Exception e) { Debug.LogException(e); }
+    }
+
+    /// <summary>Forget the cached days (statics reset / tests after GameSession.ResetAll).</summary>
+    public static void ResetStatics()
+    {
+        today = null; yesterday = null;
+        Changed = null;
+    }
+
+    /// <summary>Drop the cache so the next read comes from the counters again (tests).</summary>
+    public static void Reload() { today = null; yesterday = null; }
+}

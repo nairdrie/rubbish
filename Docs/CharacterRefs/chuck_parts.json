@@ -1,0 +1,2558 @@
+{
+ "conventions": "off = centre minus bone bind position, Player-root axes, rig metres (root scale 1); eul = Unity Euler ZXY in root axes; scale = Unity primitive localScale (Cylinder/Capsule y = half length)",
+ "palette": [
+  {
+   "role": "PlayerColor",
+   "hex": "#FF7A1F",
+   "smoothness": 0.15,
+   "notes": "P1 Tangerine hi-vis orange: cap crown, shirt, 4 sleeve pieces (per-player material instance)"
+  },
+  {
+   "role": "HazardYellow",
+   "hex": "#FFC21A",
+   "smoothness": 0.25,
+   "notes": "cap brim + cap button (matches HUD yellow and the FEED ME plate)"
+  },
+  {
+   "role": "HiVis",
+   "hex": "#FFD41F",
+   "smoothness": 0.45,
+   "notes": "reflective tape: waistband + shin bands. URP Lit Emission #FFD41F x 0.35"
+  },
+  {
+   "role": "Overalls",
+   "hex": "#648A33",
+   "smoothness": 0.12,
+   "notes": "Rubbish Co. olive (a step brighter than truck #4E6B2E so it reads on asphalt)"
+  },
+  {
+   "role": "OverallsShade",
+   "hex": "#3F5A1F",
+   "smoothness": 0.12,
+   "notes": "suspender straps"
+  },
+  {
+   "role": "RubberYellow",
+   "hex": "#FFE14D",
+   "smoothness": 0.45,
+   "notes": "rubber work gloves + Admiral the rubber duck"
+  },
+  {
+   "role": "Skin",
+   "hex": "#F6C29B",
+   "smoothness": 0.15,
+   "notes": "head, jowls, ears (per-player instance so the strain tint can lerp it)"
+  },
+  {
+   "role": "NoseRosy",
+   "hex": "#F2A07E",
+   "smoothness": 0.35,
+   "notes": "glossy button nose"
+  },
+  {
+   "role": "Blush",
+   "hex": "#FF8A9A",
+   "smoothness": 0.1,
+   "notes": "cheek dots"
+  },
+  {
+   "role": "Hair",
+   "hex": "#7A4E2E",
+   "smoothness": 0.1,
+   "notes": "brows, mustache, back hair, cowlick (per-variant instance)"
+  },
+  {
+   "role": "EyeWhite",
+   "hex": "#FFFFFF",
+   "smoothness": 0.75,
+   "notes": "googly eye discs + cap badge. The ONLY pure white on him"
+  },
+  {
+   "role": "Pupil",
+   "hex": "#121216",
+   "smoothness": 0.85,
+   "notes": "pupils"
+  },
+  {
+   "role": "MouthDark",
+   "hex": "#5A1E2B",
+   "smoothness": 0.2,
+   "notes": "hidden mouth"
+  },
+  {
+   "role": "BottleCap",
+   "hex": "#C8CED6",
+   "smoothness": 0.55,
+   "notes": "grandma's bottle-cap buttons. Metallic 0.7"
+  },
+  {
+   "role": "Boot",
+   "hex": "#6B4428",
+   "smoothness": 0.2,
+   "notes": "boot shaft + body"
+  },
+  {
+   "role": "BootToe",
+   "hex": "#A87444",
+   "smoothness": 0.3,
+   "notes": "tan steel-toe domes"
+  },
+  {
+   "role": "Sole",
+   "hex": "#2D2926",
+   "smoothness": 0.1,
+   "notes": "slab soles"
+  },
+  {
+   "role": "Rag",
+   "hex": "#E2493B",
+   "smoothness": 0.1,
+   "notes": "red shop rag"
+  },
+  {
+   "role": "DuckBeak",
+   "hex": "#FF6A2B",
+   "smoothness": 0.3,
+   "notes": "Admiral's beak"
+  }
+ ],
+ "parts": [
+  {
+   "name": "HeadBobble",
+   "bone": "Head",
+   "parent": "Head",
+   "primitive": "Empty",
+   "offset": [
+    0.0,
+    -0.22,
+    0.02
+   ],
+   "euler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    1,
+    1,
+    1
+   ],
+   "color": null,
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Pivot at the chin/neck join (rig 0, 1.40, 0.01). Parent of EVERY head part and head pivot. Bobble-head spring rotates it."
+  },
+  {
+   "name": "Head_Ball",
+   "bone": "Head",
+   "parent": "HeadBobble",
+   "primitive": "Sphere",
+   "offset": [
+    0.0,
+    0.02,
+    0.03
+   ],
+   "euler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    0.54,
+    0.5,
+    0.5
+   ],
+   "color": "Skin",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Big skull ball, rig y 1.39-1.89. No neck: it sinks into the shoulders."
+  },
+  {
+   "name": "Head_Jowls",
+   "bone": "Head",
+   "parent": "HeadBobble",
+   "primitive": "Sphere",
+   "offset": [
+    0.0,
+    -0.12,
+    0.06
+   ],
+   "euler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    0.46,
+    0.26,
+    0.4
+   ],
+   "color": "Skin",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Baby-round cheeks/chin (bottom rig y 1.37). The mustache and mouth sit on it."
+  },
+  {
+   "name": "Nose",
+   "bone": "Head",
+   "parent": "HeadBobble",
+   "primitive": "Sphere",
+   "offset": [
+    0.0,
+    -0.11,
+    0.3
+   ],
+   "euler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    0.16,
+    0.135,
+    0.14
+   ],
+   "color": "NoseRosy",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Big glossy ball, ~30% of face width; overlaps the lower-inner eye corners and rests on the mustache."
+  },
+  {
+   "name": "Ear_L",
+   "bone": "Head",
+   "parent": "HeadBobble",
+   "primitive": "Sphere",
+   "offset": [
+    -0.268,
+    -0.02,
+    0.01
+   ],
+   "euler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    0.06,
+    0.1,
+    0.085
+   ],
+   "color": "Skin",
+   "castShadows": false,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Half embedded under the cap edge; visible from the chase cam."
+  },
+  {
+   "name": "Ear_R",
+   "bone": "Head",
+   "parent": "HeadBobble",
+   "primitive": "Sphere",
+   "offset": [
+    0.268,
+    -0.02,
+    0.01
+   ],
+   "euler": [
+    0,
+    0.0,
+    0.0
+   ],
+   "scale": [
+    0.06,
+    0.1,
+    0.085
+   ],
+   "color": "Skin",
+   "castShadows": false,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Mirror of Ear_L."
+  },
+  {
+   "name": "Blush_L",
+   "bone": "Head",
+   "parent": "HeadBobble",
+   "primitive": "Sphere",
+   "offset": [
+    -0.16,
+    -0.095,
+    0.205
+   ],
+   "euler": [
+    0,
+    -38,
+    0
+   ],
+   "scale": [
+    0.075,
+    0.045,
+    0.025
+   ],
+   "color": "Blush",
+   "castShadows": false,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Pink cheek dot under the outer eye corner, ~1 cm proud. Puffs x1.4 when straining."
+  },
+  {
+   "name": "Blush_R",
+   "bone": "Head",
+   "parent": "HeadBobble",
+   "primitive": "Sphere",
+   "offset": [
+    0.16,
+    -0.095,
+    0.205
+   ],
+   "euler": [
+    0,
+    38.0,
+    0.0
+   ],
+   "scale": [
+    0.075,
+    0.045,
+    0.025
+   ],
+   "color": "Blush",
+   "castShadows": false,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Mirror of Blush_L."
+  },
+  {
+   "name": "EyeRoot_L",
+   "bone": "Head",
+   "parent": "HeadBobble",
+   "primitive": "Empty",
+   "offset": [
+    -0.066,
+    -0.005,
+    0.265
+   ],
+   "euler": [
+    0,
+    -12,
+    0
+   ],
+   "scale": [
+    1,
+    1,
+    1
+   ],
+   "color": null,
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "GooglyPupil: pupil=Pupil_L, maxOffset 0.028, gravity 0.8, motionKick 10, bounciness 0.55, twitch 0.12. +Z points out of the face. Blink = localScale.y."
+  },
+  {
+   "name": "EyeWhite_L",
+   "bone": "Head",
+   "parent": "EyeRoot_L",
+   "primitive": "Sphere",
+   "offset": [
+    -0.066,
+    -0.005,
+    0.265
+   ],
+   "euler": [
+    0,
+    -12,
+    0
+   ],
+   "scale": [
+    0.115,
+    0.14,
+    0.048
+   ],
+   "color": "EyeWhite",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "notes": "Tall glossy googly disc; ~2 cm proud of the face; eyes nearly touch at the bridge."
+  },
+  {
+   "name": "Pupil_L",
+   "bone": "Head",
+   "parent": "EyeRoot_L",
+   "primitive": "Sphere",
+   "offset": [
+    -0.0706,
+    -0.017,
+    0.2865
+   ],
+   "euler": [
+    0,
+    -12,
+    0
+   ],
+   "scale": [
+    0.055,
+    0.055,
+    0.02
+   ],
+   "color": "Pupil",
+   "castShadows": false,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": [
+    0.0,
+    -0.012,
+    0.022
+   ],
+   "notes": "Starts sagged low; GooglyPupil drives local x/y, keeps z."
+  },
+  {
+   "name": "EyeRoot_R",
+   "bone": "Head",
+   "parent": "HeadBobble",
+   "primitive": "Empty",
+   "offset": [
+    0.07,
+    -0.003,
+    0.266
+   ],
+   "euler": [
+    0,
+    12,
+    0
+   ],
+   "scale": [
+    1,
+    1,
+    1
+   ],
+   "color": null,
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "DELIBERATELY 8% BIGGER EYE (derp). GooglyPupil: pupil=Pupil_R, maxOffset 0.031, other values as EyeRoot_L. Not a mirror."
+  },
+  {
+   "name": "EyeWhite_R",
+   "bone": "Head",
+   "parent": "EyeRoot_R",
+   "primitive": "Sphere",
+   "offset": [
+    0.07,
+    -0.003,
+    0.266
+   ],
+   "euler": [
+    0,
+    12,
+    0
+   ],
+   "scale": [
+    0.124,
+    0.151,
+    0.052
+   ],
+   "color": "EyeWhite",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "notes": "The bigger eye."
+  },
+  {
+   "name": "Pupil_R",
+   "bone": "Head",
+   "parent": "EyeRoot_R",
+   "primitive": "Sphere",
+   "offset": [
+    0.075,
+    -0.016,
+    0.2895
+   ],
+   "euler": [
+    0,
+    12,
+    0
+   ],
+   "scale": [
+    0.059,
+    0.059,
+    0.021
+   ],
+   "color": "Pupil",
+   "castShadows": false,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": [
+    0.0,
+    -0.013,
+    0.024
+   ],
+   "notes": ""
+  },
+  {
+   "name": "Brow_L",
+   "bone": "Head",
+   "parent": "HeadBobble",
+   "primitive": "Sphere",
+   "offset": [
+    -0.07,
+    0.072,
+    0.278
+   ],
+   "euler": [
+    0,
+    -10,
+    6
+   ],
+   "scale": [
+    0.105,
+    0.036,
+    0.045
+   ],
+   "color": "Hair",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Bushy lozenge tucked under the brim, touching the eye top; inner end up 6 deg (earnest). y + roll animated."
+  },
+  {
+   "name": "Brow_R",
+   "bone": "Head",
+   "parent": "HeadBobble",
+   "primitive": "Sphere",
+   "offset": [
+    0.074,
+    0.075,
+    0.278
+   ],
+   "euler": [
+    0,
+    10,
+    -6
+   ],
+   "scale": [
+    0.105,
+    0.036,
+    0.045
+   ],
+   "color": "Hair",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Sits 3 mm higher than Brow_L (on the bigger eye). Not an exact mirror."
+  },
+  {
+   "name": "StachePivot",
+   "bone": "Head",
+   "parent": "HeadBobble",
+   "primitive": "Empty",
+   "offset": [
+    0.0,
+    -0.165,
+    0.28
+   ],
+   "euler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    1,
+    1,
+    1
+   ],
+   "color": null,
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Under the nose. Roll + pitch spring (wiggle/flap). SetActive(false) = no-mustache variant."
+  },
+  {
+   "name": "Stache_Mid",
+   "bone": "Head",
+   "parent": "StachePivot",
+   "primitive": "Sphere",
+   "offset": [
+    0.0,
+    -0.165,
+    0.275
+   ],
+   "euler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    0.22,
+    0.09,
+    0.11
+   ],
+   "color": "Hair",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": [
+    0.0,
+    0.0,
+    -0.005
+   ],
+   "notes": "Centre lobe; nose sits on it; hides the mouth."
+  },
+  {
+   "name": "StachePivot_L",
+   "bone": "Head",
+   "parent": "StachePivot",
+   "primitive": "Empty",
+   "offset": [
+    -0.05,
+    -0.17,
+    0.27
+   ],
+   "euler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    1,
+    1,
+    1
+   ],
+   "color": null,
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Inner root of the left lobe. Own roll spring, out of sync with the right one."
+  },
+  {
+   "name": "Stache_L",
+   "bone": "Head",
+   "parent": "StachePivot_L",
+   "primitive": "Sphere",
+   "offset": [
+    -0.105,
+    -0.177,
+    0.25
+   ],
+   "euler": [
+    0,
+    -28,
+    14
+   ],
+   "scale": [
+    0.17,
+    0.09,
+    0.1
+   ],
+   "color": "Hair",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Walrus lobe, outer end droops + sweeps back. Total span ~0.40 m, wider than the jaw."
+  },
+  {
+   "name": "StachePivot_R",
+   "bone": "Head",
+   "parent": "StachePivot",
+   "primitive": "Empty",
+   "offset": [
+    0.05,
+    -0.17,
+    0.27
+   ],
+   "euler": [
+    0,
+    0.0,
+    0.0
+   ],
+   "scale": [
+    1,
+    1,
+    1
+   ],
+   "color": null,
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Mirror of StachePivot_L."
+  },
+  {
+   "name": "Stache_R",
+   "bone": "Head",
+   "parent": "StachePivot_R",
+   "primitive": "Sphere",
+   "offset": [
+    0.105,
+    -0.177,
+    0.25
+   ],
+   "euler": [
+    0,
+    28.0,
+    -14.0
+   ],
+   "scale": [
+    0.17,
+    0.09,
+    0.1
+   ],
+   "color": "Hair",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Mirror of Stache_L."
+  },
+  {
+   "name": "Mouth",
+   "bone": "Head",
+   "parent": "HeadBobble",
+   "primitive": "Sphere",
+   "offset": [
+    0.0,
+    -0.195,
+    0.235
+   ],
+   "euler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    0.07,
+    0.03,
+    0.03
+   ],
+   "color": "MouthDark",
+   "castShadows": false,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Hidden under the mustache. OPEN = scale (0.10,0.075,0.05), move y -0.02, z +0.01."
+  },
+  {
+   "name": "Hair_Back",
+   "bone": "Head",
+   "parent": "HeadBobble",
+   "primitive": "Sphere",
+   "offset": [
+    0.0,
+    -0.045,
+    -0.085
+   ],
+   "euler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    0.555,
+    0.21,
+    0.36
+   ],
+   "color": "Hair",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Wide ear-to-ear hair band under the cap back; separates orange cap from orange shirt in the chase cam. Keep it WIDE."
+  },
+  {
+   "name": "CapPivot",
+   "bone": "Head",
+   "parent": "HeadBobble",
+   "primitive": "Empty",
+   "offset": [
+    0.0,
+    0.145,
+    0.01
+   ],
+   "euler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    1,
+    1,
+    1
+   ],
+   "color": null,
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Crown centre. Cap pop/float/bob spring. Variants yaw/scale children of THIS pivot."
+  },
+  {
+   "name": "Cap_Crown",
+   "bone": "Head",
+   "parent": "CapPivot",
+   "primitive": "Sphere",
+   "offset": [
+    0.0,
+    0.145,
+    0.01
+   ],
+   "euler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    0.58,
+    0.4,
+    0.57
+   ],
+   "color": "PlayerColor",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "notes": "Dome, top rig y 1.965; lower half buried in the skull. Biggest colour mass in the chase cam = player colour."
+  },
+  {
+   "name": "Cap_Brim",
+   "bone": "Head",
+   "parent": "CapPivot",
+   "primitive": "Cylinder",
+   "offset": [
+    0.0,
+    0.113,
+    0.31
+   ],
+   "euler": [
+    -6,
+    0,
+    0
+   ],
+   "scale": [
+    0.42,
+    0.02,
+    0.32
+   ],
+   "color": "HazardYellow",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": [
+    0.0,
+    -0.032,
+    0.3
+   ],
+   "notes": "Duck-bill brim, 4 cm thick, front tipped UP 6 deg, ~18 cm past the face. Rear half buried in the crown."
+  },
+  {
+   "name": "Cap_Badge",
+   "bone": "Head",
+   "parent": "CapPivot",
+   "primitive": "Cylinder",
+   "offset": [
+    0.0,
+    0.18,
+    0.291
+   ],
+   "euler": [
+    76,
+    0,
+    0
+   ],
+   "scale": [
+    0.13,
+    0.01,
+    0.13
+   ],
+   "color": "EyeWhite",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": [
+    0.0,
+    0.035,
+    0.281
+   ],
+   "notes": "Rubbish Co. \"Company Eye\" pin: white disc, face tilted up 14 deg. No letters. Edges lift ~1 cm off the curve (intended)."
+  },
+  {
+   "name": "BadgeEyeRoot",
+   "bone": "Head",
+   "parent": "CapPivot",
+   "primitive": "Empty",
+   "offset": [
+    0.0,
+    0.18,
+    0.291
+   ],
+   "euler": [
+    -14,
+    0,
+    0
+   ],
+   "scale": [
+    1,
+    1,
+    1
+   ],
+   "color": null,
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "+Z = badge normal. GooglyPupil: pupil=Badge_Pupil, maxOffset 0.036, gravity 1.0, motionKick 12, bounciness 0.5, twitch 0.2 (rattles MORE than his eyes)."
+  },
+  {
+   "name": "Badge_Pupil",
+   "bone": "Head",
+   "parent": "BadgeEyeRoot",
+   "primitive": "Sphere",
+   "offset": [
+    0.0,
+    0.1637,
+    0.3085
+   ],
+   "euler": [
+    -14,
+    0,
+    0
+   ],
+   "scale": [
+    0.048,
+    0.048,
+    0.014
+   ],
+   "color": "Pupil",
+   "castShadows": false,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": [
+    0.0,
+    -0.02,
+    0.013
+   ],
+   "notes": ""
+  },
+  {
+   "name": "Cap_Button",
+   "bone": "Head",
+   "parent": "CapPivot",
+   "primitive": "Sphere",
+   "offset": [
+    0.0,
+    0.342,
+    0.01
+   ],
+   "euler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    0.065,
+    0.04,
+    0.065
+   ],
+   "color": "HazardYellow",
+   "castShadows": false,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": [
+    0.0,
+    0.197,
+    0.0
+   ],
+   "notes": "Yellow dot on top; visible from the elevated chase cam."
+  },
+  {
+   "name": "HeadlampMount",
+   "bone": "Head",
+   "parent": "CapPivot",
+   "primitive": "Empty",
+   "offset": [
+    0.0,
+    0.27,
+    0.245
+   ],
+   "euler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    1,
+    1,
+    1
+   ],
+   "color": null,
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": [
+    0.0,
+    0.125,
+    0.235
+   ],
+   "notes": "Where ShopHeadlamp puts the Scrapazon headlamp: crown surface above the badge. Rides with the cap pop."
+  },
+  {
+   "name": "CowlickPivot",
+   "bone": "Head",
+   "parent": "HeadBobble",
+   "primitive": "Empty",
+   "offset": [
+    0.188,
+    0.005,
+    -0.122
+   ],
+   "euler": [
+    -53,
+    -60,
+    0
+   ],
+   "scale": [
+    1,
+    1,
+    1
+   ],
+   "color": null,
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Base of the bed-head flick inside the skull, back-right. NOT under CapPivot (hair stays when the hat pops). Boing spring."
+  },
+  {
+   "name": "Cowlick",
+   "bone": "Head",
+   "parent": "CowlickPivot",
+   "primitive": "Capsule",
+   "offset": [
+    0.2399,
+    0.0501,
+    -0.1519
+   ],
+   "euler": [
+    -53,
+    -60,
+    0
+   ],
+   "scale": [
+    0.055,
+    0.075,
+    0.055
+   ],
+   "color": "Hair",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": [
+    0.0,
+    0.075,
+    0.0
+   ],
+   "notes": "15 cm tuft flicking out/up/back behind the RIGHT ear only. Never on top of the cap (reads as a pumpkin stem)."
+  },
+  {
+   "name": "Shirt_Chest",
+   "bone": "UpperChest",
+   "parent": "UpperChest",
+   "primitive": "Sphere",
+   "offset": [
+    0.0,
+    0.05,
+    -0.02
+   ],
+   "euler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    0.6,
+    0.4,
+    0.46
+   ],
+   "color": "PlayerColor",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Shoulders + upper back (rig y 1.10-1.50): orange collar under the jowls, orange back panel crossed by the straps."
+  },
+  {
+   "name": "BellyPivot",
+   "bone": "Spine",
+   "parent": "Spine",
+   "primitive": "Empty",
+   "offset": [
+    0.0,
+    -0.05,
+    0.04
+   ],
+   "euler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    1,
+    1,
+    1
+   ],
+   "color": null,
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Belly centre (rig 0, 0.99, 0.03). Jiggle spring scales this pivot."
+  },
+  {
+   "name": "Overalls_Belly",
+   "bone": "Spine",
+   "parent": "BellyPivot",
+   "primitive": "Sphere",
+   "offset": [
+    0.0,
+    -0.05,
+    0.04
+   ],
+   "euler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    0.66,
+    0.68,
+    0.58
+   ],
+   "color": "Overalls",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "notes": "Egg belly rig y 0.65-1.33; widest part of him; hides waist + hips. Front at rig z 0.32."
+  },
+  {
+   "name": "HiVis_Waistband",
+   "bone": "Spine",
+   "parent": "BellyPivot",
+   "primitive": "Cylinder",
+   "offset": [
+    0.0,
+    -0.11,
+    0.04
+   ],
+   "euler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    0.67,
+    0.025,
+    0.6
+   ],
+   "color": "HiVis",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": [
+    0.0,
+    -0.06,
+    0.0
+   ],
+   "notes": "5 cm reflective belt ring at rig y 0.93, 10-15 mm proud. Under BellyPivot so it jiggles with the belly."
+  },
+  {
+   "name": "Overalls_Seat",
+   "bone": "Hips",
+   "parent": "Hips",
+   "primitive": "Sphere",
+   "offset": [
+    0.0,
+    -0.2,
+    -0.03
+   ],
+   "euler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    0.58,
+    0.44,
+    0.48
+   ],
+   "color": "Overalls",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Low round seat, bottom rig y 0.56. Hides the thighs (main short-legs trick). Jiggles by its own localScale."
+  },
+  {
+   "name": "Overalls_Bib",
+   "bone": "Chest",
+   "parent": "Chest",
+   "primitive": "Cube",
+   "offset": [
+    0.0,
+    0.14,
+    0.2
+   ],
+   "euler": [
+    -8,
+    0,
+    0
+   ],
+   "scale": [
+    0.24,
+    0.12,
+    0.05
+   ],
+   "color": "Overalls",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Square bib over the shirt, top at rig y 1.34; bottom buried in the belly."
+  },
+  {
+   "name": "Strap_L",
+   "bone": "UpperChest",
+   "parent": "UpperChest",
+   "primitive": "Cylinder",
+   "offset": [
+    -0.13,
+    0.05,
+    -0.02
+   ],
+   "euler": [
+    0,
+    0,
+    90
+   ],
+   "scale": [
+    0.39,
+    0.035,
+    0.444
+   ],
+   "color": "OverallsShade",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "RING TRICK: elliptical cylinder on the X axis sized to Shirt_Chest cross-section at x=-0.13 (+1.5 cm). Only the proud arc shows = suspender over the shoulder and straight down the back. Recompute if Shirt_Chest changes: 2*(radii*sqrt(1-(0.13/0.30)^2)+0.015)."
+  },
+  {
+   "name": "Strap_R",
+   "bone": "UpperChest",
+   "parent": "UpperChest",
+   "primitive": "Cylinder",
+   "offset": [
+    0.13,
+    0.05,
+    -0.02
+   ],
+   "euler": [
+    0,
+    0.0,
+    -90.0
+   ],
+   "scale": [
+    0.39,
+    0.035,
+    0.444
+   ],
+   "color": "OverallsShade",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Mirror of Strap_L."
+  },
+  {
+   "name": "Button_L",
+   "bone": "Chest",
+   "parent": "Chest",
+   "primitive": "Cylinder",
+   "offset": [
+    -0.1,
+    0.175,
+    0.225
+   ],
+   "euler": [
+    82,
+    0,
+    0
+   ],
+   "scale": [
+    0.062,
+    0.01,
+    0.062
+   ],
+   "color": "BottleCap",
+   "castShadows": false,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Grandma's bottle cap where the strap meets the bib corner."
+  },
+  {
+   "name": "Button_R",
+   "bone": "Chest",
+   "parent": "Chest",
+   "primitive": "Cylinder",
+   "offset": [
+    0.1,
+    0.175,
+    0.225
+   ],
+   "euler": [
+    82,
+    0.0,
+    0.0
+   ],
+   "scale": [
+    0.062,
+    0.01,
+    0.062
+   ],
+   "color": "BottleCap",
+   "castShadows": false,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Mirror of Button_L."
+  },
+  {
+   "name": "RagPivot",
+   "bone": "Hips",
+   "parent": "Hips",
+   "primitive": "Empty",
+   "offset": [
+    0.116,
+    -0.088,
+    -0.231
+   ],
+   "euler": [
+    15,
+    -15,
+    6
+   ],
+   "scale": [
+    1,
+    1,
+    1
+   ],
+   "color": null,
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Top edge of the rag at the back-RIGHT pocket. Pendulum spring."
+  },
+  {
+   "name": "Rag",
+   "bone": "Hips",
+   "parent": "RagPivot",
+   "primitive": "Cube",
+   "offset": [
+    0.1302,
+    -0.1697,
+    -0.2498
+   ],
+   "euler": [
+    15,
+    -15,
+    6
+   ],
+   "scale": [
+    0.11,
+    0.17,
+    0.014
+   ],
+   "color": "Rag",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": [
+    0.0,
+    -0.085,
+    0.0
+   ],
+   "notes": "Red shop rag = little swinging tail from the chase cam."
+  },
+  {
+   "name": "DuckPivot",
+   "bone": "Hips",
+   "parent": "Hips",
+   "primitive": "Empty",
+   "offset": [
+    -0.12,
+    -0.175,
+    -0.265
+   ],
+   "euler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    1,
+    1,
+    1
+   ],
+   "color": null,
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Back-LEFT pocket rim. Nod spring (footfalls)."
+  },
+  {
+   "name": "Duck_Head",
+   "bone": "Hips",
+   "parent": "DuckPivot",
+   "primitive": "Sphere",
+   "offset": [
+    -0.12,
+    -0.15,
+    -0.265
+   ],
+   "euler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    0.095,
+    0.095,
+    0.095
+   ],
+   "color": "RubberYellow",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": [
+    0.0,
+    0.025,
+    0.0
+   ],
+   "notes": "ADMIRAL, the rubber duck Chuck found on his first route, riding in his back pocket and facing the camera. Top stays below the waistband."
+  },
+  {
+   "name": "Duck_Beak",
+   "bone": "Hips",
+   "parent": "DuckPivot",
+   "primitive": "Sphere",
+   "offset": [
+    -0.12,
+    -0.158,
+    -0.311
+   ],
+   "euler": [
+    10,
+    0,
+    0
+   ],
+   "scale": [
+    0.055,
+    0.022,
+    0.05
+   ],
+   "color": "DuckBeak",
+   "castShadows": false,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": [
+    0.0,
+    0.017,
+    -0.046
+   ],
+   "notes": "Points BACKWARD at the player."
+  },
+  {
+   "name": "Sleeve_Upper_L",
+   "bone": "Left_UpperArm",
+   "parent": "Left_UpperArm",
+   "primitive": "Capsule",
+   "offset": [
+    -0.105,
+    -0.115,
+    0.005
+   ],
+   "euler": [
+    0,
+    0,
+    -42
+   ],
+   "scale": [
+    0.155,
+    0.15,
+    0.155
+   ],
+   "color": "PlayerColor",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Puffy sleeve along shoulder->elbow; inner half buried in the chest."
+  },
+  {
+   "name": "Sleeve_Upper_R",
+   "bone": "Right_UpperArm",
+   "parent": "Right_UpperArm",
+   "primitive": "Capsule",
+   "offset": [
+    0.105,
+    -0.115,
+    0.005
+   ],
+   "euler": [
+    0,
+    0.0,
+    42.0
+   ],
+   "scale": [
+    0.155,
+    0.15,
+    0.155
+   ],
+   "color": "PlayerColor",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Mirror of Sleeve_Upper_L."
+  },
+  {
+   "name": "Sleeve_Lower_L",
+   "bone": "Left_LowerArm",
+   "parent": "Left_LowerArm",
+   "primitive": "Capsule",
+   "offset": [
+    -0.04,
+    -0.06,
+    0.075
+   ],
+   "euler": [
+    -54,
+    -28,
+    0
+   ],
+   "scale": [
+    0.135,
+    0.13,
+    0.135
+   ],
+   "color": "PlayerColor",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Along elbow->wrist (bind dir -0.38,-0.59,0.71)."
+  },
+  {
+   "name": "Sleeve_Lower_R",
+   "bone": "Right_LowerArm",
+   "parent": "Right_LowerArm",
+   "primitive": "Capsule",
+   "offset": [
+    0.04,
+    -0.06,
+    0.075
+   ],
+   "euler": [
+    -54,
+    28.0,
+    0.0
+   ],
+   "scale": [
+    0.135,
+    0.13,
+    0.135
+   ],
+   "color": "PlayerColor",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Mirror of Sleeve_Lower_L."
+  },
+  {
+   "name": "Glove_Cuff_L",
+   "bone": "Left_Hand",
+   "parent": "Left_Hand",
+   "primitive": "Cylinder",
+   "offset": [
+    0.008,
+    0.012,
+    -0.014
+   ],
+   "euler": [
+    -54,
+    -28,
+    0
+   ],
+   "scale": [
+    0.155,
+    0.028,
+    0.155
+   ],
+   "color": "RubberYellow",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Flared rubber-glove cuff, wider than the sleeve."
+  },
+  {
+   "name": "Glove_Cuff_R",
+   "bone": "Right_Hand",
+   "parent": "Right_Hand",
+   "primitive": "Cylinder",
+   "offset": [
+    -0.008,
+    0.012,
+    -0.014
+   ],
+   "euler": [
+    -54,
+    28.0,
+    0.0
+   ],
+   "scale": [
+    0.155,
+    0.028,
+    0.155
+   ],
+   "color": "RubberYellow",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Mirror of Glove_Cuff_L."
+  },
+  {
+   "name": "Glove_Mitt_L",
+   "bone": "Left_Hand",
+   "parent": "Left_Hand",
+   "primitive": "Sphere",
+   "offset": [
+    -0.027,
+    -0.035,
+    0.048
+   ],
+   "euler": [
+    -54,
+    -28,
+    0
+   ],
+   "scale": [
+    0.15,
+    0.17,
+    0.14
+   ],
+   "color": "RubberYellow",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Big round rubber mitt, centre 6.5 cm along the hand; ignore finger bones."
+  },
+  {
+   "name": "Glove_Mitt_R",
+   "bone": "Right_Hand",
+   "parent": "Right_Hand",
+   "primitive": "Sphere",
+   "offset": [
+    0.027,
+    -0.035,
+    0.048
+   ],
+   "euler": [
+    -54,
+    28.0,
+    0.0
+   ],
+   "scale": [
+    0.15,
+    0.17,
+    0.14
+   ],
+   "color": "RubberYellow",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Mirror of Glove_Mitt_L."
+  },
+  {
+   "name": "Glove_Thumb_L",
+   "bone": "Left_Hand",
+   "parent": "Left_Hand",
+   "primitive": "Capsule",
+   "offset": [
+    0.045,
+    -0.03,
+    0.07
+   ],
+   "euler": [
+    -34,
+    22,
+    0
+   ],
+   "scale": [
+    0.06,
+    0.045,
+    0.06
+   ],
+   "color": "RubberYellow",
+   "castShadows": false,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Stubby thumb, inner-front of the mitt."
+  },
+  {
+   "name": "Glove_Thumb_R",
+   "bone": "Right_Hand",
+   "parent": "Right_Hand",
+   "primitive": "Capsule",
+   "offset": [
+    -0.045,
+    -0.03,
+    0.07
+   ],
+   "euler": [
+    -34,
+    -22.0,
+    0.0
+   ],
+   "scale": [
+    0.06,
+    0.045,
+    0.06
+   ],
+   "color": "RubberYellow",
+   "castShadows": false,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Mirror of Glove_Thumb_L."
+  },
+  {
+   "name": "Pants_Thigh_L",
+   "bone": "Left_UpperLeg",
+   "parent": "Left_UpperLeg",
+   "primitive": "Capsule",
+   "offset": [
+    -0.02,
+    -0.215,
+    0.0
+   ],
+   "euler": [
+    0,
+    0,
+    -1
+   ],
+   "scale": [
+    0.22,
+    0.25,
+    0.22
+   ],
+   "color": "Overalls",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Rig y 0.465-0.965; top buried in seat/belly (same colour: overlap reads as squish). 2 cm outward so thighs just touch."
+  },
+  {
+   "name": "Pants_Thigh_R",
+   "bone": "Right_UpperLeg",
+   "parent": "Right_UpperLeg",
+   "primitive": "Capsule",
+   "offset": [
+    0.02,
+    -0.215,
+    0.0
+   ],
+   "euler": [
+    0,
+    0.0,
+    1.0
+   ],
+   "scale": [
+    0.22,
+    0.25,
+    0.22
+   ],
+   "color": "Overalls",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Mirror of Pants_Thigh_L."
+  },
+  {
+   "name": "Pants_Shin_L",
+   "bone": "Left_LowerLeg",
+   "parent": "Left_LowerLeg",
+   "primitive": "Capsule",
+   "offset": [
+    -0.02,
+    -0.16,
+    -0.012
+   ],
+   "euler": [
+    4,
+    0,
+    -3
+   ],
+   "scale": [
+    0.21,
+    0.17,
+    0.21
+   ],
+   "color": "Overalls",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Baggy stub of pant leg, tucked into the boot shaft; ~3 cm daylight between shins."
+  },
+  {
+   "name": "Pants_Shin_R",
+   "bone": "Right_LowerLeg",
+   "parent": "Right_LowerLeg",
+   "primitive": "Capsule",
+   "offset": [
+    0.02,
+    -0.16,
+    -0.012
+   ],
+   "euler": [
+    4,
+    0.0,
+    3.0
+   ],
+   "scale": [
+    0.21,
+    0.17,
+    0.21
+   ],
+   "color": "Overalls",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Mirror of Pants_Shin_L."
+  },
+  {
+   "name": "HiVis_ShinBand_L",
+   "bone": "Left_LowerLeg",
+   "parent": "Left_LowerLeg",
+   "primitive": "Cylinder",
+   "offset": [
+    -0.022,
+    -0.09,
+    -0.007
+   ],
+   "euler": [
+    4,
+    0,
+    -3
+   ],
+   "scale": [
+    0.225,
+    0.022,
+    0.225
+   ],
+   "color": "HiVis",
+   "castShadows": false,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Reflective ring at rig y 0.42, 7.5 mm proud."
+  },
+  {
+   "name": "HiVis_ShinBand_R",
+   "bone": "Right_LowerLeg",
+   "parent": "Right_LowerLeg",
+   "primitive": "Cylinder",
+   "offset": [
+    0.022,
+    -0.09,
+    -0.007
+   ],
+   "euler": [
+    4,
+    0.0,
+    3.0
+   ],
+   "scale": [
+    0.225,
+    0.022,
+    0.225
+   ],
+   "color": "HiVis",
+   "castShadows": false,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Mirror of HiVis_ShinBand_L."
+  },
+  {
+   "name": "Boot_Shaft_L",
+   "bone": "Left_LowerLeg",
+   "parent": "Left_LowerLeg",
+   "primitive": "Cylinder",
+   "offset": [
+    -0.028,
+    -0.295,
+    -0.022
+   ],
+   "euler": [
+    4,
+    0,
+    -3
+   ],
+   "scale": [
+    0.23,
+    0.105,
+    0.25
+   ],
+   "color": "Boot",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Rubber-boot upper rig y 0.11-0.32, on the LOWER LEG (not Foot) so it stays aligned with the shin when the ankle flexes; Boot_Body hides the joint."
+  },
+  {
+   "name": "Boot_Shaft_R",
+   "bone": "Right_LowerLeg",
+   "parent": "Right_LowerLeg",
+   "primitive": "Cylinder",
+   "offset": [
+    0.028,
+    -0.295,
+    -0.022
+   ],
+   "euler": [
+    4,
+    0.0,
+    3.0
+   ],
+   "scale": [
+    0.23,
+    0.105,
+    0.25
+   ],
+   "color": "Boot",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Mirror of Boot_Shaft_L."
+  },
+  {
+   "name": "Boot_Body_L",
+   "bone": "Left_Foot",
+   "parent": "Left_Foot",
+   "primitive": "Sphere",
+   "offset": [
+    -0.015,
+    -0.005,
+    0.06
+   ],
+   "euler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    0.24,
+    0.2,
+    0.37
+   ],
+   "color": "Boot",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Heel + instep; round heel sticks out ~12 cm behind the ankle."
+  },
+  {
+   "name": "Boot_Body_R",
+   "bone": "Right_Foot",
+   "parent": "Right_Foot",
+   "primitive": "Sphere",
+   "offset": [
+    0.015,
+    -0.005,
+    0.06
+   ],
+   "euler": [
+    0,
+    0.0,
+    0.0
+   ],
+   "scale": [
+    0.24,
+    0.2,
+    0.37
+   ],
+   "color": "Boot",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Mirror of Boot_Body_L."
+  },
+  {
+   "name": "Boot_Toe_L",
+   "bone": "Left_Toes",
+   "parent": "Left_Toes",
+   "primitive": "Sphere",
+   "offset": [
+    -0.01,
+    0.05,
+    0.08
+   ],
+   "euler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    0.235,
+    0.16,
+    0.21
+   ],
+   "color": "BootToe",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Tan steel-toe dome to rig z 0.24; on Toes so it rolls at push-off."
+  },
+  {
+   "name": "Boot_Toe_R",
+   "bone": "Right_Toes",
+   "parent": "Right_Toes",
+   "primitive": "Sphere",
+   "offset": [
+    0.01,
+    0.05,
+    0.08
+   ],
+   "euler": [
+    0,
+    0.0,
+    0.0
+   ],
+   "scale": [
+    0.235,
+    0.16,
+    0.21
+   ],
+   "color": "BootToe",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Mirror of Boot_Toe_L."
+  },
+  {
+   "name": "Boot_Sole_L",
+   "bone": "Left_Foot",
+   "parent": "Left_Foot",
+   "primitive": "Cube",
+   "offset": [
+    -0.015,
+    -0.075,
+    0.085
+   ],
+   "euler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    0.235,
+    0.05,
+    0.29
+   ],
+   "color": "Sole",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Slab sole, bottom at rig y 0 (foot-local z -0.06..0.23). Short and chunky so it reads as a sole, not a skate blade, in side view."
+  },
+  {
+   "name": "Boot_Sole_R",
+   "bone": "Right_Foot",
+   "parent": "Right_Foot",
+   "primitive": "Cube",
+   "offset": [
+    0.015,
+    -0.075,
+    0.085
+   ],
+   "euler": [
+    0,
+    0.0,
+    0.0
+   ],
+   "scale": [
+    0.235,
+    0.05,
+    0.29
+   ],
+   "color": "Sole",
+   "castShadows": true,
+   "activeByDefault": true,
+   "variant": null,
+   "localUnderParent": null,
+   "notes": "Mirror of Boot_Sole_L."
+  },
+  {
+   "name": "PigtailPivot_L",
+   "bone": "Head",
+   "parent": "HeadBobble",
+   "primitive": "Empty",
+   "offset": [
+    -0.24,
+    -0.03,
+    -0.1
+   ],
+   "euler": [
+    0,
+    0,
+    20
+   ],
+   "scale": [
+    1,
+    1,
+    1
+   ],
+   "color": null,
+   "castShadows": true,
+   "activeByDefault": false,
+   "variant": "P2",
+   "localUnderParent": null,
+   "notes": "P2 Dot only. Pendulum spring (rag settings, clamp 30 deg)."
+  },
+  {
+   "name": "Pigtail_L",
+   "bone": "Head",
+   "parent": "PigtailPivot_L",
+   "primitive": "Sphere",
+   "offset": [
+    -0.2827,
+    -0.0881,
+    -0.11
+   ],
+   "euler": [
+    0,
+    0,
+    20
+   ],
+   "scale": [
+    0.15,
+    0.19,
+    0.15
+   ],
+   "color": "Hair",
+   "castShadows": true,
+   "activeByDefault": false,
+   "variant": "P2",
+   "localUnderParent": [
+    -0.06,
+    -0.04,
+    -0.01
+   ],
+   "notes": "Bouncy side puff below the cap, reads from behind."
+  },
+  {
+   "name": "PigtailPivot_R",
+   "bone": "Head",
+   "parent": "HeadBobble",
+   "primitive": "Empty",
+   "offset": [
+    0.24,
+    -0.03,
+    -0.1
+   ],
+   "euler": [
+    0,
+    0.0,
+    -20.0
+   ],
+   "scale": [
+    1,
+    1,
+    1
+   ],
+   "color": null,
+   "castShadows": true,
+   "activeByDefault": false,
+   "variant": "P2",
+   "localUnderParent": null,
+   "notes": "Mirror of PigtailPivot_L."
+  },
+  {
+   "name": "Pigtail_R",
+   "bone": "Head",
+   "parent": "PigtailPivot_R",
+   "primitive": "Sphere",
+   "offset": [
+    0.2827,
+    -0.0881,
+    -0.11
+   ],
+   "euler": [
+    0,
+    0.0,
+    -20.0
+   ],
+   "scale": [
+    0.15,
+    0.19,
+    0.15
+   ],
+   "color": "Hair",
+   "castShadows": true,
+   "activeByDefault": false,
+   "variant": "P2",
+   "localUnderParent": [
+    0.06,
+    -0.04,
+    -0.01
+   ],
+   "notes": "Mirror of Pigtail_L."
+  },
+  {
+   "name": "Cap_BeanieCuff",
+   "bone": "Head",
+   "parent": "CapPivot",
+   "primitive": "Cylinder",
+   "offset": [
+    0.0,
+    0.1,
+    0.012
+   ],
+   "euler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    0.6,
+    0.035,
+    0.59
+   ],
+   "color": "HazardYellow",
+   "castShadows": true,
+   "activeByDefault": false,
+   "variant": "P3",
+   "localUnderParent": null,
+   "notes": "P3 Ozzie only: knit cuff ring of the beanie."
+  },
+  {
+   "name": "Cap_RoundBrim",
+   "bone": "Head",
+   "parent": "CapPivot",
+   "primitive": "Cylinder",
+   "offset": [
+    0.0,
+    0.105,
+    0.03
+   ],
+   "euler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    0.66,
+    0.012,
+    0.68
+   ],
+   "color": "PlayerColor",
+   "castShadows": true,
+   "activeByDefault": false,
+   "variant": "P4",
+   "localUnderParent": null,
+   "notes": "P4 Bert only: full round hard-hat brim."
+  },
+  {
+   "name": "Cap_Ridge",
+   "bone": "Head",
+   "parent": "CapPivot",
+   "primitive": "Cube",
+   "offset": [
+    0.0,
+    0.33,
+    0.0
+   ],
+   "euler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    0.05,
+    0.04,
+    0.46
+   ],
+   "color": "PlayerColor",
+   "castShadows": true,
+   "activeByDefault": false,
+   "variant": "P4",
+   "localUnderParent": null,
+   "notes": "P4 Bert only: hard-hat crown ridge."
+  },
+  {
+   "name": "Unibrow",
+   "bone": "Head",
+   "parent": "HeadBobble",
+   "primitive": "Capsule",
+   "offset": [
+    0.0,
+    0.076,
+    0.285
+   ],
+   "euler": [
+    0,
+    0,
+    90
+   ],
+   "scale": [
+    0.045,
+    0.1,
+    0.045
+   ],
+   "color": "Hair",
+   "castShadows": true,
+   "activeByDefault": false,
+   "variant": "P4",
+   "localUnderParent": null,
+   "notes": "P4 Bert only: replaces Brow_L/Brow_R."
+  }
+ ],
+ "variants": {
+  "P1": {
+   "name": "Chuck",
+   "color": "#FF7A1F",
+   "hair": "#7A4E2E",
+   "off": [],
+   "on": [],
+   "over": {},
+   "cap_yaw": 0
+  },
+  "P2": {
+   "name": "Dot",
+   "color": "#FF6FAE",
+   "hair": "#9C4A2A",
+   "off": [
+    "StachePivot",
+    "Stache_Mid",
+    "StachePivot_L",
+    "Stache_L",
+    "StachePivot_R",
+    "Stache_R",
+    "CowlickPivot",
+    "Cowlick"
+   ],
+   "on": [
+    "PigtailPivot_L",
+    "Pigtail_L",
+    "PigtailPivot_R",
+    "Pigtail_R"
+   ],
+   "over": {
+    "Mouth": {
+     "off": [
+      0,
+      -0.19,
+      0.228
+     ],
+     "scale": [
+      0.075,
+      0.028,
+      0.03
+     ]
+    }
+   },
+   "cap_yaw": 180
+  },
+  "P3": {
+   "name": "Ozzie",
+   "color": "#1FC2B0",
+   "hair": "#C8642B",
+   "off": [
+    "Cap_Brim"
+   ],
+   "on": [
+    "Cap_BeanieCuff"
+   ],
+   "over": {
+    "Cap_Crown": {
+     "off": [
+      0,
+      0.175,
+      0.01
+     ],
+     "scale": [
+      0.58,
+      0.5,
+      0.57
+     ]
+    },
+    "Cap_Button": {
+     "off": [
+      0,
+      0.46,
+      0.01
+     ],
+     "scale": [
+      0.13,
+      0.13,
+      0.13
+     ]
+    },
+    "Stache_L": {
+     "eul": [
+      0,
+      -28,
+      -18
+     ]
+    },
+    "Stache_R": {
+     "eul": [
+      0,
+      28,
+      18
+     ]
+    },
+    "Cap_Badge": {
+     "off": [
+      0,
+      0.18,
+      0.296
+     ]
+    },
+    "Badge_Pupil": {
+     "off": [
+      0,
+      0.164,
+      0.3135
+     ]
+    }
+   },
+   "cap_yaw": 0
+  },
+  "P4": {
+   "name": "Bert",
+   "color": "#4F8DFF",
+   "hair": "#B8B2A8",
+   "off": [
+    "Cap_Brim",
+    "Brow_L",
+    "Brow_R",
+    "Cap_Button"
+   ],
+   "on": [
+    "Cap_RoundBrim",
+    "Cap_Ridge",
+    "Unibrow"
+   ],
+   "over": {
+    "Cap_Crown": {
+     "scale": [
+      0.56,
+      0.38,
+      0.55
+     ]
+    },
+    "Cap_Badge": {
+     "off": [
+      0,
+      0.18,
+      0.283
+     ]
+    },
+    "Badge_Pupil": {
+     "off": [
+      0,
+      0.164,
+      0.3005
+     ]
+    },
+    "Stache_Mid": {
+     "scale": [
+      0.2,
+      0.07,
+      0.1
+     ]
+    },
+    "Stache_L": {
+     "scale": [
+      0.145,
+      0.075,
+      0.085
+     ]
+    },
+    "Stache_R": {
+     "scale": [
+      0.145,
+      0.075,
+      0.085
+     ]
+    }
+   },
+   "cap_yaw": 0
+  }
+ }
+}
