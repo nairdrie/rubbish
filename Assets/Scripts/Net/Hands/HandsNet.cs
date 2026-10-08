@@ -64,7 +64,7 @@ public partial class HandsNet : NetworkBehaviour
     /// <summary>A solo game (NetSession says Hosting only after StartHost, so ask SessionService too).</summary>
     static bool Solo => NetSession.IsSolo || SessionService.SoloOnly;
 
-    void Awake() { AwakePlayers(); AwakeRide(); }
+    void Awake() { AwakePlayers(); AwakeRide(); AwakePack(); }
 
     public override void OnNetworkSpawn()
     {
@@ -88,6 +88,7 @@ public partial class HandsNet : NetworkBehaviour
         else active = true;
         SpawnPlayers();
         SpawnTugs();
+        SpawnCrossingImpacts(); // active crossing knockdowns are timestamped and restored for late joiners
         if (!IsServer) CarImpactSyncRpc(); // late joiners inherit the host's car timetable interruptions
         if (GetComponent<TugHud>() == null) gameObject.AddComponent<TugHud>();
         NetAudit.Event("hands", new Dictionary<string, object> { { "op", "spawn" }, { "server", IsServer }, { "tugs", TugsEnabled } });

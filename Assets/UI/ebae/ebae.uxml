@@ -3,24 +3,32 @@
   <ui:Style src="ebae.uss" />
   <!-- the template's own <Style> isn't carried through <Instance>, so the laptop attaches Scrapazon's sheet too -->
   <ui:Style src="../shop/scrapazon.uss" />
+  <ui:Style src="../print/solidwaste.uss" />
   <ui:Template name="ScrapazonPage" src="../shop/scrapazon.uxml" />
+  <ui:Template name="SolidWastePage" src="../print/solidwaste.uxml" />
   <ui:VisualElement name="ebaeScreen" class="ebae-screen">
     <ui:VisualElement name="window" class="window">
 
-      <!-- laptop app strip: one browser, two apps (ebae sells, Scrapazon buys). Tabs switch apps. -->
+      <!-- laptop app strip: one browser, ebag (sells), Scrapazon (buys) and, once its floppy disk has been found and
+           kept, SolidWaste 3D (prints). Tabs switch apps. The third tab stays hidden until EbaeUI shows it. -->
       <ui:VisualElement name="appStrip" class="app-strip">
         <ui:VisualElement name="closeButton" class="chrome-dot chrome-dot--red" tooltip="close (Esc)" />
         <ui:VisualElement class="chrome-dot chrome-dot--yellow" />
         <ui:VisualElement class="chrome-dot chrome-dot--green" />
         <ui:VisualElement name="appTabEbae" class="app-tab">
           <ui:Label text="e" class="app-tab-icon app-tab-icon--ebae" picking-mode="Ignore" />
-          <ui:Label name="appTabEbaeLabel" text="ebae - Your Junk" class="app-tab-label" picking-mode="Ignore" />
+          <ui:Label name="appTabEbaeLabel" text="ebag - Your Junk" class="app-tab-label" picking-mode="Ignore" />
           <ui:Label name="appTabEbaeBadge" text="0" class="app-tab-badge app-tab-badge--hidden" picking-mode="Ignore" />
         </ui:VisualElement>
         <ui:VisualElement name="appTabShop" class="app-tab">
           <ui:Label name="appTabShopIcon" text="a" class="app-tab-icon app-tab-icon--shop" picking-mode="Ignore" />
           <ui:Label name="appTabShopLabel" text="Scrapazon" class="app-tab-label" picking-mode="Ignore" />
           <ui:Label name="appTabShopBadge" text="NEW" class="app-tab-badge app-tab-badge--new app-tab-badge--hidden" picking-mode="Ignore" />
+        </ui:VisualElement>
+        <ui:VisualElement name="appTabPrint" class="app-tab" style="display: none;">
+          <ui:Label text="3D" class="app-tab-icon app-tab-icon--print" picking-mode="Ignore" />
+          <ui:Label name="appTabPrintLabel" text="SolidWaste 3D" class="app-tab-label" picking-mode="Ignore" />
+          <ui:Label name="appTabPrintBadge" text="NEW" class="app-tab-badge app-tab-badge--new app-tab-badge--hidden" picking-mode="Ignore" />
         </ui:VisualElement>
         <ui:Label name="appTabPlus" text="+" class="app-tab-plus" />
         <ui:VisualElement class="app-strip-spacer" />
@@ -33,12 +41,12 @@
         <ui:Label text="&gt;" class="chrome-nav" />
         <ui:VisualElement name="addressBar" class="address-bar">
           <ui:Label text="https://" class="address-scheme" />
-          <ui:Label name="addressLabel" text="www.ebae.com/my-junk" class="address-label" />
+          <ui:Label name="addressLabel" text="www.ebag.com/my-junk" class="address-label" />
         </ui:VisualElement>
         <ui:Label name="logoffButton" text="log off [Esc]" class="btn btn-logoff" />
       </ui:VisualElement>
 
-      <!-- app: ebae (sell-side) -->
+      <!-- app: ebag (sell-side) -->
       <ui:VisualElement name="ebaePage" class="app-page">
         <!-- header: logo, fake search, wallet -->
         <ui:VisualElement name="header" class="header">
@@ -46,7 +54,7 @@
             <ui:Label text="e" class="logo-letter logo-letter--e1" />
             <ui:Label text="b" class="logo-letter logo-letter--b" />
             <ui:Label text="a" class="logo-letter logo-letter--a" />
-            <ui:Label text="e" class="logo-letter logo-letter--e2" />
+            <ui:Label text="g" class="logo-letter logo-letter--e2" />
           </ui:VisualElement>
           <ui:VisualElement class="header-middle">
             <ui:VisualElement class="search-bar">
@@ -85,12 +93,15 @@
         <ui:ScrollView name="contentScroll" class="content-scroll" />
 
         <ui:VisualElement name="footer" class="footer">
-          <ui:Label name="footerLabel" text="ebae (c) 1997-2026 · all sales final · not responsible for curses · our 8% fee funds the CEO's boat" class="footer-text" />
+          <ui:Label name="footerLabel" text="ebag (c) 1997-2026 · all sales final · not responsible for curses · our 8% fee funds the CEO's boat" class="footer-text" />
         </ui:VisualElement>
       </ui:VisualElement>
 
       <!-- app: Scrapazon (buy-side; Assets/UI/shop/scrapazon.uxml, driven by ScrapazonApp.cs) -->
       <ui:Instance template="ScrapazonPage" name="scrapazonPage" class="app-page app-page--hidden" />
+
+      <!-- app: SolidWaste 3D (print-side; Assets/UI/print/solidwaste.uxml, driven by SolidWasteApp.cs) -->
+      <ui:Instance template="SolidWastePage" name="solidWastePage" class="app-page" style="display: none;" />
 
       <ui:VisualElement name="toastLayer" class="toast-layer" picking-mode="Ignore" />
     </ui:VisualElement>

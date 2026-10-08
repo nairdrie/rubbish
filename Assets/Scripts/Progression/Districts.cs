@@ -44,23 +44,66 @@ public class DistrictDef
 }
 
 /// <summary>
-/// The four districts (Docs/Progression.md §5). STEP 0 CONTRACT, written by builder A; after Step 0 this file belongs to
-/// builder D. Company-scoped: "unlocked" = the company owns the permit.
-/// Map (all in the one Neighborhood scene, PlayBounds x -60..440, z -40..640; built by NeighborhoodBuilder): Mildly
-/// Pleasant is today's loop; Minivan Meadows is east of the depot (Minivan Mile, gate at x = 206); Snootington Hills is
-/// north of Birch St (Old Money Rd = Elm Ave continued, gate at z = 230); Billionaire Bluffs is north of Snootington (Tax
-/// Haven Heights Rd continues straight up Old Money Rd, boom barrier at (0, 460)).
+/// Six districts in one coastal town. All is the append-only save/network order; ProgressionOrder is the route
+/// unlock order. District tier remains the original 1..4 economy/loot band, not an array index.
 /// </summary>
 public static class Districts
 {
     public const string MildlyPleasant = "mildly_pleasant", MinivanMeadows = "minivan_meadows",
-                        SnootingtonHills = "snootington_hills", BillionaireBluffs = "billionaire_bluffs";
+                        SnootingtonHills = "snootington_hills", BillionaireBluffs = "billionaire_bluffs",
+                        CouponCommons = "coupon_commons", StackingtonHeights = "stackington_heights";
 
     static DistrictDef[] all;
+    static DistrictDef[] progression;
     static Dictionary<string, DistrictDef> byId;
 
-    /// <summary>Every district, ordered by tier (1..4).</summary>
+    /// <summary>Stable save/network indices: Acres 0, Meadows 1, Hills 2, Bluffs 3, Commons 4, Heights 5. Append only.</summary>
     public static IReadOnlyList<DistrictDef> All { get { Ensure(); return all; } }
+
+    /// <summary>Collection progression: Acres → Meadows → Commons → Hills → Heights → Bluffs.</summary>
+    public static IReadOnlyList<DistrictDef> ProgressionOrder { get { Ensure(); return progression; } }
+
+    public static int IndexOf(string id)
+    {
+        Ensure();
+        for (int i = 0; i < all.Length; i++) if (all[i].id == id) return i;
+        return 0;
+    }
+
+    /// <summary>Explicit authoring refresh after reloading a blueprint. Do not call from the layout loader itself:
+    /// initial district construction already reads the layout and must not recurse.</summary>
+    public static void RefreshLayoutBounds()
+    {
+        Ensure();
+        foreach (var district in all) district.boundsXZ = CoastalCityLayout.DistrictBounds(district.id);
+    }
+
+    /// <summary>Existing presentation/loot band; district bytes must never be interpreted as wealth tiers.</summary>
+    public static int StyleIndex(int districtIndex)
+    {
+        Ensure();
+        return Mathf.Clamp(all[Mathf.Clamp(districtIndex, 0, all.Length - 1)].tier - 1, 0, 3);
+    }
+
+    /// <summary>v5 inserts districts along existing routes. Old upper-district owners keep access without rebuying
+    /// their new connecting permits. Pure load migration: no cash, items, events or new-business grants.</summary>
+    public static void MigrateLegacyPermits(IDictionary<string, int> levels, int saveVersion)
+    {
+        if (levels == null || saveVersion >= 5) return;
+        bool Owns(string id) => levels.TryGetValue(id, out int level) && level > 0;
+        void Grant(string id) { if (!Owns(id)) levels[id] = 1; }
+        bool bluffs = Owns(ShopIds.PermitBillionaireBluffs);
+        if (bluffs)
+        {
+            Grant(ShopIds.PermitSnootingtonHills);
+            Grant(ShopIds.PermitStackingtonHeights);
+        }
+        if (bluffs || Owns(ShopIds.PermitSnootingtonHills))
+        {
+            Grant(ShopIds.PermitMinivanMeadows);
+            Grant(ShopIds.PermitCouponCommons);
+        }
+    }
 
     /// <summary>Mildly Pleasant Acres (tier 1, always unlocked).</summary>
     public static DistrictDef Starter { get { Ensure(); return all[0]; } }
@@ -72,15 +115,35 @@ public static class Districts
         return !string.IsNullOrEmpty(id) && byId.TryGetValue(id, out var d) ? d : all[0];
     }
 
-    /// <summary>"mm-" / "sh-" / "bb-" stopId prefix, else Starter.</summary>
+    /// <summary>Hand-authored identities keep their ID when moved between districts: resolve their published
+    /// metadata first. Legacy generated identities retain the mm-/sh-/bb-/cc-/st- prefix contract.</summary>
     public static DistrictDef ForStopId(string stopId)
     {
         Ensure();
+        if (!string.IsNullOrEmpty(stopId) && stopId.StartsWith("user-", StringComparison.Ordinal))
+        {
+            var live = CurbTrashSpawner.FindHouse(stopId);
+            if (live != null && !string.IsNullOrEmpty(live.districtId)) return Get(live.districtId);
+            var directory = HouseDirectory.Load();
+            if (directory != null)
+            {
+                string authoredDistrict = AuthoredDistrictFor(stopId, directory.houses);
+                if (!string.IsNullOrEmpty(authoredDistrict)) return Get(authoredDistrict);
+            }
+        }
         if (!string.IsNullOrEmpty(stopId))
             for (int i = 1; i < all.Length; i++)
                 if (!string.IsNullOrEmpty(all[i].stopPrefix) && stopId.StartsWith(all[i].stopPrefix, StringComparison.Ordinal))
                     return all[i];
         return all[0];
+    }
+
+    public static string AuthoredDistrictFor(string stopId, IEnumerable<HouseDirectory.Entry> entries)
+    {
+        if (string.IsNullOrEmpty(stopId) || entries == null) return null;
+        foreach (var entry in entries)
+            if (entry != null && entry.stopId == stopId && !string.IsNullOrEmpty(entry.districtId)) return entry.districtId;
+        return null;
     }
 
     /// <summary>bagId = "{stopId}/..." -> the stop's district.</summary>
@@ -102,7 +165,7 @@ public static class Districts
         return Starter;
     }
 
-    /// <summary>World position -> district by <see cref="DistrictDef.boundsXZ"/> (richest first), else Starter.</summary>
+    /// <summary>World position -> coastal layout district bounds, else Starter (including Depot Row).</summary>
     public static DistrictDef AtPosition(Vector3 world)
     {
         Ensure();
@@ -122,7 +185,7 @@ public static class Districts
     static int unlockedMask = -1;
     static IReadOnlyList<DistrictDef> unlocked;
 
-    /// <summary>Unlocked districts in tier order. A new list instance whenever the set changes (old ones stay valid).</summary>
+    /// <summary>Unlocked districts in progression order. A new list whenever the set changes.</summary>
     public static IReadOnlyList<DistrictDef> Unlocked
     {
         get
@@ -133,7 +196,7 @@ public static class Districts
             if (mask != unlockedMask || unlocked == null)
             {
                 var list = new List<DistrictDef>(all.Length);
-                for (int i = 0; i < all.Length; i++) if ((mask & (1 << i)) != 0) list.Add(all[i]);
+                foreach (var d in progression) if ((mask & (1 << IndexOf(d.id))) != 0) list.Add(d);
                 unlocked = list;
                 unlockedMask = mask;
             }
@@ -141,13 +204,13 @@ public static class Districts
         }
     }
 
-    /// <summary>The highest-tier unlocked district (Starter at worst).</summary>
+    /// <summary>The furthest unlocked district in progression order (Starter at worst).</summary>
     public static DistrictDef Top
     {
         get
         {
             Ensure();
-            for (int i = all.Length - 1; i >= 1; i--) if (IsUnlocked(all[i])) return all[i];
+            for (int i = progression.Length - 1; i >= 1; i--) if (IsUnlocked(progression[i])) return progression[i];
             return all[0];
         }
     }
@@ -184,7 +247,7 @@ public static class Districts
                 onTimeHours = Economy.OnTimeHours, lateFloorHours = Economy.LateFloorHours, latePayFloor = Economy.LatePayFloor,
                 neglectedHours = Economy.NeglectedHours, cleanStreetsMax = 60f, dirtForZero = 30f, neglectFine = 2f,
                 landfillPerBag = 0f, repMult = 1f, trustStart = 0.60f, critterMult = 1.0f, butlerDrops = false,
-                boundsXZ = new Rect(-60f, -40f, 280f, 270f),            // today's PlayBounds x -60..220, z -40..230
+                boundsXZ = CoastalCityLayout.DistrictBounds(MildlyPleasant),
                 loot = new LootProfile
                 {
                     id = MildlyPleasant, tier = 1, p0 = 0.0050f, p1 = 0.0080f,
@@ -200,7 +263,7 @@ public static class Districts
                 fee = 15f, tip = 0f, curbBonus = 8f, onTimeHours = 3.5f, lateFloorHours = 10f, latePayFloor = 0.20f,
                 neglectedHours = 14f, cleanStreetsMax = 250f, dirtForZero = 26f, neglectFine = 40f,
                 landfillPerBag = 0.5f, repMult = 1.5f, trustStart = 0.40f, critterMult = 0.9f, butlerDrops = false,
-                boundsXZ = new Rect(206f, -40f, 234f, 270f),            // x 206..440, z -40..230 (Oak Ave's outer lots end at x 204)
+                boundsXZ = CoastalCityLayout.DistrictBounds(MinivanMeadows),
                 loot = new LootProfile
                 {
                     id = MinivanMeadows, tier = 2, p0 = 0.0060f, p1 = 0.0070f,
@@ -216,7 +279,7 @@ public static class Districts
                 fee = 40f, tip = 15f, curbBonus = 30f, onTimeHours = 3f, lateFloorHours = 8f, latePayFloor = 0.10f,
                 neglectedHours = 12f, cleanStreetsMax = 900f, dirtForZero = 21f, neglectFine = 200f,
                 landfillPerBag = 3f, repMult = 2f, trustStart = 0.40f, critterMult = 0.85f, butlerDrops = false,
-                boundsXZ = new Rect(-60f, 230f, 280f, 230f),            // x -60..220, z 230..460
+                boundsXZ = CoastalCityLayout.DistrictBounds(SnootingtonHills),
                 loot = new LootProfile
                 {
                     id = SnootingtonHills, tier = 3, p0 = 0.0068f, p1 = 0.0068f,
@@ -232,7 +295,7 @@ public static class Districts
                 fee = 80f, tip = 40f, curbBonus = 80f, onTimeHours = 2f, lateFloorHours = 6f, latePayFloor = 0f,
                 neglectedHours = 8f, cleanStreetsMax = 1500f, dirtForZero = 17f, neglectFine = 400f,
                 landfillPerBag = 12f, repMult = 3f, trustStart = 0.40f, critterMult = 0.8f, butlerDrops = true,
-                boundsXZ = new Rect(-20f, 460f, 360f, 180f),            // x -20..340, z 460..640 (Tax Haven Heights Rd runs up x = 0)
+                boundsXZ = CoastalCityLayout.DistrictBounds(BillionaireBluffs),
                 loot = new LootProfile
                 {
                     id = BillionaireBluffs, tier = 4, p0 = 0.0066f, p1 = 0.0049f,
@@ -241,16 +304,49 @@ public static class Districts
                     tierBoost = new[] { 0.25f, 0.25f, 0.8f, 3f, 12f }, springFlat = 0.030f
                 }
             },
+            new DistrictDef
+            {
+                id = CouponCommons, name = "Coupon Commons", stopPrefix = "cc-", permitId = ShopIds.PermitCouponCommons,
+                tier = 2, rankRequired = 5, houses = 18, permitPrice = 1800f, bagsPerDay = 28f, curbCap = 48,
+                fee = 25f, tip = 5f, curbBonus = 18f, onTimeHours = 3.5f, lateFloorHours = 9f, latePayFloor = 0.15f,
+                neglectedHours = 13f, cleanStreetsMax = 500f, dirtForZero = 25f, neglectFine = 90f,
+                landfillPerBag = 1.5f, repMult = 1.75f, trustStart = 0.40f, critterMult = 1.1f, butlerDrops = false,
+                boundsXZ = CoastalCityLayout.DistrictBounds(CouponCommons),
+                loot = new LootProfile
+                {
+                    id = CouponCommons, tier = 2, p0 = 0.0060f, p1 = 0.0070f,
+                    rarity0 = new[] { 68f, 25f, 6f, 1f }, rarity1 = new[] { 58f, 30f, 10f, 2f },
+                    minItems = 6, maxItems = 11, categoryWeights = new[] { 25f, 38f, 15f, 10f, 8f, 4f },
+                    tierBoost = new[] { 1f, 1f, 5f, 0f, 0f }, springFlat = 0.020f
+                }
+            },
+            new DistrictDef
+            {
+                id = StackingtonHeights, name = "Stackington Heights", stopPrefix = "st-", permitId = ShopIds.PermitStackingtonHeights,
+                tier = 3, rankRequired = 8, houses = 16, permitPrice = 7000f, bagsPerDay = 26f, curbCap = 44,
+                fee = 55f, tip = 20f, curbBonus = 45f, onTimeHours = 2.75f, lateFloorHours = 7f, latePayFloor = 0.05f,
+                neglectedHours = 10f, cleanStreetsMax = 1150f, dirtForZero = 22f, neglectFine = 275f,
+                landfillPerBag = 5f, repMult = 2.4f, trustStart = 0.40f, critterMult = 0.9f, butlerDrops = false,
+                boundsXZ = CoastalCityLayout.DistrictBounds(StackingtonHeights),
+                loot = new LootProfile
+                {
+                    id = StackingtonHeights, tier = 3, p0 = 0.0068f, p1 = 0.0068f,
+                    rarity0 = new[] { 52f, 32f, 13f, 3f }, rarity1 = new[] { 42f, 35f, 18f, 5f },
+                    minItems = 7, maxItems = 12, categoryWeights = new[] { 22f, 18f, 12f, 20f, 23f, 5f },
+                    tierBoost = new[] { 0.6f, 0.6f, 2f, 8f, 0f }, springFlat = 0.025f
+                }
+            },
         };
         byId = new Dictionary<string, DistrictDef>(StringComparer.Ordinal);
         foreach (var d in all) byId[d.id] = d;
+        progression = new[] { all[0], all[1], all[4], all[2], all[5], all[3] };
     }
 
     // Data is immutable, but rebuild per play session so an edited table (domain reload off) is picked up.
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
-        all = null; byId = null;
+        all = null; progression = null; byId = null;
         unlockedMask = -1; unlocked = null;
     }
 }

@@ -64,17 +64,11 @@ public static class ScrapazonStore
     {
         whyNot = null;
         if (it == null || it.IsTeaser || IsMaxed(it)) return false;
-        return !Progression.CanBuy(it, NextLevel(it), out whyNot);
+        if (!Progression.CanBuy(it, NextLevel(it), out whyNot)) return true;
+        return it.id == ShopIds.TruckModel && !TruckProgression.CanTradeIn(out whyNot);
     }
 
     public static bool IsLocked(ScrapazonItem it) => IsLocked(it, out _);
-
-    /// <summary>Daily wage the next level would cost (hire_kevin), or 0.</summary>
-    public static float NextDailyWage(ScrapazonItem it)
-    {
-        if (it == null || it.id != ShopIds.HireKevin) return 0f;
-        return UpgradeEffects.KevinWageAt(NextLevel(it));
-    }
 
     /// <summary>Total upgrade levels + consumables in your pocket (fun header number).</summary>
     public static int TotalStuffOwned()
@@ -151,10 +145,10 @@ public static class ScrapazonStore
         {
             case ShopIds.RabiesShot: return "Rabies Shot";
             case ShopIds.Repellent: return "Raccoon-Be-Gone";
+            case ShopIds.TruckModel: return "Rear-loader Truck";
             case ShopIds.TruckCapacity: return "Hopper Extension";
             case ShopIds.TruckTurbo: return "TURBO";
             case ShopIds.AirHorn: return "Air Horn";
-            case ShopIds.Headlamp: return "Headlamp";
             case ShopIds.ConveyorBelt: return "Conveyor Belt";
             case ShopIds.MagnusBrain: return "Magnus Brain";
             case ShopIds.TruckHandling: return "Sticky Tires";
@@ -173,18 +167,13 @@ public static class ScrapazonStore
             case ShopIds.MagnusRailMotor: return "Magnus Rail Motor";
             case ShopIds.MagnusGripper: return "Magnus Gripper";
             case ShopIds.MagnusVision: return "Magnus Vision";
-            case ShopIds.WorkGloves: return "Work Gloves";
-            case ShopIds.WorkBoots: return "Work Boots";
-            case ShopIds.TreasureWand: return "Treasure Wand";
-            case ShopIds.RabiesVaccine: return "Rabies Vaccine";
-            case ShopIds.HardHat: return "Hard Hat";
             case ShopIds.BagCannon: return "Bag Cannon";
-            case ShopIds.GrabberPole: return "Grabber Pole";
             case ShopIds.PermitMinivanMeadows: return "Minivan Meadows Permit";
+            case ShopIds.PermitCouponCommons: return "Coupon Commons Permit";
             case ShopIds.PermitSnootingtonHills: return "Snootington Hills Permit";
+            case ShopIds.PermitStackingtonHeights: return "Stackington Heights Permit";
             case ShopIds.PermitBillionaireBluffs: return "Billionaire Bluffs Permit";
-            case ShopIds.EbaePowerSeller: return "ebae Power Seller";
-            case ShopIds.HireKevin: return "Kevin";
+            case ShopIds.EbaePowerSeller: return "ebag Power Seller";
             case ShopIds.GoldenTruck: return "Golden Garbage Truck";
             case ShopIds.GarbageJuice: return "Garbage Juice";
             case ShopIds.LuckyGnome: return "Lucky Gnome";

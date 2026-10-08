@@ -88,30 +88,25 @@ public class CompactorScopeTests
 
     Component AttachToConveyor(Component compact, Component bag, string stage)
     {
-        string type = stage == "Chute" ? "ConveyorFeeder" : stage == "Belt" ? "ConveyorLine" : "ConveyorTray";
+        // "Belt" = riding the Bag Belt; "Rack" = hopping off the slide into the queue rack. (The Direct Feed chute and
+        // the auto-slitter are gone: the conveyor only carries bags.)
+        string type = stage == "Belt" ? "ConveyorLine" : "ConveyorTray";
         var machine = Go("CompactorTest" + stage, compact.transform.parent).AddComponent(Runtime(type));
         machine.GetType().GetMethod("OnEnable", InstanceFields).Invoke(machine, null);
         conveyors.Add(machine);
         State(bag, "Thrown");
         bag.GetComponent<Rigidbody>().isKinematic = true;
-        if (stage == "Chute")
-            ((IList)machine.GetType().GetField("queued", InstanceFields).GetValue(machine)).Add(bag);
-        else if (stage == "Belt")
+        if (stage == "Belt")
         {
             var carrier = Activator.CreateInstance(Runtime("ConveyorLine").GetNestedType("Carrier", BindingFlags.NonPublic));
             Set(carrier, "bag", bag);
             ((IList)machine.GetType().GetField("carriers", InstanceFields).GetValue(machine)).Add(carrier);
         }
-        else if (stage == "Slitter")
-        {
-            var pending = machine.GetType().GetField("slitting", InstanceFields).GetValue(machine);
-            pending.GetType().GetMethod("Add").Invoke(pending, new object[] { bag });
-        }
         else
         {
-            var held = Array.CreateInstance(Runtime("TrashBag"), 1);
-            held.SetValue(bag, 0);
-            Set(machine, "held", held);
+            var arriving = Array.CreateInstance(Runtime("TrashBag"), 1);
+            arriving.SetValue(bag, 0);
+            Set(machine, "arriving", arriving);
         }
         return machine;
     }
@@ -227,10 +222,8 @@ public class CompactorScopeTests
         foreach (object item in found) Assert.IsTrue(Carryable.IsInstanceOfType(item), "inventory/display data is not physical stock");
     }
 
-    [TestCase("Chute")]
     [TestCase("Belt")]
-    [TestCase("Tray")]
-    [TestCase("Slitter")]
+    [TestCase("Rack")]
     public void BulkIncludesEveryConveyorStageButOrdinaryChamberDoesNot(string stage)
     {
         EnableDepotGeometry();
@@ -271,7 +264,7 @@ public class CompactorScopeTests
         EnableDepotGeometry();
         var compact = DepotCompactor(2);
         var bag = Bag(Origin(2) + Vector3.up);
-        AttachToConveyor(compact, bag, "Tray");
+        AttachToConveyor(compact, bag, "Rack");
         Set(NetworkCopy(bag, "Flight"), field, true);
         Assert.IsFalse(Collect(compact).Contains(bag));
     }
@@ -285,17 +278,15 @@ public class CompactorScopeTests
         var wrongMachine = Bag(Origin(2) + Vector3.up);
         AttachToConveyor(foreign, wrongMachine, "Belt");
         var wrongPlace = Bag(Origin(1) + Vector3.up);
-        AttachToConveyor(compact, wrongPlace, "Chute");
+        AttachToConveyor(compact, wrongPlace, "Rack");
         var ordinaryFlight = Bag(Origin(2) + Vector3.up);
         State(ordinaryFlight, "Thrown");
         ordinaryFlight.GetComponent<Rigidbody>().isKinematic = true;
         Assert.IsEmpty(Collect(compact), "no cross-depot vacuum and no catch-all flight exception");
     }
 
-    [TestCase("Chute")]
     [TestCase("Belt")]
-    [TestCase("Tray")]
-    [TestCase("Slitter")]
+    [TestCase("Rack")]
     public void DetachingStockRevokesMachineOwnershipWithoutDroppingOrRepublishing(string stage)
     {
         EnableDepotGeometry();
@@ -309,8 +300,8 @@ public class CompactorScopeTests
         Assert.IsTrue(bag.GetComponent<Rigidbody>().isKinematic, "detach must not trigger EndCarry/Rest publication");
         Assert.AreEqual("Thrown", Carryable.GetProperty("State").GetValue(bag).ToString());
         Assert.IsFalse(Collect(compact).Contains(bag));
-        if (stage == "Tray" || stage == "Slitter")
-            Assert.IsNull(machine.GetType().GetMethod("Take").Invoke(machine, null), "no bag left for R or the pending slitter");
+        if (stage == "Rack")
+            Assert.IsFalse((bool)machine.GetType().GetMethod("IsArriving").Invoke(machine, new object[] { bag }), "the rack let go of the bag hopping in");
     }
 
     static IEnumerator MovingBag(Component bag)
@@ -324,7 +315,7 @@ public class CompactorScopeTests
         EnableDepotGeometry();
         var compact = DepotCompactor(2);
         var bag = Bag(Origin(2) + Vector3.up);
-        var machine = AttachToConveyor(compact, bag, "Chute");
+        var machine = AttachToConveyor(compact, bag, "Rack");
         Func<bool> owns = () => Owns(machine, bag);
         var arc = (IEnumerator)Runtime("ConveyorStock").GetMethod("WhileOwned", BindingFlags.Static | BindingFlags.NonPublic)
             .Invoke(null, new object[] { bag, owns, MovingBag(bag) });
@@ -332,7 +323,7 @@ public class CompactorScopeTests
         var at = bag.transform.position;
         Detach(bag);
         Assert.IsFalse(arc.MoveNext());
-        Assert.AreEqual(at, bag.transform.position, "no chute/hop/settle coroutine can overwrite suction or a later holder");
+        Assert.AreEqual(at, bag.transform.position, "no hop/settle coroutine can overwrite suction or a later holder");
     }
 
     [Test]
@@ -342,7 +333,7 @@ public class CompactorScopeTests
         var compact = DepotCompactor(2);
         var bag = Bag(Origin(2) + Vector3.up);
         AttachToConveyor(compact, bag, "Belt");
-        AttachToConveyor(compact, bag, "Tray");
+        AttachToConveyor(compact, bag, "Rack");
         Assert.AreEqual(1, Collect(compact).Count, "one physical bag contributes one payment, even across a handoff");
         State(bag, "Consumed");
         Assert.IsEmpty(Collect(compact), "a stale conveyor reference cannot recompact an already consumed bag");
@@ -373,26 +364,19 @@ public class CompactorScopeTests
         Assert.IsFalse(HeldAt(compact, 15f), "closing a depot revokes its hold immediately");
     }
 
-    [TestCase(2)]
-    [TestCase(3)]
-    public void BulkConfirmationPausesNewSlitsButKeepsBeltStockAndOtherDepotsAvailable(int level)
+    [Test]
+    public void BulkConfirmationKeepsRackStockAvailableAndTheConveyorNeverOpensBags()
     {
         EnableDepotGeometry();
         var compact = DepotCompactor(2);
-        var other = DepotCompactor(1);
         var bag = Bag(Origin(2) + Vector3.up);
-        var otherBag = Bag(Origin(1) + Vector3.up);
-        var tray = AttachToConveyor(compact, bag, "Tray");
-        var otherTray = AttachToConveyor(other, otherBag, "Tray");
-        var gate = Runtime("ConveyorTray").GetMethod("CanStartAutoSlit", InstanceFields);
-        bool CanStart(Component t) => (bool)gate.Invoke(t, new object[] { level, true, 100f });
-        Assert.IsTrue(CanStart(tray));
+        var rack = AttachToConveyor(compact, bag, "Rack");
+        // The conveyor only carries bags now: there is no slitter to pause, at any level.
+        Assert.IsNull(Runtime("ConveyorTray").GetMethod("CanStartAutoSlit", InstanceFields));
+        Assert.IsNull(Runtime("ConveyorTray").GetField("slitting", InstanceFields));
+        Assert.IsNull(Runtime("ConveyorTray").GetMethod("Take", InstanceFields), "nothing takes a bag out of the rack by script");
         HoldConfirmation(compact, Time.unscaledTime);
-        Assert.IsFalse(CanStart(tray), "L2/L3 cannot rip away the bag the host just included in the warning");
-        Assert.IsTrue(CanStart(otherTray), "one depot's warning does not pause another business");
-        Assert.Contains(bag, Collect(compact), "the hold neither consumes nor steals the tray bag");
-        Assert.IsTrue(Owns(tray, bag));
-        Set(compact, "bulkConfirmationHoldUntil", Time.unscaledTime - 0.01f);
-        Assert.IsTrue(CanStart(tray), "automatic slitting resumes when confirmation expires");
+        Assert.Contains(bag, Collect(compact), "the hold neither consumes nor steals the rack bag");
+        Assert.IsTrue(Owns(rack, bag));
     }
 }

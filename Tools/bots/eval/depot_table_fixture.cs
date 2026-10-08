@@ -5,7 +5,7 @@ const int lot = 1;
 var depot = DepotRowScene.Lot(lot);
 var table = depot.interior.GetComponentInChildren<SortingTable>(true);
 foreach (var sorter in UnityEngine.Object.FindObjectsByType<MagnusSorter>(UnityEngine.FindObjectsSortMode.None)) sorter.enabled = false;
-foreach (var tip in UnityEngine.Object.FindObjectsByType<AutoTipper>(UnityEngine.FindObjectsSortMode.None)) tip.enabled = false;
+// (No AutoTipper component any more: nothing tips a truck unless its driver holds the tip key.)
 var existing = new System.Collections.Generic.List<Carryable>(Carryable.All);
 foreach (var c in existing) if (c != null && DepotRowLayout.InteriorAt(c.transform.position) == lot) c.MarkConsumed();
 var def = ItemCatalog.InCategory(ItemCategory.Junk)[0];

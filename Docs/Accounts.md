@@ -259,7 +259,7 @@ MAIN MENU                                                   Nick (Steam)   [sync
 | `inventory` | Company `inventory` | kept finds, KEEP crate, trophy window |
 | `upgradeIds/Levels`, `consumableIds/Counts` | Company `upgrades`, `consumables` | permits, Magnus, truck tiers and paints are all upgrades |
 | `totalBags/Items/Treasures/KgRecycled` | Company `stats`, **and** Crew Card `lifetime` | the import copies them into both |
-| `ebae_save.json`: listings (offers store `remaining` seconds), history (capped), totals | Company `ebae` | already portable |
+| `ebae_save.json`: listings (offers store `remaining` seconds), history (capped), totals | Company `ebag` | already portable |
 | Progression v2: `rep`, `cleanDays`, `keyToCity`, `totalCashEarned`, district `trust`, `counters`, `depotDeliveries` | Company | `dex.*` counters move to the Crew Card (personal Trash-dex). Progression.md gets a note. |
 | Progression v2: `stamps` (absolute `GameClock.TotalHours`) | Company `timers` as **remaining in-game hours** | rule 2 below |
 | *not saved today:* truck cargo (`TruckBags`) | Company `truck.cargo` | closes Progression §9.8's gap |
@@ -276,7 +276,7 @@ MAIN MENU                                                   Nick (Steam)   [sync
 2. **Company timers are remaining in-game hours**, never one Town's `TotalHours`. On load, `SetStamp(k, town.TotalHours + remaining)`;
    on save, `remaining = stamp − town.TotalHours`. Otherwise a gnome bought on day 30 of one Town would last ~670 extra hours in a
    Town on day 2, or expire instantly the other way round (red-team R16).
-3. **Company day numbers are company-relative** (`daysOperated`). `ItemInstance.dayFound` and ebae `dayListed` stay as flavour.
+3. **Company day numbers are company-relative** (`daysOperated`). `ItemInstance.dayFound` and ebag `dayListed` stay as flavour.
 
 ---
 
@@ -339,7 +339,7 @@ MAIN MENU                                                   Nick (Steam)   [sync
 - **Also in that pure assembly:** migrations, the legacy parsers (JSON → DTO), the Guard (§7.3) and the Cloud Code plausibility
   checks, so they're all unit-testable (red-team R22).
 - **Migrations** are pure `JObject → JObject` steps: v1 (today's pre-progression file), v2 (Progression's `saveVersion = 2`),
-  **v3** (the envelope; cents; timers as durations; the company/Town split; ebae folded into the company).
+  **v3** (the envelope; cents; timers as durations; the company/Town split; ebag folded into the company).
 - **Fixtures** (`Assets/Tests/EditMode/Fixtures/`): copies (never the originals) of Nick's real 388 B and 2.2 KB files, plus a
   **generated "maximal" fixture** that fills every field (inventory, stamps, depot deliveries, offers mid-countdown). Every
   migration must reproduce an exact expected output.
@@ -407,8 +407,8 @@ About 300 KB per active account, far under the 5 MiB per-player cap. No player e
 - **Sources:** `rubbish_save.json` (v1 or v2) and `ebae_save.json` in the data root, plus their L0 generations (picking the newest
   matching `gen` pair). If Player Settings' company name has changed by then, the importer also checks
   `~/Library/Application Support/DefaultCompany/Rubbish/` (today's path, because `companyName: DefaultCompany`).
-- **Produces:** company slot 1 **"Rubbish Co."** (cash, upgrades, consumables, inventory, ebae, Rep, rank, Clean Days, trust,
-  counters, timers, Kevin's deliveries, stats), Town 1 **"Maple Hollow"** (day from the save, 7:00 AM, fresh curbs), and a Crew
+- **Produces:** company slot 1 **"Rubbish Co."** (cash, upgrades, consumables, inventory, ebag, Rep, rank, Clean Days, trust,
+  counters, timers, crew deliveries, stats), Town 1 **"Maple Hollow"** (day from the save, 7:00 AM, fresh curbs), and a Crew
   Card (lifetime stats copied, Pocket 0).
 - **The imported company's guid is derived from the sha256 of the legacy pair**, so the same old save imported on two PCs becomes
   one company and meets the conflict card instead of silently forking (red-team R27).
@@ -502,7 +502,7 @@ CompanyDelta { companyGuid, sessionId, seq, entries[] }
 M5 enables Crew Card and Moonlighting kinds (wage credits, Rep, stats, stamps, XP). M7 enables the rest.
 
 1. **Order:** sequence numbers only go up; gaps trigger a resend; duplicates are ignored.
-2. **Credits:** a cap per `reasonId` (pickup ≤ the district's max fee + tip + curb bonus; recycling ≤ mass × top rate; an ebae sale
+2. **Credits:** a cap per `reasonId` (pickup ≤ the district's max fee + tip + curb bonus; recycling ≤ mass × top rate; an ebag sale
    ≤ 1.5 × the appraisal of a listing *this company holds*; Work Orders and Clean Streets ≤ their formulas), plus a session cap.
    - **Moonlighting (M5):** ≤ **1.5 × the guest company's own tier's typical net per real minute** × minutes worked: about $70
      (starter), $225 (Meadows), $940 (Snootington), $2,250 (Bluffs) a minute, from Progression §8.1's typical end-of-stage $/day
@@ -665,7 +665,7 @@ session-start copy brings it back.
 
 | Phase | What lands | Blocked on |
 |---|---|---|
-| **L0 hotfix** (lead, ~1 day) | load-failure guard + quarantine; the `SaveGuard` latch; `SaveRoot` for both legacy files; atomic writes with time-tiered generations and a shared `gen`; writes ≤1 per 2 s; ebae offers tick on host/offline only; guarded `ResetAll(true)` | Progression A releasing `GameSession.cs` and `EbaeMarket.cs` |
+| **L0 hotfix** (lead, ~1 day) | load-failure guard + quarantine; the `SaveGuard` latch; `SaveRoot` for both legacy files; atomic writes with time-tiered generations and a shared `gen`; writes ≤1 per 2 s; ebag offers tick on host/offline only; guarded `ResetAll(true)` | Progression A releasing `GameSession.cs` and `EbaeMarket.cs` |
 | **M0** | identity (`IPlayerIdentity`, `dev:`/`steam:` rules), approval and slots by PlayerKey, `ISaveStore`/`IAccountBackend` + local backend and leases, bots that never touch real data | W0 rails (MP §8.7) |
 | **M1** | cents; timers as durations; the DTO save model, migrations and import; Town/Company/Profile stores; Continue / Change… / Invite friends menu; Restore… from local generations; Steam session-ticket check at the door | C2 (Progression A done with `GameSession`) |
 | **M1.5** "Accounts and cloud" (M, 7–10 days) | UGS Steam sign-in; `RubbishVault` module + content tables; `UgsAccountBackend`; lease and epoch in the cloud; conflict card; sync badges; privacy screens; the account-deleted trigger; dev and production environments. Can overlap M2 (different files). | **Nick's steps 9–15 (§14).** UGS Steam sign-in can't be tested on AppID 480. |

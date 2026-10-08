@@ -52,7 +52,7 @@ public class BootsMods : MonoBehaviour
     public void ApplySpeeds()
     {
         if (tpc == null) return;
-        float mult = UpgradeEffects.MoveSpeedMult * GarbageJuice.SpeedMult;
+        float mult = UpgradeEffects.MoveSpeedMult * FeralStatus.LocalSpeedMult * GarbageJuice.SpeedMult * CompactorPack.LocalSpeedMult;
         AppliedMult = mult;
         bool carrying = carrier != null && carrier.IsCarrying && carrier.Held != null;
         if (!carrying)

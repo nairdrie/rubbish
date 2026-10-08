@@ -258,7 +258,7 @@ public class FeelHud : MonoBehaviour
         heldItemName.overflowMode = TextOverflowModes.Ellipsis;
         heldItemDestination = FeelUi.Text(heldItemCard, "Destination", 27f, FeelUi.Gold, TextAlignmentOptions.Left);
         Place(heldItemDestination.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(31f, -55f), new Vector2(488f, 44f));
-        heldItemBuilding = FeelUi.Text(heldItemCard, "BuildMaterialsAlternative", 23f, FeelUi.Gold, TextAlignmentOptions.Left);
+        heldItemBuilding = FeelUi.Text(heldItemCard, "WantedPart", 23f, FeelUi.Gold, TextAlignmentOptions.Left);
         heldItemBuilding.enableAutoSizing = true;
         heldItemBuilding.fontSizeMin = 18f;
         heldItemBuilding.fontSizeMax = 23f;
@@ -280,7 +280,7 @@ public class FeelHud : MonoBehaviour
         heldItemGroup.alpha = Mathf.MoveTowards(heldItemGroup.alpha, show ? 1f : 0f, dt * 10f);
         if (!show) return;
         float width = Mathf.Min(540f, screenSize.x - 2f * HudLayout.Margin);
-        bool building = WorkshopMenu.CanSaveHeld(held);
+        bool building = Workshop.IsWanted(held.Item); // a def this business pinned on the Callings tree ("hunt for this")
         float height = building ? 148f : 112f;
         heldItemCard.sizeDelta = new Vector2(width, height);
         // The first-person item model sits low-right; keep the label to its left instead of covering the object.
@@ -290,10 +290,10 @@ public class FeelHud : MonoBehaviour
         Color color = ItemCategoryInfo.Color(held.Category);
         heldItemAccent.color = color;
         heldItemName.text = held.DisplayName;
-        heldItemDestination.text = "GOES IN: " + HeldDestination(held.Category);
+        heldItemDestination.text = building ? "GOES IN: KEEP CRATE  •  PART" : "GOES IN: " + HeldDestination(held.Category);
         heldItemDestination.color = color;
         heldItemBuilding.gameObject.SetActive(building);
-        if (building) heldItemBuilding.text = WorkshopMenu.BuildMaterialsPrompt + " · save instead of sell";
+        if (building) heldItemBuilding.text = "WANTED PART!  •  you are hunting for this";
     }
 
     void OnDestroy()
@@ -763,7 +763,7 @@ public class FeelHud : MonoBehaviour
         d.blocked = PlayerController.IsUIBlocking;
         d.cash = GameSession.Cash;
         d.day = GameSession.Day;
-        d.finds = GameSession.Inventory.Count;
+        d.finds = GameSession.FindCount; // valuables only: kept parts are bench stock, not finds
         var truck = TruckHudContext.Resolve(pc);
         d.load = truck.loadKg;
         d.cap = truck.capacityKg;
@@ -879,7 +879,7 @@ public class FeelHud : MonoBehaviour
         {
             if (lastFinds >= 0 && d.finds > lastFinds) findsScaleVel += 9f;
             lastFinds = d.finds;
-            findsText.text = $"Finds: {d.finds}  <size=80%><color=#FFD84A>sell on ebae!</color></size>";
+            findsText.text = $"Finds: {d.finds}  <size=80%><color=#FFD84A>sell on ebag!</color></size>";
         }
         findsAlpha = Mathf.MoveTowards(findsAlpha, d.finds > 0 && findsAllowed ? 1f : 0f, dt * 4f);
         findsGroup.alpha = findsAlpha;

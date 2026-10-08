@@ -448,7 +448,7 @@ public sealed class WorldLifeRunner : MonoBehaviour
         if (speed < WorldLifeTuning.Props.SweepMinSpeed || float.IsNaN(speed)) return false;
         Quaternion rot = rb.rotation;
         float fwd = Vector3.Dot(rot * Vector3.forward, v);
-        Bounds box = TruckControllerV2.BodyBoxMetres;
+        Bounds box = truck.ModelBodyBoxMetres;
         float look = speed * WorldLifeTuning.Props.LookaheadSteps * fixedDt + WorldLifeTuning.Props.LookaheadPad;
         Vector3 min = box.min, max = box.max;
         if (fwd >= 0f) max.z += look; else min.z -= look;

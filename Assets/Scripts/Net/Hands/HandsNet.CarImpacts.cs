@@ -90,7 +90,7 @@ public partial class HandsNet
         if (speed < WorldLifeTuning.Hits.ShuntSpeed || speed > Mathf.Min(35f, truck.maxSpeed * 1.25f + 3f)) return false;
         // Car position is constrained to its actual scheduled route and bounded lag window; the truck pose/speed are
         // independently observed by the host. The client cannot place a car elsewhere or choose the launch impulse.
-        if (!VehicleCrashRules.CarNearTruck(car.Position, car.HalfExtents, truck.Body.position, truck.Body.rotation)) return false;
+        if (!VehicleCrashRules.CarNearTruckBounds(car.Position, car.HalfExtents, truck.Body.position, truck.Body.rotation, truck.ModelBodyBoxMetres)) return false;
         var claim = new NpcHitClaim { target = carId, tick = WorldLifeRunner.FixedTickCount, truckVelocity = velocity,
             actorSlot = WorldLifeAuthority.SlotOf(truck), truck = truck };
         var authority = WorldLifeAuthority.Instance;

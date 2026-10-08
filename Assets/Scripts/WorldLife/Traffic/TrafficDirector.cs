@@ -470,6 +470,9 @@ public sealed class TrafficDirector : WorldLifeDirector, ITruckSensorClient
             var p0 = ob ? tr0.outPath : tr0.inPath;
             float arc0 = p0.ArcAtTime((float)((t - delayMs[car] - (ob ? tr0.depart : tr0.ret)) * 0.001), out _, out _);
             Vector3 at = p0.PointAt(arc0);
+            // Canonical/offscreen traffic is not simulated continuously. Wait rather than materialising a car in
+            // the middle of a protected crossing when its timetable happens to be passing through one.
+            if (CrossingGuardDirector.HoldsTrafficNear(at, 6.4f)) return null;
             for (int i = 0; i < agents.Count; i++)
             {
                 var o = agents[i];
@@ -566,12 +569,20 @@ public sealed class TrafficDirector : WorldLifeDirector, ITruckSensorClient
         var path = a.path;
         if (path == null) return true;
         Canonical(a, t, out float sCanon, out float vCanon);
+        float look = Mathf.Clamp(a.v * a.v / (2f * BrakeDecel) + 12f, 14f, 42f);
+        // Guarded crossings must keep receiving obstacle checks, including distant cars. A delayed car's canonical
+        // spot can be on the far side of the crossing: check that whole reconciliation interval before any snap.
+        float reconcileArc = Mathf.Min(a.s, sCanon);
+        float reconcileLook = Mathf.Abs(sCanon - a.s) + look + a.halfExtents.z;
+        bool guardedCrossing = CrossingGuardDirector.HoldsTrafficNear(a.position, look + a.halfExtents.z) ||
+            CrossingGuardDirector.HoldsTrafficNear(path.PointAt(sCanon), a.halfExtents.z + 4f) ||
+            !float.IsPositiveInfinity(CrossingGuardDirector.StopGap(path, reconcileArc, a.halfExtents.z, reconcileLook));
 
         // LOD: full ≤ 35 m, lite ≤ 90 m, far (15 Hz) beyond.
         a.lodTier = a.distance <= WorldLifeTuning.Lod.FullDistance ? 0 : a.distance <= WorldLifeTuning.Lod.LiteDistance ? 1 : 2;
         if (a.lodTier == 2)
         {
-            if (now < a.nextFarUpdate && a.shuntT < 0f && now >= a.holdUntil)
+            if (!guardedCrossing && now < a.nextFarUpdate && a.shuntT < 0f && now >= a.holdUntil)
             { a.s = Mathf.Min(a.s + a.v * dt, Mathf.Max(a.s, sCanon)); return a.s >= path.Length - 0.01f && sCanon >= path.Length - 0.01f; }
             dt = Mathf.Max(dt, now - (a.nextFarUpdate - 1f / WorldLifeTuning.Lod.LiteHz));
             a.nextFarUpdate = now + 1f / WorldLifeTuning.Lod.LiteHz;
@@ -581,7 +592,7 @@ public sealed class TrafficDirector : WorldLifeDirector, ITruckSensorClient
         // Only reconcile unseen, settled traffic. Nearby cars recover by driving, including at day changes.
         bool hold = now < a.holdUntil;
         float lagS = SecondsBehind(a, sCanon);
-        if (VehicleCrashRules.MaySnapTraffic(a.shuntT >= 0f, hold, a.slide.sqrMagnitude, a.distance) &&
+        if (!guardedCrossing && VehicleCrashRules.MaySnapTraffic(a.shuntT >= 0f, hold, a.slide.sqrMagnitude, a.distance) &&
             (lagS > SnapLagSeconds || a.s - sCanon > 30f))
         { a.s = sCanon; a.v = vCanon; a.overtake = 0; a.lateral = 0f; }
 
@@ -597,7 +608,6 @@ public sealed class TrafficDirector : WorldLifeDirector, ITruckSensorClient
         else want = vCanon;
 
         // Obstacles along the path (other cars, trucks, people, players) and intersection boxes.
-        float look = Mathf.Clamp(a.v * a.v / (2f * BrakeDecel) + 12f, 14f, 42f);
         float gap = ScanAhead(a, look, out byte kind, out TruckControllerV2 truck, out Vector3 obsVel);
         float boxGap = BoxGate(a, look);
         if (boxGap < gap) { gap = boxGap; kind = BlockBox; }
@@ -605,6 +615,9 @@ public sealed class TrafficDirector : WorldLifeDirector, ITruckSensorClient
         if (laneGap < gap) { gap = laneGap; kind = BlockBox; }
         float courtesyGap = CourtesyGate(a, look, now, dt);
         if (courtesyGap < gap) { gap = courtesyGap; kind = BlockBox; }
+        float crossingGap = CrossingGuardDirector.StopGap(path, a.s, a.halfExtents.z, look);
+        bool waitingForCrossing = !float.IsPositiveInfinity(crossingGap);
+        if (crossingGap < gap) { gap = crossingGap; kind = BlockBox; truck = null; obsVel = Vector3.zero; }
         a.gapAhead = gap; a.blockKind = kind;
         if (kind != BlockNone)
         {
@@ -618,14 +631,14 @@ public sealed class TrafficDirector : WorldLifeDirector, ITruckSensorClient
         // Stuck behind a truck: honk after 3 s, then overtake in the other lane when it's clear.
         bool stuck = kind != BlockNone && a.v < 0.6f && !hold;
         if (stuck) a.stuckTime += dt; else if (a.v > 2f) { a.stuckTime = 0f; a.honkCount = 0; }
-        if (stuck && a.stuckTime >= HonkAfterStop && now - a.lastHonk > (a.honkCount == 0 ? 0f : 6f)
+        if (!waitingForCrossing && stuck && a.stuckTime >= HonkAfterStop && now - a.lastHonk > (a.honkCount == 0 ? 0f : 6f)
             && (kind == BlockTruck || kind == BlockPlayer || kind == BlockPerson))
             Honk(a, kind == BlockTruck ? 0 : 1, now);
-        if (kind == BlockTruck && a.overtake == 0 && a.honkCount > 0 && stuck && truck != null && a.stuckTime >= HonkAfterStop + 0.4f)
+        if (!waitingForCrossing && kind == BlockTruck && a.overtake == 0 && a.honkCount > 0 && stuck && truck != null && a.stuckTime >= HonkAfterStop + 0.4f)
             TryStartOvertake(a, truck, gap);
         // Courtesy: still stuck after CourtesyAfter s → ask the oncoming lane to hold back (re-planned 4× a second); keep the
         // ask up while passing.
-        if (kind == BlockTruck && a.overtake == 0 && stuck && truck != null && a.stuckTime >= CourtesyAfter && now >= a.courtesyUntil - 0.25f
+        if (!waitingForCrossing && kind == BlockTruck && a.overtake == 0 && stuck && truck != null && a.stuckTime >= CourtesyAfter && now >= a.courtesyUntil - 0.25f
             && (truck.Body == null || truck.Body.linearVelocity.sqrMagnitude <= 0.25f))   // only round a stopped truck, like the overtake
         {
             if (OvertakePlan(a, truck, gap, out float cs0, out _, out float cs1, out _, out _))
@@ -789,12 +802,12 @@ public sealed class TrafficDirector : WorldLifeDirector, ITruckSensorClient
         }
         // Trucks (every truck, whoever drives it).
         var trucks = TruckControllerV2.All;
-        var bb = TruckControllerV2.BodyBoxMetres;
         for (int i = 0; i < trucks.Count; i++)
         {
             var tk = trucks[i];
             if (tk == null || !tk.isActiveAndEnabled) continue;
             if (a.overtake != 0 && tk == a.otTruck) continue;   // the one we're passing in the other lane
+            var bb = tk.ModelBodyBoxMetres;
             var rb = tk.Body;
             Vector3 tp = rb != null ? rb.position : tk.transform.position;
             Quaternion tr = rb != null ? rb.rotation : tk.transform.rotation;
@@ -1002,7 +1015,7 @@ public sealed class TrafficDirector : WorldLifeDirector, ITruckSensorClient
         if (path == null) return;
         // The other lane must be clear from here to 30 m beyond the merge (cars holding back for us don't count): the cheap
         // check first, then the planned line against the truck.
-        float start = a.s, end = a.s + a.halfExtents.z + gap + TruckControllerV2.BodyBoxMetres.size.z + OvertakePastTruck + OvertakeRamp;
+        float start = a.s, end = a.s + a.halfExtents.z + gap + truck.ModelBodyBoxMetres.size.z + OvertakePastTruck + OvertakeRamp;
         if (end > path.Length - 2f) return;
         Vector3 t0 = path.Tangent(path.SegmentAt(start));
         Vector3 rt = new Vector3(t0.z, 0f, -t0.x);
@@ -1048,12 +1061,29 @@ public sealed class TrafficDirector : WorldLifeDirector, ITruckSensorClient
     bool OvertakePlan(CarAgent a, TruckControllerV2 truck, float gap, out float start, out float passEnd, out float end, out float lateral, out float rampIn)
     {
         var path = a.path;
-        var bb = TruckControllerV2.BodyBoxMetres;
+        var bb = truck.ModelBodyBoxMetres;
         start = a.s;
         passEnd = a.s + a.halfExtents.z + gap + bb.size.z + OvertakePastTruck;
         end = passEnd + OvertakeRamp;
         lateral = LaneWidth; rampIn = OvertakeRamp;
         if (path == null || end > path.Length - 2f) return false;
+        if (sim?.Graph != null && sim.Graph.layoutId == CoastalCityLayout.LayoutId)
+        {
+            // A loading lane is narrower than the original town's two full lanes. Do not use a fixed 5 m
+            // passing manoeuvre there; wait behind the truck instead of cutting across the sidewalk/building.
+            for (float at = start; at <= end + .01f; at += 4f)
+            {
+                Vector3 point = path.PointAt(Mathf.Min(at, end));
+                CoastalCityLayout.RoadDef nearest = null; float distance = float.MaxValue;
+                foreach (var road in CoastalCityLayout.Roads)
+                    for (int i = 1; i < road.points.Length; i++)
+                    {
+                        float candidate = CoastalCityLayout.DistanceToSegment(point, road.points[i - 1], road.points[i]);
+                        if (candidate < distance) { distance = candidate; nearest = road; }
+                    }
+                if (nearest == null || nearest.halfWidth < LaneWidth) return false;
+            }
+        }
         // Straight lane only (no junctions, driveways or tunnels on the way).
         int s0 = path.SegmentAt(start), s1 = path.SegmentAt(end);
         Vector3 t0 = path.Tangent(s0);
@@ -1321,7 +1351,7 @@ public sealed class TrafficDirector : WorldLifeDirector, ITruckSensorClient
         }
         Vector3 cf = Quaternion.Euler(0f, a.yaw, 0f) * Vector3.forward, cr = new Vector3(cf.z, 0f, -cf.x);
         float carHalfLat = Mathf.Abs(Vector3.Dot(cr, tr)) * a.halfExtents.x + Mathf.Abs(Vector3.Dot(cf, tr)) * a.halfExtents.z;
-        float clear = TruckControllerV2.BodyBoxMetres.extents.x + carHalfLat + 0.25f - Mathf.Abs(lateral);
+        float clear = (hit.truck != null ? hit.truck.ModelBodyBoxMetres : TruckControllerV2.BodyBoxMetres).extents.x + carHalfLat + 0.25f - Mathf.Abs(lateral);
         return clear > 0f ? tr * (side * Mathf.Min(clear, 3f)) : Vector3.zero;
     }
 
@@ -1411,11 +1441,11 @@ public sealed class TrafficDirector : WorldLifeDirector, ITruckSensorClient
     public static bool TruckRollingNear(Vector3 p, float radius, float minSpeed)
     {
         var trucks = TruckControllerV2.All;
-        var bb = TruckControllerV2.BodyBoxMetres;
         for (int i = 0; i < trucks.Count; i++)
         {
             var tk = trucks[i];
             if (tk == null || !tk.isActiveAndEnabled) continue;
+            var bb = tk.ModelBodyBoxMetres;
             var rb = tk.Body;
             if (rb == null) continue;
             Vector3 v = rb.linearVelocity; v.y = 0f;
@@ -1493,7 +1523,6 @@ public sealed class TrafficDirector : WorldLifeDirector, ITruckSensorClient
     static bool TruckOverlapsAt(Vector3 pos, float yaw, Vector3 halfExtents, float pad)
     {
         var trucks = TruckControllerV2.All;
-        var bb = TruckControllerV2.BodyBoxMetres;
         Vector3 af = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
         Vector2 aZ = new Vector2(af.x, af.z), aX = new Vector2(af.z, -af.x);
         Vector2 ac = new Vector2(pos.x, pos.z);
@@ -1501,6 +1530,7 @@ public sealed class TrafficDirector : WorldLifeDirector, ITruckSensorClient
         {
             var tk = trucks[i];
             if (tk == null || !tk.isActiveAndEnabled) continue;
+            var bb = tk.ModelBodyBoxMetres;
             var rb = tk.Body;
             Vector3 tp = rb != null ? rb.position : tk.transform.position;
             Quaternion tr = rb != null ? rb.rotation : tk.transform.rotation;

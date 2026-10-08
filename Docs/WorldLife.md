@@ -1,12 +1,46 @@
 # Rubbish: World Life (residents, pedestrians, traffic, knockable street furniture): design + build contract
 
+> **Guarded crossings — 2026-10-07:** the two authored Pickle Park zebras now have occasional daytime crossing events.
+> This supersedes the old “no child pedestrians” restriction for this new crossing cast only; fenced-yard kids are unchanged.
+
+### Guarded crossings (implemented addition)
+
+- `CrossingGuardDirector` resolves the existing graph crosswalks at Maple/Pickle Park `(80,60)` and Birch/Pickle Park
+  `(80,170)`. No scene rebuild, new prefab, or save migration is needed.
+- Between roughly 07:18 and 18:18, each site gets a group every three real minutes, staggered between sites. A group of
+  3–5 children waits while a hi-vis adult raises a double-sided STOP paddle, steps out, ushers the group over, then returns
+  to the sidewalk. Traffic is held for about 21–23 seconds, not for the whole interval. Late starts that cannot finish
+  before evening are skipped. Appearance, timing and ordinary poses derive from town seed and synchronized town clock.
+- AI traffic brakes at a nose-aware stop line from either direction. Cars already committed clear the crossing; no
+  overtaking, impatient horns, spawning on the crossing, or timetable/LOD snaps through the stop line. Players retain
+  control of their trucks—there is no invisible barrier.
+- **Guard and crossing children are hittable**, at the user's request: `CrossingWalker` exposes a rule-based pedestrian
+  box to `LifeBodies`, even when the host camera is elsewhere. Impacts are non-graphic cartoon tumbles and recovery,
+  not deaths. Knockdowns last six seconds; light bumps are shorter. They are not physical rigidbody roadblocks.
+- Co-op truck claims are host-validated against truck ownership, observed position/speed and the current crossing event.
+  Confirmed reactions use shared timestamps and event identity; bounded late-join snapshots do not restart a knockdown
+  or hit the next group. No new household fines/grudges or persistent crossing state are introduced.
+- Thrown-object contacts require a nearby item in flight owned by the reporting player; running bumps require a nearby
+  on-foot player. The host bounds velocity and reconstructs the effect. Unsupported or rejected claims do not fall back
+  to a local-only knockdown.
+- Presentation is built only within 115 m, with at most one guard and five kids per active site. Rule bodies do not
+  depend on the camera. Runtime teardown unregisters them. The debug-only `Tools/crossing_guard_probe.cs` stages/captures
+  the live event only when an isolated test-data root is enabled.
+
+**Live QA (2026-10-07):** two Editor peers agreed on the scheduled cast; test traffic approaching from both directions
+stopped at x≈75.76/84.24 for the x=80 zebra and resumed after release. A guest-owned, guest-driven truck triggered three
+host-confirmed impacts (guard + two children) with identical hit timestamps on both peers. Requesting the snapshot after
+clearing the guest's local reactions restored those original timestamps, not fresh knockdowns. Runtime model, STOP
+paddle, crossing poses and cartoon tumbles were visually inspected. This was isolated-save Editor QA, not a Windows
+build or a remote-Relay latency test.
+
 > **Status: design, 1 Oct 2026. The W0 contract (§12.4) and package A (§12.A) are built; for B see §12.B, for C (residents + puppets) §12.C, for D (schedules + traffic) §12.D, for E (rules + consequences) §12.E, for G (polish, perf, integration) §12.G, the fixer pass after G in §12.H, and the kids in fenced yards and the playground
 > in §12.K (2 Oct); F (net) waits for Multiplayer M1.** This doc is the source of truth for neighbourhood life, the same way
 > `CoreLoop.md`, `LivingWorld.md`, `Character.md`, `Progression.md` and `Multiplayer.md` are for their areas. Where it touches
 > netcode, `Multiplayer.md` wins (§9 rules for new code; §5.2 collision matrix; §8.7 the M0/M1 contract). Where it touches money,
 > Rep and districts, `Progression.md` wins.
 >
-> **How it was made:** I read the code it changes (`NeighborhoodBuilder`, `CurbTrashSpawner`, `PickupStop`, `TrashBag`, `KevinCrew`,
+> **How it was made:** I read the code it changes (`NeighborhoodBuilder`, `CurbTrashSpawner`, `PickupStop`, `TrashBag`, `KevinCrew` (since removed: Progression.md §6.5),
 > `Critters/*`, `CritterKnockback`, `TruckControllerV2`, `StreetLamps`, `Character/*`, `Ledger`, `ProgressionEvents`). I also ran
 > read-only edit-mode queries and renders of `Neighborhood.unity` (`Docs/WorldLifeRefs/`). Every count below comes from the scene as
 > it was built on 1 Oct 2026.
@@ -416,7 +450,7 @@ its pooled light fades out and the bulb shows unlit. On reset it plays the exist
 | **Mid-walk on scene load** | a record younger than its walk time is shown mid-walk at its progress `p`. Older records materialise directly in their slots, as today (catch-up, garage, debug skips). |
 | **Far, pooled out, no anchor** | today's drop-in (`SpawnRecord(rec, dropIn: true)`). |
 | **Hand-over** | while the resident carries it, the player can press **E "Take bag"**. The resident hands it over ("Oh! Thanks, dear!"), and the real bag spawns in the player's hands from the same record. +1 Rep (`neighborly`, cap 10 a day). In M2 this goes through the normal `RequestGrab(bagId)`, because it's still a curb record. |
-| **Record disappears mid-walk** | Kevin's sweep, a debug clear, or in co-op another player grabbing it: the resident shrugs ("Oh. Okay then.") and goes back in. |
+| **Record disappears mid-walk** | A raccoon crew's sweep, a debug clear, or in co-op another player grabbing it: the resident shrugs ("Oh. Okay then.") and goes back in. |
 | **Resident flattened while carrying** | the bag flies out of their arms and lands where physics puts it, as a resting bag (never bursts). It keeps the same bagId and record. |
 | **Night** | pajamas and a flashlight (an emissive cone, not a light). If a raccoon is within 6 m: "RACCOON!", the bag drops on the spot and they sprint back inside. |
 | **Bluffs** | the butler cloche reveal (§3.5) instead of a walk. |
@@ -1512,7 +1546,7 @@ and a [yard pen](WorldLifeRefs/kids_yard_preview.png).*
 | Divergence between machines | Only cosmetic state may diverge; host checks carry slack; re-convergence is built into cars and pedestrians. |
 | Fines feel punishing | Accidents ≤6% of a day; escalation only on repeats; the `NeighborFines` Town toggle; redemption by clearing the curb. |
 | Debris vs bags in M2 (`InFlight` and bag layers) | When M2 adds its layers, set debris × networked bags to off in the matrix (one line in `Setup_Coop`'s physics step). |
-| Kevin's sweeps, Butler Drops and walk-outs overlapping | A record vanishing mid-walk = shrug and go back in (§7.2). |
+| Raccoon crew sweeps, Butler Drops and walk-outs overlapping | A record vanishing mid-walk = shrug and go back in (§7.2). |
 
 ---
 
@@ -1527,6 +1561,6 @@ and a [yard pen](WorldLifeRefs/kids_yard_preview.png).*
    them.*
 5. **Hand-over:** walk up to a resident carrying a bag and they hand it to you (+1 Rep). *Default: yes.*
 6. **Car boops:** NPC cars give a player on foot a gentle 0.4 s stumble, without making you drop your bag. *Default: yes.*
-7. **Phase 2 vehicles**, using the same lane graph: Kevin's Crew truck shown at its 08:00, 14:00 and 20:00 sweeps; the rival GoldStar
+7. **Phase 2 vehicles**, using the same lane graph: the raccoon crew shown out on the kerbs at its sweep hours (22:00, 02:00, 12:00, 07:00: Progression.md §6.9.3); the rival GoldStar
    truck collecting unsubscribed houses; a mail van that delivers your complaint letters to the depot; an ice-cream truck.
    *Default: after v1 playtests.*

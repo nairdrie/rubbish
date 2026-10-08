@@ -9,8 +9,9 @@ using UnityEngine.UI;
 /// The FIRST-PERSON sort station. In third person the station only offers "Step up to the sorting table" (see
 /// SortStationEntry + its InteractionZone); press E and the camera swoops into a first-person view at the table,
 /// with whatever you were carrying held in your hands. From here you work the whole station:
-///   empty hands  E/LMB item = grab it (flies into your hands) · E/LMB SMASH / CRUSH ALL buttons · R = "Next bag!"
-///                (a bag from the tipping-floor pile flies across the garage into your hands)
+///   empty hands  E/LMB item or bag in reach = grab it (flies into your hands; the Bag Belt's queue rack stands beside
+///                the table for exactly this) · E/LMB SMASH / CRUSH ALL buttons. There is no "next bag" key: carry
+///                bags over from the dump pile, or buy the Bag Belt.
 ///   holding bag  E/LMB table = SLAM it open (rips + sprays) · compactor = compact it WHOLE (warning, press again)
 ///                · a bin = "Rip it open on the table first!"
 ///   holding item E/LMB bin / keep crate / hazard barrel / compactor = toss it in · table or nothing = set it down
@@ -18,7 +19,10 @@ using UnityEngine.UI;
 /// Local player only (no netcode). Everything it touches on the player (locomotion, camera, renderers, cursor,
 /// carrier hooks, interaction focus, HUD hint, crosshair) is restored on exit, OnDisable, despawn or UI lock.
 /// Testers can drive it without real input: Enter(), Exit(), SetLook(), LookAt(), PrimaryAction(),
-/// SecondaryThrow(), NextBag().
+/// SecondaryThrow().
+/// A table has one sorting position, or two with the Double-Wide table (sorting_table L2): <see cref="seat"/> 0 is the
+/// original one (Magnus parks there on shift), seat 1 stands at the table's left end with its own camera, focus and hints, so a
+/// player can sort beside Magnus or beside another player (SortSeats). Seat 0's entry zones hand out both seats.
 /// </summary>
 [DisallowMultipleComponent]
 public class SortStation : MonoBehaviour
@@ -38,8 +42,10 @@ public class SortStation : MonoBehaviour
     [Tooltip("First-person virtual camera (component disabled, priority 0 while idle).")]
     public CinemachineVirtualCamera sortCam;
     public InteractionZone entryZone;
-    [Tooltip("Optional: the Bag Belt's tray (conveyor_belt). \"Next bag!\" takes its bag first. Registers itself at runtime.")]
-    public ConveyorTray tray;
+    [Tooltip("Which sorting position this is: 0 = the original one, 1 = the second one (needs sorting_table L2).")]
+    public int seat;
+    /// <summary>The other sorting position at the same table (GarageRig wires both ways; null = single-position table).</summary>
+    [System.NonSerialized] public SortStation partner;
 
     /// <summary>
     /// Something working the station when no player is (Magnus on shift). While it blocks the stand point, stepping up
@@ -82,7 +88,6 @@ public class SortStation : MonoBehaviour
     [Tooltip("A second press within this many seconds compacts a whole, unopened bag.")]
     public float compactConfirmWindow = 3f;
     public float chuckSpeed = 8.5f;
-    public KeyCode nextBagKey = KeyCode.R;
     public KeyCode exitKey = KeyCode.Q;
 
     public enum TargetKind { None, Item, Table, Bin, Hopper, Button }
@@ -95,8 +100,6 @@ public class SortStation : MonoBehaviour
     /// <summary>View yaw (relative to the station facing) and pitch (up positive), degrees.</summary>
     public float Yaw => yaw;
     public float Pitch => pitch;
-    /// <summary>A "Next bag!" is flying toward your hands.</summary>
-    public bool BagIncoming => incomingBag != null;
     /// <summary>Holding a whole bag and the compactor's "press again" confirm is armed.</summary>
     public bool CompactArmed => carrier != null && CompactArmedFor(carrier.Held);
     public Transform Hand => hand;
@@ -114,7 +117,7 @@ public class SortStation : MonoBehaviour
 
     enum Mark { None, Grab, Toss, Slam, Warn, Bad, Button, Neutral }
 
-    enum HintKind { None, Empty, EmptyItem, EmptyButton, Incoming, BagTable, BagHopper, BagBin, BagButton, ItemToss, ItemSetDown, ItemButton, Other }
+    enum HintKind { None, Empty, EmptyItem, EmptyButton, BagTable, BagHopper, BagBin, BagButton, ItemToss, ItemSetDown, ItemButton, Other }
 
     Target target;
     Mark mark;
@@ -145,7 +148,6 @@ public class SortStation : MonoBehaviour
 
     float compactArmedUntil = -1f, compactArmedAt = -99f; // unscaled time (hit-stops mustn't stretch the window)
     Carryable compactArmedFor;
-    TrashBag incomingBag;
     TrashBag pendingSlamBag;
     readonly List<Carryable> settingDown = new List<Carryable>();
 
@@ -191,7 +193,6 @@ public class SortStation : MonoBehaviour
     {
         if (IsActive) ExitInternal(true);
         FinishPendingRestore();
-        DropIncomingBag();
         FinishSetDowns();
         StopAllCoroutines();
         if (crosshair != null) crosshair.SetVisible(false);
@@ -233,9 +234,8 @@ public class SortStation : MonoBehaviour
             if (s == null || s.IsActive || !s.InEntryZone(c.Player.transform.position) || !s.CanOfferEntry) continue;
             if (!Permissions.LocalCanWorkAt(s.transform.position)) return GameControls.UsingGamepad ? "[X] Sorting table (not your shop)" : "[E] Sorting table (not your shop)";
             bool pad = GameControls.UsingGamepad;
-            return s.Occupied ? (pad ? PadBusyCarryHint : BusyCarryHint) :
-                   s.WorkerBlocks ? (pad ? PadShooCarryHint : ShooCarryHint) :
-                   (pad ? PadStepUpCarryHint : StepUpCarryHint);
+            if (s.AssignSeat(c.Player.transform.position) != null) return pad ? PadStepUpCarryHint : StepUpCarryHint;
+            return s.WorkerBlocks && !s.Occupied ? (pad ? PadShooCarryHint : ShooCarryHint) : (pad ? PadBusyCarryHint : BusyCarryHint);
         }
         return null;
     }
@@ -292,9 +292,7 @@ public class SortStation : MonoBehaviour
         if (inputOk)
         {
             bool mouseOk = Time.unscaledTime - focusGainedAt > 0.2f;
-            if (GameControls.Down(nextBagKey, GameControls.Action.NextBag)) NextBag();
-            else if (GameControls.Down(KeyCode.F, GameControls.Action.Alternative)) SaveForBuilding();
-            else if (Input.GetKeyDown(IInteractable.InteractKey) || (mouseOk && (Input.GetMouseButtonDown(0) || GameControls.PadDown(GameControls.Action.SortPrimary)))) PrimaryAction();
+            if (Input.GetKeyDown(IInteractable.InteractKey) || (mouseOk && (Input.GetMouseButtonDown(0) || GameControls.PadDown(GameControls.Action.SortPrimary)))) PrimaryAction();
             else if (mouseOk && (Input.GetMouseButtonDown(1) || GameControls.PadDown(GameControls.Action.SortSecondary))) SecondaryThrow();
         }
         if (!IsActive) return;
@@ -436,12 +434,46 @@ public class SortStation : MonoBehaviour
     /// <summary>Can the local player step up right now? (False while someone else, or Magnus, is sorting here.)</summary>
     public bool CanEnter => CanOfferEntry && !Occupied && !WorkerBlocks;
 
+    /// <summary>Does this position exist at the table's level? Position 1 always; position 2 with sorting_table L2.</summary>
+    public bool SeatOpen => SortSeats.SeatExists(seat, DepotMachineContext.Level(this, ShopIds.SortingTable));
+
+    /// <summary>The local player's crosshair is on this item at some sorting position on this machine (Magnus leaves it).</summary>
+    public static bool AnyPlayerAimsAt(Carryable item)
+    {
+        if (item == null) return false;
+        for (int i = 0; i < stations.Count; i++)
+        {
+            var s = stations[i];
+            if (s != null && s.IsActive && s.target.kind == TargetKind.Item && s.target.item == item) return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Which sorting position a player walking up from <paramref name="from"/> gets: this one or its partner (the nearer
+    /// free one; SortSeats.Assign), or null when every position is taken. Call it on position 1 (it owns the entry zones).
+    /// </summary>
+    public SortStation AssignSeat(Vector3 from)
+    {
+        var first = seat == 0 ? this : partner;
+        var second = seat == 0 ? partner : this;
+        if (first == null) return CanEnter && SeatOpen ? this : null;
+        int level = DepotMachineContext.Level(first, ShopIds.SortingTable);
+        bool hasSecond = second != null && second.isActiveAndEnabled && second.standPoint != null;
+        int preferred = 0;
+        if (hasSecond && first.standPoint != null)
+            preferred = (from - second.standPoint.position).sqrMagnitude < (from - first.standPoint.position).sqrMagnitude ? 1 : 0;
+        int pick = SortSeats.Assign(preferred, hasSecond ? level : 0, first.Occupied, first.WorkerBlocks, hasSecond && second.Occupied);
+        return pick == 0 ? first : pick == 1 ? second : null;
+    }
+
     /// <summary>Should the entry zone offer "Step up" at all? (It still shows while the spot is taken, to say so.)</summary>
     public bool CanOfferEntry
     {
         get
         {
             if (IsActive || !isActiveAndEnabled) return false;
+            if (partner != null && partner.IsActive) return false; // already sorting at the other position
             var p = PlayerController.Local;
             if (p == null || !p.IsOwner || p.IsDriving || p.IsPlayingChess) return false;
             if (PlayerController.IsUIBlocking || SceneController.IsTransitioning) return false;
@@ -479,10 +511,16 @@ public class SortStation : MonoBehaviour
     {
         get
         {
-            if (Occupied) return "Someone's sorting here!";
-            if (WorkerBlocks) return worker.BlockedPrompt;
+            var pick = AssignSeat(SortingKit.TryGetLocalPlayer(out Vector3 me) ? me : transform.position);
+            if (pick == null)
+            {
+                bool twoSpots = partner != null && partner.SeatOpen;
+                if (Occupied) return twoSpots ? "Both sorting spots are taken!" : "Someone's sorting here!";
+                return WorkerBlocks ? worker.BlockedPrompt : "Both sorting spots are taken!";
+            }
             var held = SortingKit.LocalHeld;
             string prompt = held is TrashBag ? "Step up with the bag" : held != null ? "Step up to sort it" : "Step up to the sorting table";
+            if (pick != this) prompt += WorkerBlocks && !Occupied ? " (beside Magnus)" : Occupied ? " (second spot)" : " (left-hand spot)";
             string robot = (worker as MagnusSorter)?.IdleStatusHint;
             return string.IsNullOrEmpty(robot) ? prompt : prompt + "\n" + robot;
         }
@@ -491,25 +529,26 @@ public class SortStation : MonoBehaviour
     /// <summary>E in the entry zone: step up, or say why not.</summary>
     public void TryEnterFromZone()
     {
+        var pick = AssignSeat(SortingKit.TryGetLocalPlayer(out Vector3 me) ? me : transform.position);
+        if (pick != null)
+        {
+            if (pick.CanEnter && pick.SeatOpen) pick.Enter();
+            return;
+        }
         if (Occupied)
         {
-            GameHUD.Toast("Someone's already sorting! Wait your turn", ToastStyle.Bad, 1.6f);
+            GameHUD.Toast(partner != null && partner.SeatOpen ? "Both sorting spots are taken! Wait your turn" : "Someone's already sorting! Wait your turn", ToastStyle.Bad, 1.6f);
             if (standPoint != null) Sfx.Play("buzz", standPoint.position + Vector3.up, 0.5f, 1.2f);
             return;
         }
-        if (WorkerBlocks)
-        {
-            worker.Shoo();
-            return;
-        }
-        if (CanEnter) Enter();
+        if (WorkerBlocks) worker.Shoo();
     }
 
     /// <summary>Step up: swoop into the first-person station view (keeps whatever you carry, now in your hands).</summary>
     public bool Enter()
     {
         if (IsActive) return true;
-        if (!CanEnter) return false;
+        if (!CanEnter || !SeatOpen) return false;
         EnsureParts();
         if (sortCam == null || standPoint == null)
         {
@@ -1119,7 +1158,6 @@ public class SortStation : MonoBehaviour
         var tr = col.transform;
         if (player != null && tr.IsChildOf(player.transform)) return true;
         if (held != null && tr.IsChildOf(held.transform)) return true;
-        if (incomingBag != null && tr.IsChildOf(incomingBag.transform)) return true;
         return col.GetComponentInParent<PlayerController>() != null;
     }
 
@@ -1272,7 +1310,6 @@ public class SortStation : MonoBehaviour
         if (held == null)
         {
             if (t.kind != TargetKind.Item || t.item == null) return null;
-            if (incomingBag != null) { m = Mark.Bad; return "Hands! A bag's incoming!"; }
             m = Mark.Grab;
             return t.item.GetInteractionPrompt();
         }
@@ -1336,7 +1373,6 @@ public class SortStation : MonoBehaviour
     {
         if (held == null)
         {
-            if (incomingBag != null) return HintKind.Incoming;
             if (target.kind == TargetKind.Item) return HintKind.EmptyItem;
             if (target.kind == TargetKind.Button) return HintKind.EmptyButton;
             return HintKind.Empty;
@@ -1368,17 +1404,15 @@ public class SortStation : MonoBehaviour
     {
         bool pad = GameControls.UsingGamepad;
         string primary = pad ? "[RT]" : "[E/LMB]";
-        string next = pad ? "[X]" : "[R]";
         string exit = pad ? "[B]" : "[Q]";
         string tail = pad ? "   [RB] Chuck   [B] Step away" : "   [RMB] Chuck   [Q] Step away";
-        if (WorkshopMenu.CanSaveHeld(held as LooseItem)) tail += "   " + WorkshopMenu.BuildMaterialsPrompt;
+        if (held is LooseItem part && part.Revealed && Workshop.IsWanted(part.Item)) tail += "   WANTED PART: KEEP crate!";
         string name = held is LooseItem li ? li.LabelText() : held != null ? held.DisplayName : null;
         switch (k)
         {
-            case HintKind.Empty: return $"{primary} Grab   {next} Next bag!   {exit} Step away";
-            case HintKind.EmptyItem: return $"{primary} Grab   {next} Next bag!   {exit} Step away";
-            case HintKind.EmptyButton: return $"{primary} Press   {next} Next bag!   {exit} Step away";
-            case HintKind.Incoming: return $"Catch!   {exit} Step away";
+            case HintKind.Empty: return $"{primary} Grab an item or a bag in reach   {exit} Step away";
+            case HintKind.EmptyItem: return $"{primary} Grab   {exit} Step away";
+            case HintKind.EmptyButton: return $"{primary} Press   {exit} Step away";
             case HintKind.BagTable: return $"{name}   ·   {primary} Slam it open" + tail + "   (aim at the compactor to crush it unopened)";
             case HintKind.BagHopper: return $"{name}   ·   {primary} x2 Compact it UNOPENED (treasures too!)" + tail;
             case HintKind.BagBin: return $"{name}   ·   Rip it open on the table first!" + tail;
@@ -1415,18 +1449,6 @@ public class SortStation : MonoBehaviour
 
     // ------------------------------------------------------------------ actions
 
-    /// <summary>Explicit F / Y alternative. Recycling remains E/LMB/RT; the host alone consumes the held material.</summary>
-    public void SaveForBuilding()
-    {
-        if (!IsActive || carrier == null) return;
-        if (!WorkshopMenu.CanSaveHeld(carrier.Held as LooseItem))
-        {
-            GameHUD.Toast("Building materials: hold revealed Metal, Plastic, Glass or Paper. Keep treasures; dispose hazards separately.", ToastStyle.Info, 2.5f);
-            return;
-        }
-        if (!ReleaseConfirmed()) { NetReleaseWait(); return; }
-        if (WorkshopMenu.SaveHeldForBuilding(this)) Kick(-0.8f);
-    }
 
     /// <summary>E / LMB: grab, press, slam, compact, toss or set down — whatever the crosshair is on.</summary>
     public void PrimaryAction()
@@ -1449,7 +1471,6 @@ public class SortStation : MonoBehaviour
         if (held == null)
         {
             if (t.kind != TargetKind.Item || t.item == null) return;
-            if (incomingBag != null) { Sfx.Play("buzz", Eye, 0.4f, 1.3f); return; }
             if (carrier.PickUp(t.item)) Kick(-1.2f);
             return;
         }
@@ -1765,83 +1786,6 @@ public class SortStation : MonoBehaviour
         return p;
     }
 
-    // ------------------------------------------------------------------ next bag!
-
-    /// <summary>
-    /// R: the next bag flies into your hands: the Bag Belt's tray first, then the tipping-floor pile (Magnus-vision-flagged
-    /// bags first, then the top of the heap; never curb bags), then the nearest stray bag. Hands must be empty.
-    /// "Pile's empty!" when there's none.
-    /// </summary>
-    public bool NextBag()
-    {
-        if (!IsActive || carrier == null || incomingBag != null) return false;
-        if (carrier.Held != null)
-        {
-            GameHUD.Toast("Hands full!", ToastStyle.Bad, 1.2f);
-            Sfx.Play("buzz", Eye, 0.5f, 1.2f);
-            return false;
-        }
-        if (compactor != null && compactor.Busy)
-        {
-            // CRUSH ALL is vacuuming the pile (and SMASH may be eating the hopper): nothing's up for grabs.
-            GameHUD.Toast("Hold on, it's crushing!", ToastStyle.Bad, 1.2f);
-            Sfx.Play("buzz", Eye, 0.5f, 1.2f);
-            return false;
-        }
-        var bag = tray != null && tray.isActiveAndEnabled ? tray.Take() : null;
-        bool fromTray = bag != null;
-        if (fromTray) GameHUD.FloatingText(bag.WorldCenter + Vector3.up * 0.6f, "FROM THE BELT!", SortingKit.ComboOrange, 0.9f);
-        if (bag == null) bag = FindNextBag();
-        if (bag == null)
-        {
-            GameHUD.Toast("Pile's empty!", ToastStyle.Info, 1.6f);
-            Sfx.Play("squeak", Eye, 0.6f, 1f);
-            return false;
-        }
-        incomingBag = bag;
-        DisarmCompact();
-        bag.SetInFlight();
-        StartCoroutine(FetchBag(bag, fromTray));
-        return true;
-    }
-
-    TrashBag FindNextBag()
-    {
-        scratch.Clear();
-        if (compactor != null) compactor.Contents(scratch); // in the hopper = about to be crushed: hands off
-        Vector3 from = standPoint != null ? standPoint.position : transform.position;
-        int stationLot = DepotRowLayout.InteriorAt(from);
-        TrashBag best = null;
-        float bestScore = float.MinValue;
-        foreach (var b in FindObjectsByType<TrashBag>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
-        {
-            if (b == null || b.SourceStop != null || !IsGrabbable(b) || scratch.Contains(b)) continue;
-            Vector3 p = b.WorldCenter;
-            // A station can only fetch from its own pocket garage, never a neighbour's replicated pile.
-            if (stationLot >= 0 && DepotRowLayout.InteriorAt(p) != stationLot) continue;
-            if (!Permissions.LocalCanWorkAt(p)) continue;
-            if (table != null && table.IsOnTop(p)) continue;
-            if (NearHopper(p)) continue; // just compacted (still dropping in) or perched on the rim: it's the compactor's
-            float dist = Vector3.Distance(p, from);
-            if (dist > 60f) continue;
-            // Pile first (Magnus's vision-flagged treasure bags first), from the top of the heap; otherwise the nearest stray bag.
-            bool pile = InPile(p);
-            float score = (pile ? 1000f : 0f) + (pile && MagnusVisionFlags.IsFlagged(b.Contents,
-                DepotMachineContext.Level(this, ShopIds.MagnusVision)) ? 500f : 0f) + p.y * 10f - dist;
-            if (score > bestScore) { bestScore = score; best = b; }
-        }
-        return best;
-    }
-
-    /// <summary>On the tipping floor (the compactor's pile box, padded: tipped bags spill over its painted edge).</summary>
-    bool InPile(Vector3 p)
-    {
-        if (compactor == null) return false;
-        Vector3 d = p - compactor.pileCenter;
-        Vector3 h = compactor.pileSize * 0.5f + new Vector3(0.7f, 0.5f, 0.7f);
-        return Mathf.Abs(d.x) <= h.x && Mathf.Abs(d.y) <= h.y && Mathf.Abs(d.z) <= h.z;
-    }
-
     /// <summary>In or right above the compactor's chamber (including perched on the hopper rim).</summary>
     bool NearHopper(Vector3 p)
     {
@@ -1850,157 +1794,6 @@ public class SortStation : MonoBehaviour
         Vector3 l = ch.InverseTransformPoint(p);
         Vector3 h = compactor.chamberSize * 0.5f;
         return Mathf.Abs(l.x) <= h.x + 0.3f && Mathf.Abs(l.z) <= h.z + 0.3f && l.y >= -h.y - 0.2f && l.y <= h.y + 1.0f;
-    }
-
-    Vector3 FetchTarget(TrashBag bag)
-    {
-        if (IsActive && standPoint != null) return Eye + HandRotation * HandLocalFor(bag);
-        if (carrier != null && carrier.HoldPoint != null) return carrier.HoldPoint.position;
-        return standPoint != null ? standPoint.position + Vector3.up : transform.position;
-    }
-
-    /// <summary>Seconds the "Next bag!" spends dropping from the top of the first-person view into your hands.</summary>
-    const float DropInTime = 0.42f;
-
-    /// <summary>
-    /// Where a fetched bag appears in first person: up in the top of the view, a couple of metres out (the pile is
-    /// behind you, so the long lob over your head is off screen and this is where you see it come down).
-    /// </summary>
-    Vector3 DropInPoint()
-    {
-        Transform cam = sortCam.transform;
-        Vector3 p = cam.position + cam.rotation * new Vector3(0.3f, 0.7f, 1.8f);
-        if (table != null) p.y = Mathf.Max(p.y, table.TopWorldY + 0.55f); // never inside the table when you look down
-        return p;
-    }
-
-    static Vector3 Quad(Vector3 a, Vector3 c, Vector3 b, float k)
-    {
-        float u = 1f - k;
-        return u * u * a + 2f * u * k * c + k * k * b;
-    }
-
-    /// <summary>
-    /// The fetch flight. In first person: a big lob from the pile over your head (off screen) to the drop-in point at
-    /// the top of the view, then down into your hands. Otherwise (or if you step away mid-lob) a plain arc into the
-    /// hold point.
-    /// </summary>
-    IEnumerator FetchBag(TrashBag bag, bool fromTray = false)
-    {
-        Vector3 centerLocal = bag.LocalBounds().center;
-        Vector3 scale = bag.transform.lossyScale;
-        Vector3 start = bag.WorldCenter;
-        Quaternion startRot = bag.transform.rotation;
-        Vector3 end0 = FetchTarget(bag);
-        float dist = Vector3.Distance(start, end0);
-        // The belt's tray is right by the table: a quick hop straight into your hands.
-        float dur = fromTray ? 0.35f : Mathf.Clamp(0.45f + dist * 0.045f, 0.45f, 1.05f);
-        Vector3 travel = end0 - start; travel.y = 0f;
-        Vector3 spinAxis = Vector3.Cross(Vector3.up, travel.sqrMagnitude > 0.01f ? travel.normalized : Vector3.forward);
-        spinAxis = (spinAxis + Random.insideUnitSphere * 0.3f).normalized;
-        float spinDeg = 360f * Random.Range(1f, 1.5f);
-
-        Sfx.Play("whoosh", start, 0.9f, 0.75f);
-        Sfx.Play("throw", start, 0.6f, 0.9f);
-        Fx.Dust(start, 0.6f);
-        GameHUD.FloatingText(start + Vector3.up * 0.9f, "INCOMING!", SortingKit.ComboOrange, 1.1f);
-
-        // Phase A (first person only): lob to the drop-in point, arriving from above-behind so it falls into view.
-        bool dropIn = IsActive && sortCam != null && dist > 2.5f && !fromTray;
-        Vector3 drop = default, ctrlA = default, arriveDir = Vector3.down;
-        float durA = 0f;
-        if (dropIn)
-        {
-            drop = DropInPoint();
-            Vector3 fwdFlat = Flat(sortCam.transform.forward);
-            ctrlA = drop + Vector3.up * 2.2f - fwdFlat * 1.4f;
-            arriveDir = (drop - ctrlA).normalized;
-            durA = Mathf.Clamp(dur - DropInTime + 0.15f, 0.35f, 0.8f);
-            GameHUD.FloatingText(drop, "INCOMING!", SortingKit.ComboOrange, 0.9f);
-            Sfx.Play("whoosh", drop, 0.6f, 1.05f);
-        }
-        float total = durA + (dropIn ? DropInTime : dur);
-
-        Vector3 bFrom = start; // phase B start (the drop-in point, or where the bag was when you stepped away)
-        float bStart = 0f, bDur = dropIn ? DropInTime : dur;
-        bool inA = dropIn, fromDrop = false;
-        for (float e = 0f; ; e += Time.deltaTime)
-        {
-            if (bag == null || bag.State == CarryState.Consumed || bag.State == CarryState.Carried) { incomingBag = null; yield break; }
-            Vector3 end = FetchTarget(bag);
-            if (inA && (e >= durA || !IsActive))
-            {
-                // Lob done — or you stepped away mid-lob: head for the third-person hold from where it is.
-                inA = false;
-                fromDrop = IsActive;
-                bFrom = fromDrop ? drop : bag.WorldCenter;
-                bStart = e;
-                bDur = fromDrop ? DropInTime : Mathf.Max(0.25f, total - e);
-            }
-            Vector3 p;
-            bool done = false;
-            if (inA)
-            {
-                float ka = e / durA;
-                ka = Mathf.Lerp(ka, SortingKit.EaseOutQuad(ka), 0.5f); // eases into the drop-in point: it "hangs" up there
-                p = Quad(start, ctrlA, drop, ka);
-            }
-            else
-            {
-                float kb = Mathf.Clamp01((e - bStart) / bDur);
-                done = kb >= 1f;
-                if (fromDrop)
-                {
-                    // Falls on out of the lob and curls back into your hands.
-                    p = Quad(drop, drop + arriveDir * 0.35f, end, Mathf.Lerp(kb, SortingKit.EaseInQuad(kb), 0.55f));
-                }
-                else
-                {
-                    float horiz = new Vector2(end.x - bFrom.x, end.z - bFrom.z).magnitude;
-                    float apex = Mathf.Max(bFrom.y, end.y) + (dropIn ? 0.25f : 0.8f + horiz * 0.1f);
-                    float ctrlY = 2f * apex - 0.5f * (bFrom.y + end.y);
-                    float u = 1f - kb;
-                    p = Vector3.Lerp(bFrom, end, kb);
-                    p.y = u * u * bFrom.y + 2f * u * kb * ctrlY + kb * kb * end.y;
-                }
-            }
-            float k = Mathf.Clamp01(e / total);
-            Quaternion spun = Quaternion.AngleAxis(spinDeg * SortingKit.EaseOutQuad(k), spinAxis) * startRot;
-            Quaternion rot = Quaternion.Slerp(spun, IsActive ? HandRotation : Quaternion.Euler(0f, bag.transform.eulerAngles.y, 0f), k * k);
-            bag.transform.rotation = rot;
-            bag.transform.position = p - rot * Vector3.Scale(centerLocal, scale);
-            if (done) break;
-            yield return null;
-        }
-        incomingBag = null;
-        if (bag == null || bag.State == CarryState.Consumed || bag.State == CarryState.Carried) yield break;
-        CatchBag(bag);
-    }
-
-    void CatchBag(TrashBag bag)
-    {
-        bool caught = carrier != null && carrier.isActiveAndEnabled && carrier.Held == null && carrier.PickUp(bag);
-        if (!caught)
-        {
-            bag.EndCarry(Vector3.down * 0.5f, true); // hands were full / gone: it just flops down
-            return;
-        }
-        Vector3 at = bag.WorldCenter;
-        Sfx.Play("thud", at, 0.9f, 0.7f);
-        Sfx.Play("bag_land", at, 0.6f, 1.1f);
-        Juice.Punch(bag.JuiceTarget, 0.25f, 0.2f);
-        if (IsActive)
-        {
-            Kick(3.5f, 0.03f);
-            Juice.Shake(0.1f, 0.12f);
-        }
-    }
-
-    void DropIncomingBag()
-    {
-        var b = incomingBag;
-        incomingBag = null;
-        if (b != null && b.State != CarryState.Consumed && b.State != CarryState.Carried) b.EndCarry(Vector3.zero, true);
     }
 
     // ------------------------------------------------------------------ parts

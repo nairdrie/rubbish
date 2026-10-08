@@ -4,14 +4,22 @@ using TMPro;
 using UnityEngine;
 
 /// <summary>
-/// F5 (Docs/Multiplayer.md §14.5): the Big Cleanup board on Depot Row, a big green city noticeboard on two posts just west of
+/// F5 (Docs/Multiplayer.md §14.5): the Big Cleanup board on Depot Row, a big green city noticeboard on two posts just north of
 /// lot 1, facing the road. Built at runtime whenever the town is loaded (no scene edit), it shows the live scoreboard while
 /// an event runs, the countdown before it, the winner after it, and "next Big Cleanup ~09:40" the rest of the time. Local
 /// presentation of replicated state only.
 /// </summary>
 public sealed class CleanupBoard : MonoBehaviour
 {
-    public static readonly Vector3 Spot = new Vector3(DepotRowLayout.FirstLotX - DepotRowLayout.PadHalfWidth - 6f, 0f, DepotRowLayout.PadZ1 - 1.5f);
+    public static Vector3 Spot
+    {
+        get
+        {
+            int lot = DepotRowLayout.LotCount - 1;
+            var edge = DepotRowLayout.PadLocalEdge(lot);
+            return DepotRowLayout.StreetPoint(lot, new Vector3(edge.x - 6f, 0f, edge.y - 1.5f));
+        }
+    }
 
     GameObject board;
     TextMeshPro title, body;
@@ -54,7 +62,7 @@ public sealed class CleanupBoard : MonoBehaviour
         if (Physics.Raycast(p + Vector3.up * 40f, Vector3.down, out var hit, 80f, ~0, QueryTriggerInteraction.Ignore)) p.y = hit.point.y;
         board = new GameObject("[CleanupBoard]");
         if (scene.IsValid()) UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(board, scene);
-        board.transform.SetPositionAndRotation(p, Quaternion.Euler(0f, 0f, 0f)); // faces +Z: the road
+        board.transform.SetPositionAndRotation(p, DepotRowLayout.StreetFacing);
         var mat = BoardMaterial();
         // Keep supports behind the panel; front-mounted posts hide the first letters of longer lines.
         Box("PostL", new Vector3(-2.3f, 1.6f, -0.18f), new Vector3(0.22f, 3.2f, 0.22f), new Color(0.35f, 0.35f, 0.38f), mat);

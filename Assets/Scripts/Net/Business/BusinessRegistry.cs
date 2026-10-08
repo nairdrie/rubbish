@@ -24,7 +24,7 @@ public partial class BusinessRegistry : NetworkBehaviour
 {
     public static BusinessRegistry Instance { get; private set; }
 
-    /// <summary>Largest single cash change a guest may ask for ($50,000): a rare find sold on ebae fits, a minted million doesn't.</summary>
+    /// <summary>Largest single cash change a guest may ask for ($50,000): a rare find sold on ebag fits, a minted million doesn't.</summary>
     public const long MaxRequestCents = 5_000_000;
     const long MaxDeclaredCents = 100_000_000_00; // $100M: anything bigger is a broken save
     const string MsgDeclare = "rb.biz.declare", MsgLedger = "rb.biz.ledger", MsgCapacity = "rb.biz.capacity";
@@ -165,6 +165,7 @@ public partial class BusinessRegistry : NetworkBehaviour
         openingCents[b.Id] = b.cashCents;
         municipalSince[b.Id] = GameClock.TotalHours;
         postedCents[b.Id] = 0;
+        SeedStarterContract(b, StarterCollectionContract.LocalProgress);
         Ledger.PostedAnyBusiness -= OnPostedAny;
         Ledger.PostedAnyBusiness += OnPostedAny;
         NetAudit.Event("business", new Dictionary<string, object>
@@ -214,15 +215,16 @@ public partial class BusinessRegistry : NetworkBehaviour
         fid.CopyFromTruncated(id ?? "");
         var fname = new FixedString64Bytes();
         fname.CopyFromTruncated(BusinessColors.CleanName(name));
-        DeclareRpc(fid, fname, cashCents, truckCapKg, MunicipalEconomy.LocalHours);
+        DeclareRpc(fid, fname, cashCents, truckCapKg, MunicipalEconomy.LocalHours, (byte)StarterCollectionContract.LocalProgress);
     }
 
     [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
-    void DeclareRpc(FixedString64Bytes id, FixedString64Bytes name, long cashCents, float truckCapKg, float municipalHours, RpcParams rpcParams = default)
+    void DeclareRpc(FixedString64Bytes id, FixedString64Bytes name, long cashCents, float truckCapKg, float municipalHours, byte starterCollectionProgress, RpcParams rpcParams = default)
     {
         ulong sender = rpcParams.Receive.SenderClientId;
         if (!Allowed(MsgDeclare, sender, 160)) return;
         string sid = id.ToString();
+        if (starterCollectionProgress > StarterCollectionContract.RequiredBags) { Answer(sender, false, "The host couldn't read that business's starter contract."); return; }
         if (!SessionService.TryGetPlayer(sender, out var key)) { Answer(sender, false, "The host doesn't know you yet. Try again."); return; }
         if (!BusinessIds.IsValid(sid)) { Answer(sender, false, "The host couldn't read that business."); return; }
         int other = IndexOf(sid);
@@ -234,7 +236,8 @@ public partial class BusinessRegistry : NetworkBehaviour
         int mine = IndexOfClient(sender);
         if (mine >= 0 && list[mine].Id == sid)
         {
-            // A retransmitted declaration must not restore old cash or reset earned startup-protection hours.
+            // A retransmitted declaration must not restore old cash or reset earned startup protection / contract progress.
+            SyncStarterProgress(list[mine]);
             Answer(sender, true, sid);
             return;
         }
@@ -264,6 +267,7 @@ public partial class BusinessRegistry : NetworkBehaviour
         openingCents[sid] = b.cashCents;
         municipalSince[sid] = GameClock.TotalHours;
         postedCents[sid] = 0;
+        SeedStarterContract(b, starterCollectionProgress);
         Debug.Log($"[Businesses] {key} opened {b.Name} ({sid}) in {BusinessColors.Name(color)}, ${b.Cash:0.00}.");
         NetAudit.Event("business", new Dictionary<string, object>
         {
@@ -459,23 +463,30 @@ public partial class BusinessRegistry : NetworkBehaviour
     {
         var r = new FixedString128Bytes();
         r.CopyFromTruncated(reason ?? "");
-        CashRpc(b.cashCents, cents, KindByte(kind), r, Fixed32(ledgerId), Fixed32(districtId), pos ?? Vector3.zero, pos.HasValue,
+        CashRpc(b.id, b.cashCents, cents, KindByte(kind), r, Fixed32(ledgerId), Fixed32(districtId), pos ?? Vector3.zero, pos.HasValue,
                 RpcTarget.Single(b.ownerClientId, RpcTargetUse.Temp));
     }
 
+    internal static bool CashTargetsBusiness(string selectedBusiness, string messageBusiness) =>
+        !string.IsNullOrEmpty(selectedBusiness) && string.Equals(selectedBusiness, messageBusiness, StringComparison.Ordinal);
+
     /// <summary>Owner (guest): the host applied a change to this game's business.</summary>
     [Rpc(SendTo.SpecifiedInParams)]
-    void CashRpc(long balanceCents, long deltaCents, byte kind, FixedString128Bytes reason, FixedString32Bytes ledgerId,
+    void CashRpc(FixedString64Bytes businessId, long balanceCents, long deltaCents, byte kind, FixedString128Bytes reason, FixedString32Bytes ledgerId,
                  FixedString32Bytes districtId, Vector3 pos, bool hasPos, RpcParams rpcParams)
     {
-        if (IsServer) return;
+        if (IsServer || !CashTargetsBusiness(GameSession.BusinessId, businessId.ToString())) return;
         Vector3? at = hasPos ? pos : (Vector3?)null;
         string why = reason.ToString(), district = Str(districtId);
-        // NPC ebae sales remove the held item in the SAME callback as payment, before a guest can
+        bool starterReward = StarterCollectionContract.IsRewardCredit(KindName(kind), Str(ledgerId), deltaCents);
+        // Completion and its cash mirror must enter the same save frame; never checkpoint a paid grant as 7/8.
+        if (starterReward) StarterCollectionContract.SaveLocalProgress(StarterCollectionContract.RequiredBags);
+        // NPC ebag sales remove the held item in the SAME callback as payment, before a guest can
         // disconnect/checkpoint. A second sale RPC is only an idempotent fallback, not half a sale.
         if (!EbaeNeighbours.TryApplyNpcCash(balanceCents, why))
             GameSession.NetMirror.SetCashCents(balanceCents, deltaCents, why, at);
         Ledger.PostApplied(KindName(kind), Str(ledgerId), deltaCents, why, district, at, Businesses.LocalId, local: true);
+        if (starterReward) StarterCollectionContract.ShowCompleted();
     }
 
     /// <summary>Owner (guest): Rep the host awarded this game's business.</summary>
@@ -511,14 +522,18 @@ public partial class BusinessRegistry : NetworkBehaviour
         int i = IndexOfClient(sender);
         string k = KindName(kind);
         bool signOk = k == Ledger.KindCredit ? cents > 0 : (k == Ledger.KindCharge || k == Ledger.KindSpend) && cents < 0;
-        if (i < 0 || !signOk || Math.Abs(cents) > MaxRequestCents || list[i].IsHostBusiness)
+        if (i < 0 || !signOk || Math.Abs(cents) > MaxRequestCents || list[i].IsHostBusiness ||
+            StarterCollectionContract.IsReservedLedgerId(Str(ledgerId)))
         {
             NetAudit.Event("biz-refused", new Dictionary<string, object> { { "client", sender }, { "kind", k }, { "cents", cents }, { "reason", reason.ToString() } });
             return;
         }
         string id = list[i].Id;
         // A guest's spend already happened on its machine (it checked its balance): applied even if a race overdraws it.
-        ServerApplyCash(id, k, cents, reason.ToString(), Str(ledgerId), hasPos ? pos : (Vector3?)null, Str(districtId), allowOverdraw: true);
+        bool previousRequest = starterClientLedgerRequest;
+        starterClientLedgerRequest = true;
+        try { ServerApplyCash(id, k, cents, reason.ToString(), Str(ledgerId), hasPos ? pos : (Vector3?)null, Str(districtId), allowOverdraw: true); }
+        finally { starterClientLedgerRequest = previousRequest; }
     }
 
     // ------------------------------------------------------------------ audit
@@ -533,6 +548,7 @@ public partial class BusinessRegistry : NetworkBehaviour
                 { "business", e.businessId }, { "op", e.kind }, { "id", e.id }, { "cents", e.cents }, { "reason", e.reason },
                 { "balance", IndexOf(e.businessId) >= 0 ? list[IndexOf(e.businessId)].cashCents : 0 },
             });
+        TrackStarterCollection(e);
     }
 
     void AuditClose(BusinessInfo b, string why)

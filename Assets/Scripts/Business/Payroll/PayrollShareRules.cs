@@ -17,7 +17,7 @@ public static class PayrollShareRules
         {
             case LedgerIds.PickupFee: case LedgerIds.CurbBonus: case LedgerIds.Recycle: case LedgerIds.Hazard:
             case LedgerIds.Scrap: case LedgerIds.LazyCrush: case LedgerIds.CleanStreets: case LedgerIds.WorkOrder:
-            case LedgerIds.Ebae: case LedgerIds.Pawn: case LedgerIds.KevinFees:
+            case LedgerIds.Ebae: case LedgerIds.Pawn: case RaccoonTuning.LedgerCrew: // the crew's collection fees (not its wallets)
             case "night_shift": case "animal_control": case "raccoon_king":
             case "ride_streak": case "crew_comfort": case "event_prize":
                 return true;

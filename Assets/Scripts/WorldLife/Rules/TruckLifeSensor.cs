@@ -46,6 +46,19 @@ public sealed class TruckLifeSensor : ITruckSensorClient
             Claimed++;
             // Co-op cars are confirmed by the host and shown once everywhere; no second, local-only shunt.
             if (b.BodyKind == LifeBodyKind.Car && HandsNet.Instance != null && HandsNet.Instance.ReportCarImpact(sweep.truck, b.Id, b.Position)) continue;
+            // Crossing actors use the same host-confirmed cartoon rules, but never the resident household fines.
+            // The explicit solo path also avoids Commit: these event actors do not own a resident's ledger/timetable.
+            if (b.Id.kind == LifeKind.Crossing)
+            {
+                if (HandsNet.Instance != null && HandsNet.Instance.ReportCrossingImpact(sweep.truck, b.Id, b.Position)) continue;
+                long serial = CrossingGuardDirector.EventSerial(b.Id);
+                if (serial >= 0 && WorldLifeAuthority.Instance.Decide(in claim, b, RulesBooks.Active, out var crossingHit, out _))
+                {
+                    CrossingGuardDirector.PresentHit(b.Id, serial, in crossingHit);
+                    WorldLifeEvents.RaiseHitDecided(in crossingHit);
+                }
+                continue;
+            }
             var hit = auth is WorldLifeAuthority wa ? wa.ClaimNpcHit(in claim, b) : auth.ClaimNpcHit(in claim);
             if (hit.kind == NpcHitKind.Shunt) BumpTruck(in sweep, b);
         }

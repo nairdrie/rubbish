@@ -4,7 +4,7 @@ for (int lot = 0; lot < DepotRowLayout.LotCount; lot++)
 {
     var depot = DepotRowScene.Lot(lot);
     var truck = DepotRowNet.Instance != null ? DepotRowNet.Instance.TruckOf(lot) : null;
-    var un = depot != null && depot.interior != null ? depot.interior.GetComponentInChildren<TruckUnloader>(true) : null;
+    var un = depot != null && depot.interior != null ? depot.interior.GetComponentInChildren<TippingFloor>(true) : null;
     var ids = new System.Collections.Generic.List<string>();
     foreach (var c in Carryable.All)
     {
@@ -13,6 +13,6 @@ for (int lot = 0; lot < DepotRowLayout.LotCount; lot++)
         if (c is LooseItem item && item.Item?.uid?.StartsWith("capacity-") == true) ids.Add(item.Item.uid);
     }
     rows.Add(new { lot, used = DepotBacklog.UsedKg(lot), cap = DepotBacklog.CapacityKg(lot), truckKg = truck != null ? DepotTruckCargo.LoadKg(truck) : 0,
-        status = un != null ? un.CurrentStatus.ToString() : "absent", ids });
+        status = un == null ? "absent" : un.Busy ? "Busy" : !DepotBacklog.CanFit(lot, 0.01f) ? "Full" : "Ready", ids });
 }
 return rows;

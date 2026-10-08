@@ -197,12 +197,12 @@ public static class WorldLifeTuning
     /// (Ledger.Rep applies them); Rep base values are RepValues.Neighbor* in ProgressionIds.cs.</summary>
     public static class Fines
     {
-        public static readonly float[] Flattened = { 3f, 12f, 40f, 120f };
-        public static readonly float[] CarShunted = { 5f, 20f, 60f, 200f };
+        public static readonly float[] Flattened = { 3f, 12f, 40f, 120f, 20f, 60f };
+        public static readonly float[] CarShunted = { 5f, 20f, 60f, 200f, 30f, 90f };
         /// <summary>City Works, per prop (hydrant × KnockSpec.cityWorksMult).</summary>
-        public static readonly float[] PropKnocked = { 0.5f, 2f, 5f, 15f };
+        public static readonly float[] PropKnocked = { 0.5f, 2f, 5f, 15f, 3f, 8f };
         /// <summary>City Works cap per district per day (one invoice per district at midnight).</summary>
-        public static readonly float[] CityWorksDailyCap = { 5f, 20f, 60f, 200f };
+        public static readonly float[] CityWorksDailyCap = { 5f, 20f, 60f, 200f, 35f, 100f };
 
         /// <summary>The n-th flatten or shunt (1-based) in a district on one in-game day costs × min(3, 1 + 0.25 (n − 1)).
         /// Cash only: Rep is never escalated (§9.2's numbers).</summary>

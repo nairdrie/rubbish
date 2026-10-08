@@ -23,7 +23,7 @@ using UnityEngine;
 ///   Butler Drop of 1–2 bags (P(2) = 0.25) at 07:00 and 17:00 (±10 min, deterministic per estate and day). Bags roll
 ///   with the district's LootProfile × the gnome multipliers (UpgradeEffects.ValuableChanceMult) × Rookie Luck (×4 until
 ///   the first treasure is kept), and the district's Trust feeds the rich bag themes.
-/// MIDNIGHT (host, once per rollover): CityCleanliness.MidnightInspection → KevinCrew wage → ProgressionEvents.Midnight.
+/// MIDNIGHT (host, once per rollover): CityCleanliness.MidnightInspection → ProgressionEvents.Midnight.
 ///
 /// TUNING (solo player, 160 kg truck, 20-min day, ~37 houses):
 ///   TargetBagsPerDay = 35 bags/in-game day (uncapped) ≈ 1 bag every ~34 real seconds. A rolled bag weighs
@@ -199,15 +199,15 @@ public class CurbTrashSpawner : MonoBehaviour
     }
 
     /// <summary>The house puts trash out for us right now: its district is unlocked and it subscribes (Trust).</summary>
-    public static bool IsEligible(House h) => h != null && Districts.IsUnlocked(h.District) && Progression.IsSubscribed(h.stopId);
+    public static bool IsEligible(House h) => h != null && Progression.IsTownSubscribed(h.stopId);
 
     /// <summary>Subscribed share of a district: 0.25 + 0.75 × Trust (scales its bags a day).</summary>
     public static float SubscribedShare(DistrictDef d) =>
-        d == null ? 0f : 0.25f + 0.75f * Mathf.Clamp01(GameSession.GetDistrictTrust(d.id, d.trustStart));
+        d == null ? 0f : 0.25f + 0.75f * DistrictAccess.TownTrust(d);
 
     /// <summary>Expected bags a day for one district right now (0 when locked).</summary>
     public static float DistrictBagsPerDay(DistrictDef d) =>
-        d == null || !Districts.IsUnlocked(d) ? 0f : d.bagsPerDay * SubscribedShare(d);
+        d == null || !DistrictAccess.OpenInTown(d) ? 0f : d.bagsPerDay * SubscribedShare(d);
 
     // ------------------------------------------------------------------ runner
 
@@ -268,8 +268,6 @@ public class CurbTrashSpawner : MonoBehaviour
 
         if (houses.Count == 0) return; // nobody known yet: time keeps "owing" and is caught up once houses register
 
-        KevinCrew.Tick(GameClock.TotalHours);
-
         if (!seeded)
         {
             seeded = true;
@@ -301,7 +299,6 @@ public class CurbTrashSpawner : MonoBehaviour
         CurbTrash.Invalidate();
         simulatedTo = GameClock.TotalHours;
         lastDayIndex = GameClock.DayIndex;
-        KevinCrew.BeginSession(GameClock.TotalHours);
         Debug.Log($"[CurbTrashSpawner] started at {GameClock.ClockText} (starter target {TargetBagsPerDay} bags/day at 100% Trust, cap {GlobalCap}, ×{RateScale:0.0} for {Businesses.OnlineCount} business(es)).");
     }
 
@@ -310,14 +307,14 @@ public class CurbTrashSpawner : MonoBehaviour
 
     /// <summary>
     /// The midnight order (Docs/Progression.md §9.3): 1. CityCleanliness pays Clean Streets per district, neglect fines,
-    /// clean streaks; 2. Kevin's wage; 3. raise ProgressionEvents.Midnight (builder A: Trust, Rep, Clean Day, ranks).
+    /// clean streaks; 2. raise ProgressionEvents.Midnight (builder A: Trust, Rep, Clean Day, ranks). Hutch kibble is not
+    /// part of this order: Hutch.HostDayTick charges it per owning business when its roster's day rolls over.
     /// </summary>
     public static MidnightReport RunMidnight()
     {
         MidnightReport report;
         try { report = CityCleanliness.MidnightInspection(); }
         catch (Exception e) { Debug.LogException(e); report = new MidnightReport { day = Mathf.Max(1, GameClock.Day - 1) }; }
-        try { KevinCrew.ChargeWage(report); } catch (Exception e) { Debug.LogException(e); }
         MidnightsRaised++;
         ProgressionEvents.RaiseMidnight(report);
         return report;
@@ -328,7 +325,7 @@ public class CurbTrashSpawner : MonoBehaviour
         // A fresh server starts with a few bags out in the trickle districts (scaled to what's open: 9 solo, otherwise 8).
         double now = GameClock.TotalHours;
         float perDay = 0f;
-        foreach (var d in Districts.Unlocked) if (!d.butlerDrops) perDay += DistrictBagsPerDay(d);
+        foreach (var d in Districts.All) if (!d.butlerDrops) perDay += DistrictBagsPerDay(d);
         int initialBags = StartingBagsForPlayers(Mathf.Max(1, SessionService.PlayerCount));
         int want = Mathf.Min(GlobalCap, Mathf.RoundToInt(initialBags * Mathf.Max(1f, perDay / (TargetBagsPerDay * 0.7f))));
         int placed = 0, tries = 0;
@@ -553,7 +550,7 @@ public class CurbTrashSpawner : MonoBehaviour
         float sum = 0f;
         for (int i = 0; i < 24 * 4; i++) sum += TimeOfDayWeight(i / 4f + 0.125f);
         float perDay = 0f;
-        foreach (var d in Districts.Unlocked) perDay += DistrictBagsPerDay(d);
+        foreach (var d in Districts.All) perDay += DistrictBagsPerDay(d);
         return perDay * sum / (24 * 4);
     }
 

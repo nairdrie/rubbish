@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -72,7 +73,7 @@ public class TruckRecovery : MonoBehaviour
             return;
         }
 
-        var h = UpgradeEffects.Handling;
+        var h = UpgradeEffects.HandlingAtLevel(BusinessUpgradeNet.LevelForTruck(truck, ShopIds.TruckHandling));
         bool free = h.freeUnflip;
         float holdNeeded = Mathf.Max(0.1f, h.unflipHoldSeconds);
         if (!offered)
@@ -142,7 +143,7 @@ public class TruckRecovery : MonoBehaviour
         if (no != null && no.IsSpawned && !no.IsOwner) { whyNot = "Only the driver can call the tow."; return false; }
         flippedFor = stuckFor = holdFor = 0f;
         ClearPrompt();
-        bool free = UpgradeEffects.Handling.freeUnflip;
+        bool free = UpgradeEffects.HandlingAtLevel(BusinessUpgradeNet.LevelForTruck(truck, ShopIds.TruckHandling)).freeUnflip;
         if (fromMenu) Debug.Log($"[TruckRecovery] Tow from the Esc menu ({(free ? "free" : "fee")}).");
         StartCoroutine(Recover(free));
         return true;
@@ -275,6 +276,15 @@ public class TruckRecovery : MonoBehaviour
     {
         Vector3 best = from;
         float bestD = float.MaxValue;
+        // Coastal streets are non-convex ribbon MeshColliders, not the old rectangular slabs.
+        // ClosestPoint cannot query those meshes, and their AABB centre may be inside a river/lot on a bend.
+        // Work from their authored centreline instead; pocket garages still use their own local ground.
+        if (DepotRowLayout.InteriorAt(from) < 0 && WorldLifeAnchor.Latest != null &&
+            WorldLifeAnchor.Latest.Graph.layoutId == CoastalCityLayout.LayoutId)
+        {
+            if (TryRoadSetDownPoint(from, CoastalCityLayout.Roads, RoadSearchRadius, out var coastal)) best = coastal;
+            return SnapSetDownPoint(best, from.y);
+        }
         int n = Physics.OverlapSphereNonAlloc(from, RoadSearchRadius, roadBuffer, 1 << 6, QueryTriggerInteraction.Ignore);
         for (int i = 0; i < n; i++)
         {
@@ -289,10 +299,45 @@ public class TruckRecovery : MonoBehaviour
             float d = (p - from).sqrMagnitude;
             if (d < bestD) { bestD = d; best = p; }
         }
+        return SnapSetDownPoint(best, from.y);
+    }
+
+    /// <summary>Pure recovery projection onto actual road segments, never a whole-road bounding box. The centreline
+    /// leaves room for the truck on both sides and is valid at bends/endpoints. Coordinates and widths may be edited.</summary>
+    public static bool TryRoadSetDownPoint(Vector3 from, IReadOnlyList<CoastalCityLayout.RoadDef> roads, float maxDistance, out Vector3 point)
+    {
+        point = from;
+        if (roads == null || !Finite(from) || float.IsNaN(maxDistance) || float.IsInfinity(maxDistance) || maxDistance < 0f) return false;
+        float best = maxDistance * maxDistance;
+        bool found = false;
+        foreach (var road in roads)
+        {
+            if (road?.points == null || road.points.Length < 2) continue;
+            for (int i = 1; i < road.points.Length; i++)
+            {
+                Vector3 a = road.points[i - 1], b = road.points[i];
+                if (!Finite(a) || !Finite(b)) continue;
+                Vector3 delta = b - a; delta.y = 0f;
+                if (delta.sqrMagnitude < .000001f) continue;
+                float u = Mathf.Clamp01(Vector3.Dot(from - a, delta) / delta.sqrMagnitude);
+                Vector3 candidate = Vector3.Lerp(a, b, u);
+                float distance = (candidate - from).sqrMagnitude;
+                if (distance > best || (found && distance >= best)) continue;
+                best = distance; point = candidate; found = true;
+            }
+        }
+        return found;
+    }
+
+    static bool Finite(Vector3 p) => !(float.IsNaN(p.x) || float.IsNaN(p.y) || float.IsNaN(p.z) ||
+        float.IsInfinity(p.x) || float.IsInfinity(p.y) || float.IsInfinity(p.z));
+
+    static Vector3 SnapSetDownPoint(Vector3 best, float fallbackY)
+    {
         // Snap onto the ground there; the root sits ~0.4 m below the wheels' contact, drop it from a little above.
         if (Physics.Raycast(best + Vector3.up * 6f, Vector3.down, out var hit, 20f, 1 << 6, QueryTriggerInteraction.Ignore))
             best = hit.point;
-        else best.y = from.y;
+        else best.y = fallbackY;
         return best + Vector3.up * 0.15f;
     }
 

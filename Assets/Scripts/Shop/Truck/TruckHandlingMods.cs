@@ -30,6 +30,7 @@ public class TruckHandlingMods : MonoBehaviour
 
     readonly List<Wheel> wheels = new List<Wheel>();
     TruckControllerV2 truck;
+    UpgradeEffects.HandlingTier Tier => UpgradeEffects.HandlingAtLevel(BusinessUpgradeNet.LevelForTruck(truck, ShopIds.TruckHandling));
     Rigidbody body;
     bool comTouched, comReady;
     int appliedLevel = -1;
@@ -64,12 +65,14 @@ public class TruckHandlingMods : MonoBehaviour
     void OnEnable()
     {
         GameSession.UpgradeChanged += OnUpgradeChanged;
+        BusinessUpgradeNet.Changed += Apply;
         Apply();
     }
 
     void OnDisable()
     {
         GameSession.UpgradeChanged -= OnUpgradeChanged;
+        BusinessUpgradeNet.Changed -= Apply;
         drifting = false;
     }
 
@@ -94,8 +97,8 @@ public class TruckHandlingMods : MonoBehaviour
     /// <summary>Re-apply the grip and centre of gravity for the current level. Idempotent.</summary>
     public void Apply()
     {
-        var h = UpgradeEffects.Handling;
-        int level = Mathf.Clamp(UpgradeEffects.Level(ShopIds.TruckHandling), 0, 3);
+        var h = Tier;
+        int level = Mathf.Clamp(BusinessUpgradeNet.LevelForTruck(truck, ShopIds.TruckHandling), 0, 3);
         SetGrip(h, false);
         if (comReady && body != null && (level > 0 || comTouched))
         {
@@ -139,14 +142,14 @@ public class TruckHandlingMods : MonoBehaviour
         driftHeld = false;
         if (truck == null || !truck.IsLocalPlayerSeated) return;
         if (PlayerController.IsUIBlocking || SceneController.IsTransitioning) return;
-        if (!UpgradeEffects.Handling.drift) return;
+        if (!Tier.drift) return;
         driftHeld = GameControls.Held(KeyCode.Space, GameControls.Action.Drift);
     }
 
     void FixedUpdate()
     {
         if (!Simulating || truck == null) return;
-        var h = UpgradeEffects.Handling;
+        var h = Tier;
         float speed = body.linearVelocity.magnitude;
 
         // ---- drift (L3): handbrake the rear axles and let them slide

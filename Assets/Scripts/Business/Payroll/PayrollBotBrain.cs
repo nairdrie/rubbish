@@ -170,15 +170,19 @@ public sealed class PayrollBotBrain : IBotBrain
         if (Step(c, 52)) Log("drive into the boss's garage", pc.IsDriving && DepotRowWorld.UseDoor(bossLot, false, pc.gameObject));
         if (Step(c, 56))
         {
-            if (bossTruck != null && bossTruck.IsLocalPlayerSeated) bossTruck.ForceExit();
+            // TIP IT is the driver's now: an on-shift employee tips the boss's truck from its seat, in the boss's bay.
+            if (bossTruck != null && bossTruck.IsLocalPlayerSeated)
+            {
+                var tipper = bossTruck.GetComponent<TruckTipper>();
+                if (tipper != null) tipper.RequestDump();
+                bossTruck.ForceExit();
+            }
             Log("boss's truck in the bay", bossTruck != null && DepotRowLayout.InteriorAt(bossTruck.transform.position) == bossLot);
         }
         if (Step(c, 59))
         {
             Log("in the boss's shop", DepotRowWorld.LocalInterior == bossLot, ("canWorkHere", Permissions.LocalCanWorkAt(pc.transform.position)),
                 ("canLaptopHere", Permissions.LocalCanUseLaptopAt(pc.transform.position)), ("canShelvesHere", Permissions.LocalCanManageAt(pc.transform.position)));
-            if (bossTruck != null)
-                DepotTruckCargoNet.Instance?.RequestTip(bossTruck, bossLot);
             // Sorting pay inside the boss's shop goes to the boss (Ledger.Redirect).
             Ledger.Credit(1.23f, "Bot sorted", LedgerIds.Recycle, pc.transform.position);
             Ledger.Charge(0.50f, "Bot contaminated", LedgerIds.Contamination, pc.transform.position);
@@ -229,16 +233,19 @@ public sealed class PayrollBotBrain : IBotBrain
             myTruck.OnInteract(pc.gameObject);
         }
         if (Step(c, 71)) Log("drive into my garage", pc.IsDriving && DepotRowWorld.UseDoor(myLot, false, pc.gameObject));
-        if (Step(c, 75) && myTruck != null && myTruck.IsLocalPlayerSeated) myTruck.ForceExit();
-        if (Step(c, 77) && myTruck != null)
+        if (Step(c, 75) && myTruck != null)
         {
+            // Tip from the driver's seat (hold G in game), then get out. A full load takes 10 s (3 s with the Auto-Tipper).
             float kg = DepotTruckCargo.LoadKg(myTruck);
             bool local = DepotTruckCargo.IsLocal(myTruck);
-            DepotTruckCargoNet.Instance?.RequestTip(myTruck, myLot);
-            Log("requested own truck tip", kg > 0f, ("kgBefore", kg), ("local", local));
+            bool seated = myTruck.IsLocalPlayerSeated;
+            var tipper = myTruck.GetComponent<TruckTipper>();
+            if (seated && tipper != null) tipper.RequestDump();
+            Log("requested own truck tip", kg > 0f && seated && tipper != null, ("kgBefore", kg), ("local", local));
         }
-        if (Step(c, 80)) Log("tipped my own truck", myTruck != null && DepotTruckCargo.LoadKg(myTruck) < 0.01f);
-        if (Step(c, 81)) Log("leave my garage", DepotRowWorld.UseDoor(myLot, true, pc.gameObject));
+        if (Step(c, 77) && myTruck != null && myTruck.IsLocalPlayerSeated) myTruck.ForceExit();
+        if (Step(c, 89)) Log("tipped my own truck", myTruck != null && DepotTruckCargo.LoadKg(myTruck) < 0.01f);
+        if (Step(c, 90)) Log("leave my garage", DepotRowWorld.UseDoor(myLot, true, pc.gameObject));
         if (Step(c, 180))
         {
             Log("quit", Payroll.TryGetJobOf(me, out _));

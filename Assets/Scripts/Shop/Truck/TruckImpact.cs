@@ -75,8 +75,8 @@ public sealed class TruckImpact : MonoBehaviour
 
     public static Vector3 FlatDirection(TruckControllerV2 a, TruckControllerV2 b)
     {
-        var center = TruckControllerV2.BodyBoxMetres.center;
-        Vector3 d = b.Body.position + b.Body.rotation * center - a.Body.position - a.Body.rotation * center;
+        Vector3 d = b.Body.position + b.Body.rotation * b.ModelBodyBoxMetres.center
+            - a.Body.position - a.Body.rotation * a.ModelBodyBoxMetres.center;
         d.y = 0f;
         return d.sqrMagnitude > .01f ? d.normalized : a.transform.forward;
     }

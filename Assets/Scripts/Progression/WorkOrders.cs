@@ -204,7 +204,7 @@ public static class WorkOrders
             case WorkOrderKind.FindRare: return "Find a Rare or better";
             case WorkOrderKind.CleanSort: return $"Sort {w.target} items in a row without contamination";
             case WorkOrderKind.Curbs: return $"Leave {w.target} curbs spotless";
-            case WorkOrderKind.EbaeFair: return "Sell something on ebae at Fair or better";
+            case WorkOrderKind.EbaeFair: return "Sell something on ebag at Fair or better";
             case WorkOrderKind.NoCrush: return "No CRUSH ALL today";
             case WorkOrderKind.Butler: return "Clear a Butler Drop within 2 h";
             case WorkOrderKind.MagnusChess: return "Beat Magnus, or survive 20 moves";
@@ -231,9 +231,12 @@ public static class WorkOrders
 
     // ------------------------------------------------------------------ facts
 
+    /// <summary>Does this bag count toward a Work Order at all? Never a raccoon crew's: Work Orders are about your own shift.</summary>
+    public static bool CountsBag(BagCollectedFact f) => !f.byRaccoon;
+
     public static void OnBag(BagCollectedFact f, string districtId)
     {
-        if (f.byKevin) return;
+        if (!CountsBag(f)) return;
         foreach (var w in Today)
         {
             if (!w.Open) continue;

@@ -5,7 +5,7 @@ using UnityEngine;
 
 /// <summary>
 /// Focused F4 integration brain: two trapped raccoons (Animal Control and pet), a friend bonking off a latch,
-/// Rabies Tag through real shoves, self-shot, then a flopped friend carried to a shop's emergency Rabies Shot kiosk.
+/// Rabies Tag through real shoves, a host-charged self-shot, then a flopped friend carried and jabbed (no kiosk any more).
 /// Three bots, ~120 seconds.
 /// NightBots covers heist/stowaway/latch/King payout; this covers the previously unexercised paths.
 /// </summary>
@@ -19,7 +19,7 @@ public static class NightExtrasBots
     }
 
     static Vector3 Arena => DepotRowWorld.Active
-        ? new Vector3(DepotRowLayout.LotCenterX(1), 0f, DepotRowLayout.RoadZ + 1f)
+        ? DepotRowLayout.RoadPoint(1) + DepotRowLayout.StreetFacing * Vector3.forward
         : Vector3.zero;
 
     static void Log(string op, Dictionary<string, object> fields = null)
@@ -144,7 +144,7 @@ public static class NightExtrasBots
                 Log("summary", new Dictionary<string, object>
                 {
                     { "traps", NightNet.Instance.Traps.Count }, { "tag", NightShift.RabiesTag },
-                    { "kiosks", UnityEngine.Object.FindObjectsByType<RabiesShotKiosk>(FindObjectsSortMode.None).Length },
+                    { "jabs", UnityEngine.Object.FindObjectsByType<RabiesJab>(FindObjectsSortMode.None).Length },
                 });
         }
 
@@ -279,31 +279,21 @@ public static class NightExtrasBots
             return sorted.Count > index ? sorted[index].ClientId : HandsNet.None;
         }
 
+        /// <summary>Stand by a shop's laptop desk (where the first-aid shelf used to be; any spot would do now).</summary>
         static bool ToKiosk(GameObject player, Vector3 offset, int lot = -1)
         {
             int targetLot = lot >= 0 ? lot : DepotRowWorld.LocalLot;
             var laptop = DepotRowScene.Lot(targetLot)?.laptop;
             if (laptop == null) return false;
-            RabiesShotKiosk.Ensure(laptop);
-            var kiosk = laptop.GetComponentInChildren<RabiesShotKiosk>(true);
-            if (kiosk == null) return false;
-            var at = kiosk.transform.position + Vector3.down * 0.8f + offset + Vector3.up * 0.05f;
+            var at = laptop.transform.position + Vector3.down * 0.8f + offset + Vector3.up * 0.05f;
             var pc = player.GetComponent<PlayerController>();
             if (pc != null) DepotRowWorld.TeleportPlayer(pc, at, Quaternion.identity);
             else HandsBots.Teleport(player, at, Vector3.forward);
-            var zone = kiosk.GetComponent<InteractionZone>();
-            return zone != null && zone.Contains(player.transform.position);
+            return true;
         }
 
-        static bool NearKiosk(GameObject player)
-        {
-            foreach (var kiosk in UnityEngine.Object.FindObjectsByType<RabiesShotKiosk>(FindObjectsSortMode.None))
-            {
-                var zone = kiosk.GetComponent<InteractionZone>();
-                if (zone != null && zone.isActiveAndEnabled && zone.Contains(player.transform.position)) return true;
-            }
-            return false;
-        }
+        /// <summary>Shots are no longer tied to a place.</summary>
+        static bool NearKiosk(GameObject player) => player != null;
 
         static void ProbeKiosk(ulong client, string label)
         {
@@ -314,7 +304,7 @@ public static class NightExtrasBots
                 { "label", label }, { "client", (long)client },
                 { "player", player != null }, { "pos", player != null ? player.transform.position.ToString("F2") : "missing" },
                 { "inside", player != null && NearKiosk(player.gameObject) },
-                { "valid", player != null && RabiesShotKiosk.ContainsAny(player.transform.position) },
+                { "valid", player != null },
                 { "lot", player != null ? DepotRowLayout.InteriorAt(player.transform.position) : -1 },
                 { "infected", NightNet.InfectedAt(client) >= 0 }, { "business", hasBusiness },
                 { "body", HandsNet.Instance != null ? HandsNet.Instance.BodyOf(client).state : (byte)255 },

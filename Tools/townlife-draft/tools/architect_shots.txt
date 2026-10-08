@@ -1,0 +1,3 @@
+# name eyeX eyeY eyeZ lookX lookY lookZ ortho fov
+smoke-close   236 7 182   262 0 214   0 60
+smoke-pond    262 5 222   283 0.5 231 0 60

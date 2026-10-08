@@ -134,9 +134,15 @@ public class RaccoonTemperTests
     [TestCase(5, true)]
     [TestCase(6, false)]
     [TestCase(7, false)]
-    [TestCase(8, false)]
+    // Bits 3..7 now carry the five collection permits; they are no longer reserved.
+    [TestCase(8, true)]
+    [TestCase(16, true)]
+    [TestCase(32, true)]
+    [TestCase(64, true)]
+    [TestCase(128, true)]
+    [TestCase(248, true)]
     [TestCase(255, false)]
-    public void OwnerGearDeclarationRejectsInvalidLevelsAndReservedBits(int gear, bool expected)
+    public void OwnerGearDeclarationAllowsPermitsButRejectsInvalidHeadlightLevels(int gear, bool expected)
     {
         var validate = Runtime("BusinessUpgradeNet").GetMethod("ValidDeclaration", BindingFlags.Static | BindingFlags.NonPublic);
         Assert.AreEqual(expected, (bool)validate.Invoke(null, new object[] { 0UL, (byte)gear }));

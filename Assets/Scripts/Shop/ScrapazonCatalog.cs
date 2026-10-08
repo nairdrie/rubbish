@@ -31,10 +31,11 @@ public static class ShopIds
     // Numbers for every upgrade level live in UpgradeEffects (Docs/Progression.md §6); levels below are the §6 maxima.
     public const string RabiesShot = "rabies_shot";     // consumable: cures rabies (auto-used when infected)
     public const string Repellent = "repellent";        // consumable: one bottle protects you until morning (Critters spend it)
-    public const string TruckCapacity = "truck_capacity"; // upgrade 0-4: 200 / 240 / 280 / 340 kg
+    public const string TruckModel = "truck_model";       // 0 = 120 kg Curb Pup; 1 = 200 kg rear-loader; upgrades transfer
+    public const string TruckCapacity = "truck_capacity"; // upgrade 0-4: +40 / +80 / +120 / +180 kg on either chassis
     public const string TruckTurbo = "truck_turbo";     // upgrade 0-3: absolute engine tiers (L1 = today's turbo)
     public const string AirHorn = "air_horn";           // upgrade 0-2: horn scare radius 12 -> 25 -> 40 m
-    public const string Headlamp = "headlamp";          // upgrade 0-2: light on your head at night; L2 UV treasure glow
+    public const string Headlamp = "headlamp";          // Callings 0-2 (not sold): light on your head at night; L2 UV treasure glow
     public const string ConveyorBelt = "conveyor_belt"; // upgrade 0-3 (Bag Belt, auto-slitter, twin lanes)
     public const string MagnusBrain = "magnus_brain";   // upgrade 0-4: L1 = Magnus's job (rail branch + tongs + brain), MagnusCareer
 
@@ -43,7 +44,7 @@ public static class ShopIds
     public const string TruckArm = "truck_arm";                 // 0-3 side-loader
     public const string TruckHeadlights = "truck_headlights";   // 0-2
     // ---- §6.2 garage
-    public const string AutoTipper = "auto_tipper";             // 0-2
+    public const string AutoTipper = "auto_tipper";             // 0-1 (truck dept: the truck tips itself; old L2 is refunded on load)
     public const string SortingTable = "sorting_table";         // 0-2
     public const string CompactorMk2 = "compactor_mk2";         // 0-3
     public const string RecyclingContracts = "recycling_contracts"; // 0-4
@@ -58,7 +59,8 @@ public static class ShopIds
     public const string MagnusRailMotor = "magnus_rail_motor";  // 0-1 (old saves' L2 clamps to 1)
     public const string MagnusGripper = "magnus_gripper";       // 0-2: lobster pincer, quad-claw (old saves' L3 clamps to 2)
     public const string MagnusVision = "magnus_vision";         // 0-2
-    // ---- §6.4 personal gear
+    // ---- §6.4 personal gear: NOT sold on Scrapazon any more. Printed in SolidWaste 3D (CallingCatalog / CallingIds
+    //      carry the same strings); effects still read these ids through GameSession.GetUpgradeLevel.
     public const string WorkGloves = "work_gloves";             // 0-3
     public const string WorkBoots = "work_boots";               // 0-2
     public const string TreasureWand = "treasure_wand";         // 0-2
@@ -66,13 +68,14 @@ public static class ShopIds
     public const string HardHat = "hard_hat";                   // 0-1
     // ---- F3 bag personalities and tools (Docs/Multiplayer.md §14.3)
     public const string BagCannon = "bag_cannon";               // 0-1 truck: hold R with a bag near your truck to lob it in from ~10 m
-    public const string GrabberPole = "grabber_pole";           // 0-1 gear: V = long reach grab / poke / snatch
+    public const string GrabberPole = "grabber_pole";           // 0-1 Callings "Grabby Hand" (not sold): V = long reach grab / poke / snatch
     // ---- §6.5 business + permits
     public const string PermitMinivanMeadows = "permit_minivan_meadows";       // 0-1
     public const string PermitSnootingtonHills = "permit_snootington_hills";   // 0-1
     public const string PermitBillionaireBluffs = "permit_billionaire_bluffs"; // 0-1
+    public const string PermitCouponCommons = "permit_coupon_commons";       // 0-1
+    public const string PermitStackingtonHeights = "permit_stackington_heights"; // 0-1
     public const string EbaePowerSeller = "ebae_power_seller";  // 0-3
-    public const string HireKevin = "hire_kevin";               // 0-3 (+ daily wage)
     public const string GoldenTruck = "golden_truck";           // 0-1 (needs the Key to the City)
     // ---- §6.6 consumables
     public const string GarbageJuice = "garbage_juice";
@@ -131,7 +134,6 @@ public class ScrapazonItem
     public string[] levelTitles = Array.Empty<string>();
     public string[] levelBlurbs = Array.Empty<string>();
     public string blurb;
-    public float dailyWage;                               // hire_kevin: shown on the card (per-level wage: UpgradeEffects.KevinWage)
     /// <summary>Plain-words effect of each level (the green "what it does" box). Index = level - 1.</summary>
     public string[] levelEffects = Array.Empty<string>();
 
@@ -175,7 +177,7 @@ public static class ScrapazonCatalog
     {
         get
         {
-            if (all == null) { all = Build(); RideShop.AddTo(all); } // F1 riding upgrades (Riding/RideShop.cs)
+            if (all == null) { all = Build(); RideShop.AddTo(all); WorkshopDecorShop.AddTo(all); } // F1 riding upgrades (Riding/RideShop.cs)
             return all;
         }
     }
@@ -200,6 +202,7 @@ public static class ScrapazonCatalog
         ("business", "Business"),
         ("permits", "Permits"),
         ("cosmetics", "Cosmetics"),
+        (WorkshopDecorShop.Tag, "Decor"),   // workshop furniture and gadgets (Workshop/WorkshopDecorShop.cs)
         ("career", "Career"),
         ("soon", "Coming Soon™"),
     };
@@ -327,14 +330,28 @@ public static class ScrapazonCatalog
             }),
 
         // =============================================================== TRUCK
+        Up(ShopIds.TruckModel, "truck", null, "Secondhand Sanitation Motors",
+            new[] { TruckProgression.RearLoaderPrice }, new[] { 1 },
+            new[] { "Rear-loader Garbage Truck (Curb Pup Trade-In)" },
+            new[] { "Your first proper big rig. Longer routes, bigger piles. The mirrors are finally proportional." },
+            new[] { "Replaces your Curb Pup: 200 kg stock payload (+80 kg). All hopper upgrades, equipment and cargo carry over. Trade-in included; no extra fee." },
+            1999f, 4.7f, 284, "Your next big truck",
+            new[]
+            {
+                R(5, "the little truck grew up. i cried. then i filled it with garbage", "Mabel"),
+                R(4, "kept my sideboards and my terrible paint job. no hidden fees", "Dwayne"),
+                R(5, "we look like a real company now. we are not a real company", "Pat"),
+            }),
         Up(ShopIds.TruckCapacity, "truck", null, "Big Bin Energy LLC",
-            new[] { 150f, 450f, 1200f, 3000f }, new[] { 1, 2, 3, 5 },
+            new[] { 100f, 450f, 1200f, 3000f }, new[] { 1, 2, 3, 5 },
             new[] { "Hopper Extension Kit (+40 kg, Duct Tape Included)", "Hopper Extension Kit (+40 kg, Duct Tape Included)",
                     "Hopper Extension Kit (+40 kg, Duct Tape Included)", "Hopper Mk II: Compaction Ram" },
             new[] { "Duct-taped sideboards. Holds 40 more kg of regret.", "Duct-taped sideboards. Holds 40 more kg of regret.",
                     "Duct-taped sideboards. Holds 40 more kg of regret.", "Squishes bags as they go in. Also squishes gloves. Keep hands out." },
-            new[] { "Hopper holds 200 kg.", "Hopper holds 240 kg.", "Hopper holds 280 kg.",
-                    "Hopper holds 340 kg. A ram plate thumps every bag that goes in." },
+            new[] { "+40 kg payload. Fits either truck and transfers free when you trade up.",
+                    "+80 kg total payload over your truck's stock hopper. Transfers free.",
+                    "+120 kg total payload over stock. Transfers free.",
+                    "+180 kg total payload over stock. A ram plate thumps every bag that goes in. Transfers free." },
             1999f, 4.6f, 3310, "#1 Best Seller in Truck Stuff",
             new[]
             {
@@ -390,6 +407,20 @@ public static class ScrapazonCatalog
                 R(1, "it grabbed me", "Raccoon (verified purchase)"),
             },
             new[] { P("truck_handling:1"), P("truck_arm:1"), P("truck_arm:2", "truck_capacity:4") }),
+        // Tipping lives on the truck now (TruckTipper): one level, the fast dump. Its old level 2 ("Direct Feed") is gone;
+        // saves that owned it keep level 1 and are refunded on load (UpgradeMigrations.MigrateAutoTipper).
+        Up(ShopIds.AutoTipper, "truck", null, "Leverage Labs",
+            new[] { 600f }, new[] { 3 },
+            new[] { "Auto-Tipper (Hydraulic Hopper Ram, Goes FWOOMP)" },
+            new[] { "The whole load, out the back, in three seconds. Stand clear. Stand very clear." },
+            new[] { "TIP IT (hold G in the driver's seat) empties the hopper in 3 s instead of 10 s. Works anywhere you can tip." },
+            1499f, 4.2f, 402, null,
+            new[]
+            {
+                R(5, "held G. blinked. the truck was empty and my eyebrows were gone. 5 stars", "Ottilie"),
+                R(3, "it went FWOOMP at a red light. that was me. i held the button. still its fault", "Gerald"),
+                R(5, "ten seconds was too long to think about my choices. three is perfect", "Priscilla"),
+            }),
         Up(ShopIds.AirHorn, "truck", new[] { "critters" }, "HONKCO",
             new[] { 120f, 1200f }, new[] { 1, 6 },
             new[] { "Industrial Air Horn (Scares Raccoons, Neighbors, God)", "Foghorn of the Gods" },
@@ -419,41 +450,30 @@ public static class ScrapazonCatalog
             }),
 
         // =============================================================== GARAGE
-        Up(ShopIds.AutoTipper, "garage", null, "Leverage Labs",
-            new[] { 600f, 2500f }, new[] { 3, 6 },
-            new[] { "Auto-Tipper (Lever Pulls Itself, Creepily)", "Tip-O-Matic Direct Feed" },
-            new[] { "It knows when you're home.", "The floor has never been cleaner. The floor is sad." },
-            new[] { "TIP IT pulls itself when you park in the bay. Unloading takes 3 s instead of 10.",
-                    "Tipped bags go straight onto the Bag Belt (overflow goes to the pile)." },
-            1499f, 4.2f, 402, null,
-            new[]
-            {
-                R(5, "i parked and the lever pulled itself. i screamed. 5 stars", "Ottilie"),
-                R(3, "it pulls itself at 3am sometimes. there is no truck", "Gerald"),
-                R(5, "my arm has never been more rested", "Priscilla"),
-            },
-            new[] { P(), P("conveyor_belt:1") }),
+        // Conveyor (Docs/Progression.md §6.2, ConveyorRules): it carries bags and never opens one. Prices and ranks were
+        // rebalanced with the rework (was $1,500 / $9,000 / $29,000 at ranks 4 / 6 / 9).
         Up(ShopIds.ConveyorBelt, "garage", null, "Beltway Industries",
-            new[] { 1500f, 9000f, 29000f }, new[] { 4, 6, 9 },
-            new[] { "Sorting Conveyor Belt (Automatic*, Loud)", "Item Belt Add-On", "Twin Turbo Belt (Loud)" },
-            new[] { "Finally back in stock (1997-2026).", "The trash comes to you. Like a sushi bar. Of trash.", "LOUDER." },
-            new[] { "Bag Belt: a bucket elevator carries pile bags to a tray by the table every 2 s. Tray bags rip open in 0.6 s. Feeds Magnus.",
-                    "Auto-slitter: the tray rips its bag onto the table for you. Sorting takes ×0.85 the time.",
-                    "Two lanes, double the feed. Sorting takes ×0.80 the time and Magnus works ×1.3 faster." },
+            new[] { 900f, 1200f, 14000f }, new[] { 3, 5, 8 },
+            new[] { "Bag Belt (Automatic*, Loud)", "Heavy-Duty Belt Motor", "Junk Diverter (Shake 'n' Sift Grate)" },
+            new[] { "Finally back in stock (1997-2026).", "It used to say 'no' to the big ones. Now it says 'hnnngh'.", "Shakes every bag like it owes it money." },
+            new[] { "Bag Belt: carries normal bags from the bay pile to a queue rack beside the sorting table, one every 2 s. Grab one from the rack and rip it open. HEAVY bags are refused and stay on the pile. It never opens a bag.",
+                    "Heavy-Duty Motor: the belt carries HEAVY bags to the queue too.",
+                    "Junk Diverter: on the way in, each bag is shaken over a grate. Small junk (4 kg or less) drops straight into the compactor and is paid like any junk, so bags arrive with fewer items to sort. Never drops treasure, hazards or recyclables." },
             12000f, 4.9f, 12, "Finally back in stock",
             new[]
             {
                 R(1, "been waiting since 1997. it arrived. i don't know what to do with my life now", "Walt"),
                 R(5, "the anticipation was the product. the product is also good", "Zen"),
-                R(5, "a sushi bar of trash. i cried a little", "Haruki"),
+                R(5, "i no longer walk to the pile. i have forgotten where the pile is", "Haruki"),
+                R(4, "the grate shook a banana peel out of my bag and looked proud about it", "Odette"),
             },
             new[] { P(), P("conveyor_belt:1"), P("conveyor_belt:2") }),
         Up(ShopIds.SortingTable, "garage", null, "Big Table Energy",
             new[] { 700f, 6000f }, new[] { 3, 6 },
-            new[] { "XL Sorting Table (Fits 2 Bags + a Sandwich)", "Double-Wide Table w/ Cupholders & Magnet Strip" },
-            new[] { "Room for two bags and your lunch. Keep them apart.", "Metal just... leaves." },
+            new[] { "XL Sorting Table (Fits 2 Bags + a Sandwich)", "Double-Wide Table: Second Sorting Spot, Cupholders & Magnet Strip" },
+            new[] { "Room for two bags and your lunch. Keep them apart.", "Two can sort. Metal just... leaves." },
             new[] { "Table holds 60 items instead of 40. Sorting takes ×0.95 the time.",
-                    "Magnet strip: slides a Metal item into the METAL bin every 1.5 s, all by itself." },
+                    "A second sorting spot at the left end of the table: sort beside Magnus, or two of you at once. Plus the magnet strip: slides a Metal item into the METAL bin every 1.5 s, all by itself." },
             2499f, 4.5f, 1876, null,
             new[]
             {
@@ -565,16 +585,17 @@ public static class ScrapazonCatalog
             }),
 
         // =============================================================== MAGNUS (a career path: MagnusCareer, Docs/Progression.md §6.3)
-        // Step 1 Job (brain L1) -> 2 Rail Motor -> 3 Lobster Pincer (gripper L1) -> 4 Googly Eyes (vision L1) -> 5 Treasure
+        // Step 1 Job (brain L1: rips + sorts bags within reach) -> 2 Rail Motor -> 3 Lobster Pincer (gripper L1: 25 kg items
+        // + heavy bags) -> 4 Googly Eyes (vision L1) -> 5 Treasure
         // Sense (brain L2) -> 6 Monocle (vision L2) -> 7 Hazmat (brain L3) -> 8 Quad-Claw (gripper L2) -> 9 Grandmaster (brain L4).
         // Every effect line says exactly what that step ADDS; prices from the balance sim (run.py, Magnus career).
         Up(ShopIds.MagnusBrain, "magnus", null, "Big Brain Robotics",
             new[] { 500f, 12000f, 40000f, 60000f }, new[] { 2, 7, 9, 11 },
-            new[] { "Magnus Gets a Job (Rail Extension + Servo Gripper + Brain Module 1)", "Brain Module 2: Treasure Sense",
+            new[] { "Magnus Gets a Job (Rail to the Table + Kitchen Tongs + Brain Module 1)", "Brain Module 2: Treasure Sense",
                     "Brain Module 3: Hazmat Certified", "Grandmaster Module (Also Plays Chess Now. Better.)" },
             new[] { "He's always wanted a commute. And a purpose. Mostly the commute.", "He can smell bling.",
                     "Now legally allowed to touch batteries.", "The final form. He's been waiting." },
-            new[] { "His first job: a rail branch to your sort table, taped kitchen tongs (items up to 5 kg) and Brain Module 1. He commutes over and sorts the recyclables + junk on the table: 8 items/min, 85% accurate, 6 AM-10 PM. You rip the bags; treasure and hazards go to LEFTOVERS.",
+            new[] { "His first job: a rail from the chess board to your sort table, taped kitchen tongs (items up to 5 kg) and Brain Module 1. He commutes over, picks up the bags within his reach (on or within 2 m of the table, and the Bag Belt's queue), rips them open and sorts the recyclables + junk: 8 items/min, 85% accurate, 6 AM-10 PM. No conveyor needed: carry bags over and he does the rest. He can't lift HEAVY bags yet and never takes from the dump pile; treasure and hazards go to LEFTOVERS.",
                     "Adds treasure: valuables go in the KEEP crate instead of LEFTOVERS. Faster and sharper: 12 items/min, 92% accurate.",
                     "Adds hazards: into the barrel instead of LEFTOVERS. 18 items/min, 96% accurate.",
                     "Adds the night shift: works 24 hours a day at 30 items/min, 99.5% accurate. And MAGNUS PRIME at chess." },
@@ -604,13 +625,13 @@ public static class ScrapazonCatalog
             new[] { 1200f, 16000f }, new[] { 4, 10 },
             new[] { "Heavy-Duty Lobster Pincer", "Quad-Claw (Like the Arcade, But It Actually Grabs)" },
             new[] { "Pinch. Pinch. PINCH.", "Finally, a claw machine that works." },
-            new[] { "Adds muscle: lifts items up to 25 kg (tongs: 5 kg) and rips bags open himself. He yoinks the next bag off the Bag Belt tray or the tipping pile and SLAMS it on the table. You never have to feed him again.",
+            new[] { "Adds muscle: lifts items up to 25 kg (tongs: 5 kg) and handles HEAVY bags: he yoinks them from the queue or from beside the table and SLAMS them open like any other bag.",
                     "Adds speed: sorts ×1.4 faster. Grabs like he means it." },
             3999f, 4.4f, 131, null,
             new[]
             {
                 R(5, "lobster claw goes snip snip. so does magnus, out loud", "Pierre"),
-                R(5, "he yoinked a bag off the pile from across the garage. i felt that", "Rhoda"),
+                R(5, "he yoinked a 24 kg bag off the rack like it was a grape. i felt that", "Rhoda"),
                 R(5, "finally won a stuffed animal. it was in the trash", "Jojo"),
             },
             new[] { P("magnus_brain:1"), P() }),
@@ -618,8 +639,8 @@ public static class ScrapazonCatalog
             new[] { 4000f, 18000f }, new[] { 5, 8 },
             new[] { "X-Ray Googly Eyes", "Appraisal Monocle HUD" },
             new[] { "He sees everything. He judges most of it.", "Classy. Smug. Correct." },
-            new[] { "Adds treasure flags: 60% of treasure bags on the tipping floor get a gold glint and a '!'. Flagged bags come off the pile first (for you, the belt and Magnus).",
-                    "Every treasure bag flagged, glinting in its rarity color. Your ebae sales earn +3%." },
+            new[] { "Adds treasure flags: 60% of treasure bags in the garage get a gold glint and a '!'. The Bag Belt takes flagged bags off the pile first, and Magnus rips flagged bags first.",
+                    "Every treasure bag flagged, glinting in its rarity color. Your ebag sales earn +3%." },
             6999f, 4.9f, 54, null,
             new[]
             {
@@ -629,86 +650,11 @@ public static class ScrapazonCatalog
             new[] { P("magnus_brain:1"), P("magnus_brain:2") }),
 
         // =============================================================== GEAR
-        Up(ShopIds.WorkGloves, "gear", null, "Grippo Workwear",
-            new[] { 150f, 1200f, 4000f }, new[] { 1, 5, 8 },
-            new[] { "Grippy Work Gloves", "Double-Fisted Gloves (Carry 2 Bags!)", "Gorilla Grip Gauntlets" },
-            new[] { "Grip strength of a raccoon. Smell of a raccoon.", "Two bags. One you. Zero regrets.", "Ooh ooh. Ah ah. (Grip.)" },
-            new[] { "Carrying slows you half as much. Throws reach 15.5 m/s.",
-                    "Back Sack: press E on a second bag to stash the first on your back. One E at the hopper tosses both.",
-                    "No carry slowdown at all. The Back Sack holds 2 (3 bags at once)." },
-            249f, 4.5f, 5120, "#1 Best Seller in Hands",
-            new[]
-            {
-                R(5, "my hands smell like raccoon. so does everything i love", "Bridget"),
-                R(5, "carried 3 bags and a raccoon. one of those was by accident", "Mateo"),
-                R(4, "gorilla grip is real. i can't open jars anymore, they explode", "Sven"),
-            }),
-        Up(ShopIds.WorkBoots, "gear", null, "Squeakers Footwear",
-            new[] { 200f, 1500f }, new[] { 2, 6 },
-            new[] { "Squeaky Sneakers of Speed", "Spring-Loaded Stompers" },
-            new[] { "Squeak squeak. Faster.", "Stomp. Boing. Critters: gone." },
-            new[] { "Walk and sprint 10% faster.",
-                    "Walk and sprint 20% faster. Ctrl stomps scare critters within 4 m (6 s cooldown)." },
-            399f, 4.3f, 1704, null,
-            new[]
-            {
-                R(5, "everyone knows when i'm coming. squeak squeak", "Ada"),
-                R(4, "stomped once and a raccoon filed a noise complaint", "Kwame"),
-                R(3, "boing'd into a hedge. still faster", "Clementine"),
-            }),
-        Up(ShopIds.Headlamp, "gear", null, "Brightish Ideas",
-            new[] { 80f, 800f }, new[] { 1, 6 },
-            new[] { "Night Shift Headlamp (Auto-On at Dark, Moths Included)", "UV Treasure Headlamp" },
-            new[] { "Moths included. Moths not optional.", "Some bags glow. You'll want those bags." },
-            new[] { "A light on your head that clicks on by itself when it gets dark. Moths included.",
-                    "At night, 35% of curb bags that hold a valuable glow faintly purple within 15 m." },
-            149.99f, 4.1f, 598, null,
-            new[]
-            {
-                R(4, "i can see at night now. i wish i couldn't", "Priya"),
-                R(3, "moths follow me to work. they have their own lanyards", "Stan"),
-                R(5, "blinded a raccoon. it forgave me", "June"),
-                R(5, "a bag glowed purple. it was a tiara. i'm wearing it now", "Desiree"),
-            }),
-        Up(ShopIds.TreasureWand, "gear", null, "Beep Beep Bling Co.",
-            new[] { 1500f, 12000f }, new[] { 4, 7 },
-            new[] { "Metal Detector Wand (Beeps at Bling)", "Quantum Bling Wand" },
-            new[] { "Beep = bling. No beep = probably still trash.", "It beeps in several dimensions." },
-            new[] { "Picking up a bag beeps if it holds a valuable: 45% detection, never a false alarm.",
-                    "80% detection, and it beeps when you walk within 2 m of such a curb bag." },
-            2999f, 4.6f, 922, null,
-            new[]
-            {
-                R(5, "beeped at a bag. inside: a gold watch and half a burrito. took both", "Ronan"),
-                R(4, "beeps at my fillings. i've accepted it", "Margit"),
-                R(5, "quantum version beeps before i pick the bag up. or after. it's quantum", "Dr. Fizz"),
-            }),
-        Up(ShopIds.RabiesVaccine, "pharmacy", new[] { "gear", "critters" }, "Dr. Needleman's Discount Pharmacy",
-            new[] { 500f, 2000f }, new[] { 4, 7 },
-            new[] { "Pre-Exposure Rabies Vaccine", "Rabies Booster (Immune, Smug)" },
-            new[] { "Get ahead of the foam.", "Raccoons bite you. Nothing happens. You smirk." },
-            new[] { "A rabid bite infects you 25% of the time instead of 50%.",
-                    "Immune to rabies. Bites still knock you over (sorry)." },
-            799f, 4.7f, 1544, null,
-            new[]
-            {
-                R(5, "got bit 4 times. foamed 0 times. smug 100%", "Imogen"),
-                R(4, "the needle was normal sized. i was disappointed", "Pam"),
-                R(5, "a raccoon bit me and i bit it back. we're even", "Thaddeus"),
-            }),
-        Up(ShopIds.HardHat, "gear", new[] { "critters" }, "Bonk Safety Supply",
-            new[] { 300f }, new[] { 3 },
-            new[] { "Hard Hat (Bonk-Rated)" },
-            new[] { "Rated for 1,000 bonks. Tested on Kevin." },
-            new[] { "Critter bites and bonks knock you back half as far, and you keep your bag 50% of the time." },
-            599f, 4.4f, 1033, null,
-            new[]
-            {
-                R(5, "got bonked by a goblin. kept my bag. goblin was furious", "Marcus"),
-                R(4, "tested on kevin. kevin seems fine. kevin is always like that", "Shelby"),
-            }),
+        // Personal gear (work gloves, boots, headlamp, treasure wand, rabies vaccine, hard hat, grabber pole) is no longer
+        // sold here: it is printed from kept parts in SolidWaste 3D's blueprint tree (Workshop/CallingCatalog.cs).
+        // What stays in this department: consumables, gnomes, the trap and RideShop's grip gloves.
 
-        // F3 (Docs/Multiplayer.md §14.3): the bag cannon (truck) and the grabber pole (gear).
+        // F3 (Docs/Multiplayer.md §14.3): the bag cannon (truck).
         Up(ShopIds.BagCannon, "truck", null, "Blammo Pneumatics",
             new[] { 1200f }, new[] { 2 },
             new[] { "Bag Cannon™ (Truck-Mounted, Mostly Safe)" },
@@ -721,25 +667,13 @@ public static class ScrapazonCatalog
                 R(4, "misfired once and i got bonked by my own garbage. 10/10 would bonk again", "Fern"),
                 R(2, "the instructions just say 'point away from face'", "Lloyd"),
             }),
-        Up(ShopIds.GrabberPole, "gear", null, "Reachy McReachface Tools",
-            new[] { 350f }, new[] { 1 },
-            new[] { "Grabber Pole (Extendo-Claw, 3 m)" },
-            new[] { "Grab bags over fences. Poke your friends. Snatch their bags. Lose those friends." },
-            new[] { "Press V: grab a bag up to 4.5 m away (over fences too), poke a friend (tiny shove) or snatch the bag they're holding (a grab attempt: it can start a tug)." },
-            599f, 4.4f, 2211, "#1 Best Seller in Poking",
-            new[]
-            {
-                R(5, "grabbed a bag from the other side of a hedge without leaving my truck. lazy king", "Otis"),
-                R(5, "poked my coworker 400 times. he quit. worth it", "Gwen"),
-                R(3, "tried to grab a sandwich with it. the sandwich won", "Rudy"),
-            }),
 
         // =============================================================== BUSINESS + PERMITS
         Up(ShopIds.PermitMinivanMeadows, "permits", new[] { "business" }, "Minivan Meadows HOA",
             new[] { 600f }, new[] { 4 },
             new[] { "Minivan Meadows Collection Permit (Laminated, Slightly Sticky)" },
             new[] { "An HOA community. Pop. 64 minivans." },
-            new[] { "Opens the Meadows Gate east of the depot. $15 per bag, Rep ×1.5. Trust starts at 40%." },
+            new[] { "Opens Minivan Meadows east of Mildly Pleasant Acres. $15 per bag, Rep ×1.5. Trust starts at 40%." },
             0f, 3.8f, 64, "New district",
             new[]
             {
@@ -747,17 +681,33 @@ public static class ScrapazonCatalog
                 R(5, "they pay $15 a bag. FIFTEEN. for TRASH", "Every Garbage Person"),
                 R(4, "the minivans watch you. all 64 of them", "Brent"),
             }),
+        Up(ShopIds.PermitCouponCommons, "permits", new[] { "business" }, "Coupon Commons Merchants' Association",
+            new[] { 1800f }, new[] { 5 },
+            new[] { "Coupon Commons Commercial Collection Permit" },
+            new[] { "Loading alleys, flattened boxes and everyone's closing-time rubbish." },
+            new[] { "After Meadows: cross the river to Coupon Commons. Cardboard-heavy commercial collections pay $25 per bag + $5 on-time tip, Rep ×1.75." },
+            0f, 4.1f, 18, "New district",
+            new[] { R(5, "the boxes were already flattened. employee of the month", "Pat (Loading Bay)") },
+            new[] { P(ShopIds.PermitMinivanMeadows + ":1") }),
         Up(ShopIds.PermitSnootingtonHills, "permits", new[] { "business" }, "Snootington Estates Trust",
             new[] { 3500f }, new[] { 7 },
             new[] { "Snootington Hills Collection Permit (Embossed, Smells Like Old Money)" },
             new[] { "Hedges. Monocles. Very nice trash." },
-            new[] { "Opens the Snootington Gate north of Birch St. $40 per bag + a $15 tip, Rep ×2. Trust starts at 40%." },
+            new[] { "After Coupon Commons: opens the scenic northern roads into Snootington Hills. $40 per bag + a $15 tip, Rep ×2. Trust starts at 40%." },
             0f, 4.2f, 14, "New district",
             new[]
             {
                 R(5, "the permit is embossed. i keep stroking it", "Reginald III"),
                 R(4, "found a polo cup in their trash. the horse wants it back", "Polo Horse"),
-            }),
+            }, new[] { P(ShopIds.PermitCouponCommons + ":1") }),
+        Up(ShopIds.PermitStackingtonHeights, "permits", new[] { "business" }, "Stackington Heights Condo Board",
+            new[] { 7000f }, new[] { 8 },
+            new[] { "Stackington Heights High-Rise Collection Permit" },
+            new[] { "More floors. More doorbells. One very busy loading bay." },
+            new[] { "After Snootington Hills: opens the riverside condo district. Glass- and metal-heavy collections pay $55 per bag + $20 on-time tip, Rep ×2.4." },
+            0f, 4.3f, 16, "New district",
+            new[] { R(4, "please use the service entrance. all forty of us signed this review", "The Condo Board") },
+            new[] { P(ShopIds.PermitSnootingtonHills + ":1") }),
         Up(ShopIds.PermitBillionaireBluffs, "permits", new[] { "business" }, "Bluffs Butler Bureau",
             new[] { 12000f }, new[] { 10 },
             new[] { "Billionaire Bluffs Collection Permit (Signed by a Butler)" },
@@ -768,14 +718,14 @@ public static class ScrapazonCatalog
             {
                 R(5, "a butler handed me a bag on a silver platter. inside: a yacht key", "Jeeves"),
                 R(5, "they throw out more gold than i've ever seen", "Gold Toilet Seat (verified)"),
-            }),
-        Up(ShopIds.EbaePowerSeller, "business", null, "ebae Seller Services",
+            }, new[] { P(ShopIds.PermitStackingtonHeights + ":1") }),
+        Up(ShopIds.EbaePowerSeller, "business", null, "ebag Seller Services",
             new[] { 1200f, 9000f, 29000f }, new[] { 4, 7, 10 },
-            new[] { "ebae Power Seller Badge", "ebae Bulk Lister Pro", "ebae Diamond Seller (Auto-Accept)" },
+            new[] { "ebag Power Seller Badge", "ebag Bulk Lister Pro", "ebag Diamond Seller (Auto-Accept)" },
             new[] { "A shiny badge. Buyers trust shiny badges.", "List faster. Sell faster. Sleep less.", "It sells your stuff while you sleep. Mostly fairly." },
-            new[] { "ebae's fee drops from 8% to 5%, and one more buyer shows up for every listing.",
-                    "ebae's fee drops to 3%. Offers arrive twice as fast.",
-                    "ebae's fee drops to 1%. Any offer at 97% of the appraisal or more is accepted automatically." },
+            new[] { "ebag's fee drops from 8% to 5%, and one more buyer shows up for every listing.",
+                    "ebag's fee drops to 3%. Offers arrive twice as fast.",
+                    "ebag's fee drops to 1%. Any offer at 97% of the appraisal or more is accepted automatically." },
             0f, 4.3f, 7777, null,
             new[]
             {
@@ -783,21 +733,6 @@ public static class ScrapazonCatalog
                 R(4, "auto-accepted an offer while i was in the shower. $14k. i'm still in the shower", "Gordo"),
                 R(3, "the badge is a sticker. a very persuasive sticker", "Mildred"),
             }),
-        Up(ShopIds.HireKevin, "business", null, "Kevin's Crew (Est. Yesterday)",
-            new[] { 600f, 7000f, 23000f }, new[] { 4, 7, 10 },
-            new[] { "Hire Kevin (Part-Time, Full-Chaos)", "Kevin + Other Kevin", "The Kevins (Unionized)" },
-            new[] { "He lost a shoe. On day one.", "There are two of them now. They are not related.", "They have demands. They also have trucks." },
-            new[] { "Kevin collects 60% of Mildly Pleasant at 8 AM, 2 PM and 8 PM. You get 70% of the fee and half the Rep. Wage $40/day.",
-                    "Kevins cover all of Mildly Pleasant + 50% of Minivan Meadows. Wage $250/day.",
-                    "The Kevins cover Mildly Pleasant and Meadows + 40% of Snootington Hills. Wage $900/day." },
-            0f, 3.7f, 1, null,
-            new[]
-            {
-                R(4, "kevin collected 14 bags. lost 1. found a shoe. not his", "Kevin's Mom"),
-                R(5, "other kevin is better than kevin. don't tell kevin", "Kevin"),
-                R(3, "the kevins unionized. their demand is pizza. reasonable", "HR (a raccoon)"),
-            },
-            new[] { P(), P("hire_kevin:1"), P("hire_kevin:2") }),
         Up(ShopIds.GoldenTruck, "business", new[] { "truck" }, "Rubbish Co. Prestige Motors",
             new[] { 140000f }, new[] { 12 },
             new[] { "The Golden Garbage Truck (24K, Street Legal-ish)" },

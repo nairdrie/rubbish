@@ -267,6 +267,7 @@ public class LooseItem : Carryable
         Color cat = ItemCategoryInfo.Color(def.category);
         Fx.Burst(p, cat, 6, 1.6f);
 
+        if (DiskItem.Is(Item)) { DiskItem.OnRevealed(this); return; } // its own popup (with a KEEP button), not the treasure card
         if (def.category != ItemCategory.Valuable) return;
         Color rc = RarityInfo.Color(def.rarity);
         Fx.Sparkle(transform, rc, 3600f); // lasts as long as the item does

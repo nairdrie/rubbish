@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "rows": [
+    {"id":"acres-elm-west-south","districtId":"mildly_pleasant","roadId":"elm","fromNode":"home-2","toNode":"maple-1","side":-1,"firstInset":25.5,"lastInset":25.75,"homes":["birch-18","birch-19","birch-27"]},
+    {"id":"acres-elm-west-north","districtId":"mildly_pleasant","roadId":"elm","fromNode":"maple-1","toNode":"elm-2","side":-1,"firstInset":22.25,"lastInset":22,"homes":["birch-28","birch-36","birch-39"]},
+    {"id":"acres-home-south-west","districtId":"mildly_pleasant","roadId":"home","fromNode":"home-2","toNode":"home-3","side":1,"firstInset":22,"lastInset":22,"homes":["birch-8","birch-9","depot-9","elm-13"]},
+    {"id":"acres-home-south-east","districtId":"mildly_pleasant","roadId":"home","fromNode":"home-3","toNode":"home-4","side":1,"firstInset":22,"lastInset":22,"homes":["elm-22","elm-23","elm-3","elm-33"]},
+    {"id":"acres-home-north-west","districtId":"mildly_pleasant","roadId":"home","fromNode":"home-2","toNode":"home-3","side":-1,"firstInset":38,"lastInset":30,"homes":["maple-46","birch-46","maple-49"]},
+    {"id":"acres-home-north-east","districtId":"mildly_pleasant","roadId":"home","fromNode":"home-3","toNode":"home-4","side":-1,"firstInset":29,"lastInset":25.5,"homes":["maple-56","maple-59","birch-47"]},
+    {"id":"acres-maple-south-west","districtId":"mildly_pleasant","roadId":"maple","fromNode":"maple-1","toNode":"maple-2","side":1,"firstInset":30,"lastInset":26,"homes":["elm-43","maple-18","maple-19","oak-23"]},
+    {"id":"acres-maple-south-east","districtId":"mildly_pleasant","roadId":"maple","fromNode":"maple-2","toNode":"maple-3","side":1,"firstInset":29,"lastInset":25.5,"homes":["maple-29","maple-38","maple-39"]},
+    {"id":"acres-maple-north-east","districtId":"mildly_pleasant","roadId":"maple","fromNode":"maple-2","toNode":"maple-3","side":-1,"firstInset":29,"lastInset":25.5,"homes":["birch-56","birch-57","maple-26"]},
+    {"id":"acres-birch-south-east","districtId":"mildly_pleasant","roadId":"birch","fromNode":"park-2","toNode":"birch-2","side":1,"firstInset":29,"lastInset":10.433,"homes":["maple-8","maple-9","oak-12"]},
+    {"id":"acres-oak-east-south","districtId":"mildly_pleasant","roadId":"oak","fromNode":"home-4","toNode":"maple-3","side":1,"firstInset":41.5,"lastInset":35.75,"homes":["oak-2","oak-22"]},
+    {"id":"acres-oak-east-north","districtId":"mildly_pleasant","roadId":"oak","fromNode":"maple-3","toNode":"oak-2","side":1,"firstInset":29.25,"lastInset":30,"homes":["oak-32","oak-42"]}
+  ],
+  "placements": [
+    {"stopId":"mm-carpool-10","districtId":"minivan_meadows","roadId":"carpool-court","u":0.125,"side":1},
+    {"stopId":"mm-carpool-22","districtId":"minivan_meadows","roadId":"carpool-court","u":0.275,"side":1},
+    {"stopId":"mm-carpool-42","districtId":"minivan_meadows","roadId":"carpool-court","u":0.425,"side":1},
+    {"stopId":"mm-carpool-54","districtId":"minivan_meadows","roadId":"carpool-court","u":0.575,"side":1},
+    {"stopId":"mm-glutenfree-102","districtId":"minivan_meadows","roadId":"carpool-court","u":0.725,"side":1},
+    {"stopId":"mm-glutenfree-103","districtId":"minivan_meadows","roadId":"carpool-court","u":0.875,"side":1},
+    {"stopId":"mm-juicebox-11","districtId":"minivan_meadows","roadId":"juicebox-court","u":0.18,"side":1},
+    {"stopId":"mm-juicebox-23","districtId":"minivan_meadows","roadId":"juicebox-court","u":0.275,"side":1},
+    {"stopId":"mm-juicebox-43","districtId":"minivan_meadows","roadId":"juicebox-court","u":0.425,"side":1},
+    {"stopId":"mm-juicebox-55","districtId":"minivan_meadows","roadId":"juicebox-court","u":0.575,"side":1},
+    {"stopId":"mm-playdate-102","districtId":"minivan_meadows","roadId":"juicebox-court","u":0.725,"side":1},
+    {"stopId":"mm-playdate-103","districtId":"minivan_meadows","roadId":"juicebox-court","u":0.875,"side":1},
+    {"stopId":"mm-juicebox-210","districtId":"minivan_meadows","roadId":"meadow-loop","u":0.36336502,"side":1},
+    {"stopId":"mm-juicebox-224","districtId":"minivan_meadows","roadId":"meadow-loop","u":0.43365530,"side":1},
+    {"stopId":"mm-juicebox-240","districtId":"minivan_meadows","roadId":"meadow-loop","u":0.26865184,"side":1},
+    {"stopId":"mm-juicebox-254","districtId":"minivan_meadows","roadId":"meadow-loop","u":0.31154083,"side":1},
+    {"stopId":"mm-soccermom-21","districtId":"minivan_meadows","roadId":"meadow-loop","u":0.04606725,"side":1},
+    {"stopId":"mm-soccermom-33","districtId":"minivan_meadows","roadId":"meadow-loop","u":0.1015378,"side":1},
+    {"stopId":"mm-soccermom-43","districtId":"minivan_meadows","roadId":"meadow-loop","u":0.14058517,"side":1},
+    {"stopId":"mm-trampoline-20","districtId":"minivan_meadows","roadId":"meadow-loop","u":0.17891154,"side":1},
+    {"stopId":"mm-trampoline-32","districtId":"minivan_meadows","roadId":"meadow-loop","u":0.20142882,"side":1},
+    {"stopId":"mm-trampoline-42","districtId":"minivan_meadows","roadId":"meadow-loop","u":0.23532436,"side":1}
+  ]
+}

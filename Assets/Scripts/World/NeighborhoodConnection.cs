@@ -33,7 +33,7 @@ public sealed partial class NeighborhoodConnection : MonoBehaviour
 
     public static NeighborhoodConnection Ensure(Transform town)
     {
-        if (town == null) return null;
+        if (town == null || CoastalCityLayout.IsCoastal(town)) return null;
         var existing = town.GetComponentInChildren<NeighborhoodConnection>(true);
         if (existing != null) return existing;
         var ground = town.Find("Ground");

@@ -56,7 +56,8 @@ public partial class HandsNet
             a.Body == null || b.Body == null) return true;
         // Owner reports contain IDs ONLY: no client chooses force, speed, position or direction.
         // Wait briefly for the host's interpolated guest truck to reach contact; never expand the hitbox to hide lag.
-        if (!VehicleCrashRules.TrucksNear(a.Body.position, a.Body.rotation, b.Body.position, b.Body.rotation, .8f)) return false;
+        if (!VehicleCrashRules.TrucksNearBounds(a.Body.position, a.Body.rotation, a.ModelBodyBoxMetres,
+            b.Body.position, b.Body.rotation, b.ModelBodyBoxMetres, .8f)) return false;
         Vector3 direction = TruckImpact.FlatDirection(a, b);
         float closing = TruckImpact.Ensure(a).ApproachSpeed(direction) + TruckImpact.Ensure(b).ApproachSpeed(-direction);
         if (!VehicleCrashRules.Finite(closing) || closing < VehicleCrashRules.MinimumClosingSpeed || closing > VehicleCrashRules.MaximumClosingSpeed) return false;

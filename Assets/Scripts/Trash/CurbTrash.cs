@@ -300,7 +300,7 @@ public static class CurbTrash
         catch (System.Exception e) { Debug.LogException(e); return 0f; }
     }
 
-    /// <summary>Curb bags that went into the truck (by hand or the side-loader arm, not Kevin) since the last midnight.
+    /// <summary>Curb bags that went into the truck (by hand or the side-loader arm, not by a raccoon crew) since the last midnight.
     /// Reset by the midnight inspection (MidnightReport.bagsIntoTruckToday).</summary>
     public static int BagsIntoTruckToday { get; private set; }
 
@@ -381,7 +381,7 @@ public static class CurbTrash
             ProgressionEvents.RaiseBagCollected(new BagCollectedFact
             {
                 bagId = rec.bagId, stopId = rec.stopId, districtId = d.id, ageHours = age, onTime = onTime,
-                byArm = byArm, byKevin = false, pay = pay, pos = fxPos,
+                byArm = byArm, pay = pay, pos = fxPos,
             });
         }
         catch (System.Exception e) { Debug.LogException(e); }

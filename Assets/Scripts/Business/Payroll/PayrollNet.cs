@@ -498,10 +498,11 @@ public class PayrollNet : NetworkBehaviour
         });
     }
 
-    /// <summary>
-    /// An employee kept a valuable in the employer's shop: it goes to the employer's keep crate (company property, §13.5).
-    /// True = handed over (don't add it to the local inventory).
-    /// </summary>
+    /// <summary>True when a keep made here right now would go to the local player's employer (<see cref="TryHandOverKept"/>).</summary>
+    public static bool WouldHandOverKept(Vector3 at) => Instance != null && LocalWorkingInEmployerShop(at, out _);
+
+    /// <summary>An employee kept something in the employer's shop (a treasure, or a part for printing): it goes to the
+    /// employer. True = handed over (don't add it to the local inventory).</summary>
     public static bool TryHandOverKept(ItemInstance item, Vector3 at)
     {
         if (item == null || !LocalWorkingInEmployerShop(at, out var job)) return false;
@@ -521,12 +522,19 @@ public class PayrollNet : NetworkBehaviour
         ServerKeep(sender, json);
     }
 
+    /// <summary>Host: "employer business / item uid" pairs already handed over this session.</summary>
+    readonly HashSet<string> keptUids = new HashSet<string>(StringComparer.Ordinal);
+
     void ServerKeep(ulong employee, string json)
     {
         int i = IndexOfEmployee(employee);
         if (i < 0 || string.IsNullOrEmpty(json) || json.Length > 4000) return;
         var j = jobs[i];
-        NetAudit.Event("payroll", new Dictionary<string, object> { { "op", "keep" }, { "employee", employee }, { "employer", j.employerClientId } });
+        // Trust-the-owner, like the fence: the item must be plausible for its catalog entry, and one uid is handed over once a session.
+        ItemInstance kept = null;
+        try { kept = JsonUtility.FromJson<ItemInstance>(json); } catch (Exception) { }
+        if (!EbaeItemValidation.IsPlausible(kept, out _) || !keptUids.Add(j.EmployerBusinessId + "/" + kept.uid)) return;
+        NetAudit.Event("payroll", new Dictionary<string, object> { { "op", "keep" }, { "employee", employee }, { "employer", j.employerClientId }, { "def", kept.defId } });
         KeptRpc(json, Fixed64(Payroll.NameOf(employee)), RpcTarget.Single(j.employerClientId, RpcTargetUse.Temp));
     }
 
@@ -536,10 +544,12 @@ public class PayrollNet : NetworkBehaviour
     {
         ItemInstance item = null;
         try { item = JsonUtility.FromJson<ItemInstance>(json); } catch (Exception e) { Debug.LogException(e); }
-        if (item == null || string.IsNullOrEmpty(item.defId)) return;
+        if (!EbaeItemValidation.IsPlausible(item, out _)) return;
+        foreach (var owned in GameSession.Inventory) if (owned != null && owned.uid == item.uid) return; // a repeated message never duplicates
         GameSession.AddToInventory(item);
         string what = item.Def != null ? item.Def.name : "something shiny";
-        GameHUD.Toast($"{byName} found {what} for your keep crate!", ToastStyle.Rare, 3f);
+        if (Workshop.IsPart(item)) GameHUD.Toast($"{byName} kept {what} (part) for you.", Workshop.IsWanted(item) ? ToastStyle.Good : ToastStyle.Info, 2f);
+        else GameHUD.Toast($"{byName} found {what} for your keep crate!", ToastStyle.Rare, 3f);
     }
 
     // =====================================================================

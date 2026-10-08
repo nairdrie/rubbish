@@ -3,7 +3,7 @@ using UnityEngine;
 public static partial class ItemVisuals
 {
     // Bespoke display-sized silhouettes, built with the same cached meshes/material blocks as all
-    // existing junk. These are real in-world models, so shelves and eBae photos agree automatically.
+    // existing junk. These are real in-world models, so shelves and ebag photos agree automatically.
     static bool BuildCollectible(Kit k, string key)
     {
         Color c = k.c;

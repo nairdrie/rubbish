@@ -1,0 +1,1287 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6f71e0f283e80481db71a31d7653e03f, type: 3}
+  m_Name: TownPalette
+  m_EditorClassIdentifier: Assembly-CSharp-Editor::TownAssetPalette
+  entries:
+  - id: builtin/SM_house_suburb_001
+    displayName: Cozy bungalow
+    category: Houses
+    description: 'Working household: complete property, curb collection, resident
+      and garbage rules. Snaps to a street.'
+    prefab: {fileID: 5711244593763751514, guid: 0f731db304fa61042a2e6fa0d731a2f1, type: 3}
+    role: 1
+    defaultScale: 1
+    spacing: 18
+    randomYaw: 0
+    houseModel: SM_house_suburb_001
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_house_suburb_002
+    displayName: Porch bungalow
+    category: Houses
+    description: 'Working household: complete property, curb collection, resident
+      and garbage rules. Snaps to a street.'
+    prefab: {fileID: 5267471299394062656, guid: 532e3dedb6d892049ad1f9fcf165d86a, type: 3}
+    role: 1
+    defaultScale: 1
+    spacing: 18
+    randomYaw: 0
+    houseModel: SM_house_suburb_002
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_house_suburb_003
+    displayName: Garage family home
+    category: Houses
+    description: 'Working household: complete property, curb collection, resident
+      and garbage rules. Snaps to a street.'
+    prefab: {fileID: 2407945279716237578, guid: 8c7a7ccae906a6f4a9606d13a8891f09, type: 3}
+    role: 1
+    defaultScale: 1
+    spacing: 24
+    randomYaw: 0
+    houseModel: SM_house_suburb_003
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_house_suburb_004
+    displayName: Wide family home
+    category: Houses
+    description: 'Working household: complete property, curb collection, resident
+      and garbage rules. Snaps to a street.'
+    prefab: {fileID: 2642671686383633630, guid: 834bd9aa48ead23488f5c2d12912afa6, type: 3}
+    role: 1
+    defaultScale: 1
+    spacing: 24
+    randomYaw: 0
+    houseModel: SM_house_suburb_004
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_house_suburb_005
+    displayName: Tall gabled home
+    category: Houses
+    description: 'Working household: complete property, curb collection, resident
+      and garbage rules. Snaps to a street.'
+    prefab: {fileID: 4972479816007316149, guid: 60ef4608bc36d514895dfd110cf9878a, type: 3}
+    role: 1
+    defaultScale: 1
+    spacing: 24
+    randomYaw: 0
+    houseModel: SM_house_suburb_005
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_house_suburb_006
+    displayName: Grand suburban home
+    category: Houses
+    description: 'Working household: complete property, curb collection, resident
+      and garbage rules. Snaps to a street.'
+    prefab: {fileID: 7127134539112347907, guid: 3b3321cbfa6240d489ec81650fb27ad7, type: 3}
+    role: 1
+    defaultScale: 1
+    spacing: 31
+    randomYaw: 0
+    houseModel: SM_house_suburb_006
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_house_suburb_007
+    displayName: Double-gabled estate
+    category: Houses
+    description: 'Working household: complete property, curb collection, resident
+      and garbage rules. Snaps to a street.'
+    prefab: {fileID: 8419208721542963349, guid: 3e183ad5ea4273c4584903ba04018c36, type: 3}
+    role: 1
+    defaultScale: 1
+    spacing: 31
+    randomYaw: 0
+    houseModel: SM_house_suburb_007
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_tree_town_01
+    displayName: Rounded shade tree
+    category: Trees & greenery
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 2674600158910066336, guid: 90a73017afe249e49896792ed9ae183b, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 6
+    randomYaw: 1
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_tree_town_02
+    displayName: Spreading street tree
+    category: Trees & greenery
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 662986567957525496, guid: b6690c53b11c66a41814f9496d48e4e9, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 6
+    randomYaw: 1
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_tree_town_03
+    displayName: Tall garden tree
+    category: Trees & greenery
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 629929780254599613, guid: efb72e834a8c26c46a240f160ae61115, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 6
+    randomYaw: 1
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_bush_02
+    displayName: Rounded shrub
+    category: Trees & greenery
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 7232198733430575380, guid: 365deae759c48d946bbd137f7c4456b5, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 2
+    randomYaw: 1
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_bush_03
+    displayName: Low hedge shrub
+    category: Trees & greenery
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 8335410176839818442, guid: d4a955d9ec52a724fa0721e6d78bf5d0, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 2
+    randomYaw: 1
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_car_town_01
+    displayName: "Parked car \xB7 model 1"
+    category: Cars
+    description: Static parked vehicle with solid collision. Not a moving traffic
+      spawn or a household commuter.
+    prefab: {fileID: 4062968077232759623, guid: a61e5ff764a10324b8c2993eb28fee3f, type: 3}
+    role: 3
+    defaultScale: 1
+    spacing: 5.5
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_car_town_02
+    displayName: "Parked car \xB7 model 2"
+    category: Cars
+    description: Static parked vehicle with solid collision. Not a moving traffic
+      spawn or a household commuter.
+    prefab: {fileID: 4086640860555029952, guid: c3b5a79fcad272048bd4fd8794ce5a27, type: 3}
+    role: 3
+    defaultScale: 1
+    spacing: 5.5
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_car_town_03
+    displayName: "Parked car \xB7 model 3"
+    category: Cars
+    description: Static parked vehicle with solid collision. Not a moving traffic
+      spawn or a household commuter.
+    prefab: {fileID: 7486039966227931685, guid: d2b3c197c928cfa468ddc6a73dac8da2, type: 3}
+    role: 3
+    defaultScale: 1
+    spacing: 5.5
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_car_town_04
+    displayName: "Parked car \xB7 model 4"
+    category: Cars
+    description: Static parked vehicle with solid collision. Not a moving traffic
+      spawn or a household commuter.
+    prefab: {fileID: 7073999009513605082, guid: e32bbde3b7d4b8e47a26bdaac121a251, type: 3}
+    role: 3
+    defaultScale: 1
+    spacing: 5.5
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_streetlamp_01
+    displayName: "Street lamp \xB7 classic"
+    category: Street furniture
+    description: 'Street prop: uses the town''s physical prop interaction. Does not
+      create garbage by itself.'
+    prefab: {fileID: 4764715347728862974, guid: ca57afb606b46ef4aa9897eb43baf1dc, type: 3}
+    role: 2
+    defaultScale: 1
+    spacing: 8
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_streetlamp_02
+    displayName: "Street lamp \xB7 modern"
+    category: Street furniture
+    description: 'Street prop: uses the town''s physical prop interaction. Does not
+      create garbage by itself.'
+    prefab: {fileID: 3661179401376448712, guid: 9e2f5e65a32736b4a999128cf608b343, type: 3}
+    role: 2
+    defaultScale: 1
+    spacing: 8
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_streetlamp_03
+    displayName: "Street lamp \xB7 curved"
+    category: Street furniture
+    description: 'Street prop: uses the town''s physical prop interaction. Does not
+      create garbage by itself.'
+    prefab: {fileID: 5232971213039566014, guid: 9d0be1eb35b4e5e468ffa0a53c9263cd, type: 3}
+    role: 2
+    defaultScale: 1
+    spacing: 8
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_mailbox_01
+    displayName: "Mailbox \xB7 1"
+    category: Street furniture
+    description: 'Street prop: uses the town''s physical prop interaction. Does not
+      create garbage by itself.'
+    prefab: {fileID: 3928478037897300984, guid: 89100f54fdc5cb448a7f05de4d8ec512, type: 3}
+    role: 2
+    defaultScale: 1
+    spacing: 2
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_mailbox_02
+    displayName: "Mailbox \xB7 2"
+    category: Street furniture
+    description: 'Street prop: uses the town''s physical prop interaction. Does not
+      create garbage by itself.'
+    prefab: {fileID: 8757295176462798169, guid: 1f42f63ff23a50647bf20abdb7e49c7d, type: 3}
+    role: 2
+    defaultScale: 1
+    spacing: 2
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_garbagecan_01
+    displayName: "Curb bin \xB7 1"
+    category: Street furniture
+    description: 'Street prop: uses the town''s physical prop interaction. Does not
+      create garbage by itself.'
+    prefab: {fileID: 353425352203527624, guid: 21ff140374760964e85bd0076354e87a, type: 3}
+    role: 2
+    defaultScale: 1
+    spacing: 1.5
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_garbagecan_02
+    displayName: "Curb bin \xB7 2"
+    category: Street furniture
+    description: 'Street prop: uses the town''s physical prop interaction. Does not
+      create garbage by itself.'
+    prefab: {fileID: 9189585104220420110, guid: b2a0a58d86b5e73469ee247c5f90c705, type: 3}
+    role: 2
+    defaultScale: 1
+    spacing: 1.5
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_garbagecan_03
+    displayName: "Curb bin \xB7 3"
+    category: Street furniture
+    description: 'Street prop: uses the town''s physical prop interaction. Does not
+      create garbage by itself.'
+    prefab: {fileID: 1188015641062087453, guid: 007cb0b0d386db34b96236251f2de9a9, type: 3}
+    role: 2
+    defaultScale: 1
+    spacing: 1.5
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_garbagecan_04
+    displayName: "Curb bin \xB7 4"
+    category: Street furniture
+    description: 'Street prop: uses the town''s physical prop interaction. Does not
+      create garbage by itself.'
+    prefab: {fileID: 7402884061701711605, guid: 99fa66a2f96720e49a68876d79ce13b2, type: 3}
+    role: 2
+    defaultScale: 1
+    spacing: 1.5
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_garbagecan_05
+    displayName: "Curb bin \xB7 5"
+    category: Street furniture
+    description: 'Street prop: uses the town''s physical prop interaction. Does not
+      create garbage by itself.'
+    prefab: {fileID: 512876853005896323, guid: e6dca3acb9f03fd41ae9096f011daa60, type: 3}
+    role: 2
+    defaultScale: 1
+    spacing: 1.5
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_garbagecan_06
+    displayName: "Curb bin \xB7 6"
+    category: Street furniture
+    description: 'Street prop: uses the town''s physical prop interaction. Does not
+      create garbage by itself.'
+    prefab: {fileID: 1821518209580011975, guid: 094fb2296d1cdd74ea37585a56061d57, type: 3}
+    role: 2
+    defaultScale: 1
+    spacing: 1.5
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_trashbin_01
+    displayName: "Public waste bin \xB7 1"
+    category: Street furniture
+    description: 'Street prop: uses the town''s physical prop interaction. Does not
+      create garbage by itself.'
+    prefab: {fileID: 4673220560386419290, guid: 66448ec82feb2be4c9d55513468c9d8d, type: 3}
+    role: 2
+    defaultScale: 1
+    spacing: 1.5
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_trashbin_02
+    displayName: "Public waste bin \xB7 2"
+    category: Street furniture
+    description: 'Street prop: uses the town''s physical prop interaction. Does not
+      create garbage by itself.'
+    prefab: {fileID: 6662652788145338616, guid: cea992b149fc30c48afcc5e56aa93bbe, type: 3}
+    role: 2
+    defaultScale: 1
+    spacing: 1.5
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_trashbin_03
+    displayName: "Public waste bin \xB7 3"
+    category: Street furniture
+    description: 'Street prop: uses the town''s physical prop interaction. Does not
+      create garbage by itself.'
+    prefab: {fileID: 6934840211164735990, guid: d37af45e65f0e6345b2d7286b7f74dfd, type: 3}
+    role: 2
+    defaultScale: 1
+    spacing: 1.5
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_trashbin_04
+    displayName: "Public waste bin \xB7 4"
+    category: Street furniture
+    description: 'Street prop: uses the town''s physical prop interaction. Does not
+      create garbage by itself.'
+    prefab: {fileID: 4431689630016975413, guid: 7c8b615911b900945889d1d6bacb9956, type: 3}
+    role: 2
+    defaultScale: 1
+    spacing: 1.5
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_roadsign_001
+    displayName: "Road sign \xB7 01"
+    category: Street furniture
+    description: 'Street prop: uses the town''s physical prop interaction. Does not
+      create garbage by itself.'
+    prefab: {fileID: 4252180085263703813, guid: d36a2d505b1e6134b85d45984c183ebf, type: 3}
+    role: 2
+    defaultScale: 1
+    spacing: 2
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_roadsign_002
+    displayName: "Road sign \xB7 02"
+    category: Street furniture
+    description: 'Street prop: uses the town''s physical prop interaction. Does not
+      create garbage by itself.'
+    prefab: {fileID: 4341029517644937019, guid: a46f5ab47b35ce644812ea4e4708f4cf, type: 3}
+    role: 2
+    defaultScale: 1
+    spacing: 2
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_roadsign_003
+    displayName: "Road sign \xB7 03"
+    category: Street furniture
+    description: 'Street prop: uses the town''s physical prop interaction. Does not
+      create garbage by itself.'
+    prefab: {fileID: 4652823681809468064, guid: a3ebd4c53e16fc54694e5074a33e0fec, type: 3}
+    role: 2
+    defaultScale: 1
+    spacing: 2
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_roadsign_004
+    displayName: "Road sign \xB7 04"
+    category: Street furniture
+    description: 'Street prop: uses the town''s physical prop interaction. Does not
+      create garbage by itself.'
+    prefab: {fileID: 4029084576477819089, guid: 3ec3e007d5e638340915cbebd63a19a3, type: 3}
+    role: 2
+    defaultScale: 1
+    spacing: 2
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_roadsign_005
+    displayName: "Road sign \xB7 05"
+    category: Street furniture
+    description: 'Street prop: uses the town''s physical prop interaction. Does not
+      create garbage by itself.'
+    prefab: {fileID: 7486552931573793546, guid: 178b86dc64e163a4d8bc1fdf0461b004, type: 3}
+    role: 2
+    defaultScale: 1
+    spacing: 2
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_roadsign_006
+    displayName: "Road sign \xB7 06"
+    category: Street furniture
+    description: 'Street prop: uses the town''s physical prop interaction. Does not
+      create garbage by itself.'
+    prefab: {fileID: 5505352961472709290, guid: 5a664531305f5f9489665c746dc6c665, type: 3}
+    role: 2
+    defaultScale: 1
+    spacing: 2
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_roadsign_007
+    displayName: "Road sign \xB7 07"
+    category: Street furniture
+    description: 'Street prop: uses the town''s physical prop interaction. Does not
+      create garbage by itself.'
+    prefab: {fileID: 6306762664351262180, guid: a37b80289e1c3dd49b8428002e014259, type: 3}
+    role: 2
+    defaultScale: 1
+    spacing: 2
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_roadsign_008
+    displayName: "Road sign \xB7 08"
+    category: Street furniture
+    description: 'Street prop: uses the town''s physical prop interaction. Does not
+      create garbage by itself.'
+    prefab: {fileID: 5686207572015630719, guid: 1438d937668654d4a902d55db3eb1513, type: 3}
+    role: 2
+    defaultScale: 1
+    spacing: 2
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_roadsign_009
+    displayName: "Road sign \xB7 09"
+    category: Street furniture
+    description: 'Street prop: uses the town''s physical prop interaction. Does not
+      create garbage by itself.'
+    prefab: {fileID: 2456232553475434004, guid: 4449df04a6cc4034b95920312fbd790c, type: 3}
+    role: 2
+    defaultScale: 1
+    spacing: 2
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_roadsign_010
+    displayName: "Road sign \xB7 10"
+    category: Street furniture
+    description: 'Street prop: uses the town''s physical prop interaction. Does not
+      create garbage by itself.'
+    prefab: {fileID: 7889130314858039528, guid: 3213ff2b976b180419e20c7f76b38376, type: 3}
+    role: 2
+    defaultScale: 1
+    spacing: 2
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_roadsign_011
+    displayName: "Road sign \xB7 11"
+    category: Street furniture
+    description: 'Street prop: uses the town''s physical prop interaction. Does not
+      create garbage by itself.'
+    prefab: {fileID: 4474677597723028615, guid: 65158853a0d099a43814d9cb57c8b873, type: 3}
+    role: 2
+    defaultScale: 1
+    spacing: 2
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_clothes_drying_rack_01
+    displayName: "Laundry line \xB7 1"
+    category: Parks
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 3259982978219153095, guid: 5fc85fa850afa1e4fadb9dc6be656522, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 4
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_clothes_drying_rack_02
+    displayName: "Laundry line \xB7 2"
+    category: Parks
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 7692480051348289424, guid: 1d1d495d100582c448ad61e43e1c403b, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 4
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_clothes_drying_rack_03
+    displayName: "Laundry line \xB7 3"
+    category: Parks
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 2230378966062290370, guid: 8faf3ce3558efdc46aa99e45509a7f50, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 4
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_clothes_drying_rack_04
+    displayName: "Laundry line \xB7 4"
+    category: Parks
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 2216396843766252038, guid: b65b5a9e6932c984db02445b3ae0aba0, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 4
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_lemonade_shop
+    displayName: Lemonade stall
+    category: Parks
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 8958662556889942048, guid: 0aa7ea867f7ea1844816846cf0d1c3de, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 3
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_whirlpool
+    displayName: Garden hot tub
+    category: Parks
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 2055524496927866688, guid: 4e37f98f49a643941979318b1848ef26, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 4
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_swimming_pool
+    displayName: Backyard swimming pool
+    category: Parks
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 8381726107824984227, guid: 0d05f565c264b9242bc3aab505f54127, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 9
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_climbingrack
+    displayName: Climbing frame
+    category: Parks
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 1179143472359171595, guid: 8b730be3f3ad486419da443a7fa74ffc, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 6
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_slide
+    displayName: Playground slide
+    category: Parks
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 5380589826070487935, guid: a11980934508989428c8af9db7938960, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 5
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_swing
+    displayName: Swing frame
+    category: Parks
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 8695213638970445407, guid: fd64fdd9bc8cbdb42a28b0e21d7d6703, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 6
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_bench_playground
+    displayName: Park bench
+    category: Parks
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 5937991708153262179, guid: 4628ab607a2a11842922c0dc86e48a41, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 3
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_trashbin_park
+    displayName: Park litter bin
+    category: Street furniture
+    description: 'Street prop: uses the town''s physical prop interaction. Does not
+      create garbage by itself.'
+    prefab: {fileID: 7698133954735751997, guid: 1873ae32d2bf2eb47836b4c5f7360403, type: 3}
+    role: 2
+    defaultScale: 1
+    spacing: 2
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_sandbox_playground_01
+    displayName: "Sand play area \xB7 1"
+    category: Parks
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 1276076671173638299, guid: 3789b9e70840a724f90d36460208f9be, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 5
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_sandbox_playground_02
+    displayName: "Sand play area \xB7 2"
+    category: Parks
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 2991450964555771671, guid: 756debb5673b2e348b8b252d63a6c205, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 5
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_sandbox_playground_03
+    displayName: "Sand play area \xB7 3"
+    category: Parks
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 8632082889663598899, guid: accf51c5b40743c45a0c89bc4fd4c458, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 5
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_playground_object_01
+    displayName: "Playground feature \xB7 1"
+    category: Parks
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 6942585106264229763, guid: 8b3bce8d1d0539742ade0dcd78e9bd12, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 4
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_playground_object_02
+    displayName: "Playground feature \xB7 2"
+    category: Parks
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 8800813734182135706, guid: 0ca7d2807233e3e43998d69fff36f1d1, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 4
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_fence_01
+    displayName: Low garden fence
+    category: Ground & boundaries
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 6324675062537488105, guid: 410f055a8495d9f4bb6322219df453ab, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 3
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_fence_02
+    displayName: Tall garden fence
+    category: Ground & boundaries
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 6574696259214716064, guid: a020a997dfaff994aac7a2c4be2c9b7f, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 3
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_garden_fence
+    displayName: Short picket section
+    category: Ground & boundaries
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 8303913893941717263, guid: 1434340923922024ebea72a6b4e4cabb, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 3
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_garden_fence_long
+    displayName: Long picket section
+    category: Ground & boundaries
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 7901462484122082235, guid: 841da02a436e5324486f738dc2be0872, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 6
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_garden_door
+    displayName: Garden gate (decorative)
+    category: Ground & boundaries
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 8024575289938041130, guid: c15aa35603b575949b02a4189ce12f2f, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 2
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_path_garden
+    displayName: Garden stepping path
+    category: Ground & boundaries
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 4771278581463899837, guid: 63a8b158558a9de45a85d28229010260, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 3
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_pedestrian_walk_suburbs_01
+    displayName: "Pavement trim \xB7 1"
+    category: Ground & boundaries
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 6219455600902008451, guid: 11a7bba90bb730c45b21c99ed0214215, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 3
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_pedestrian_walk_suburbs_02
+    displayName: "Pavement trim \xB7 2"
+    category: Ground & boundaries
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 1761180650182589252, guid: 52f8c09f05dd9c64ba7472d9aab4b902, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 3
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_pedestrian_walk_suburbs_03
+    displayName: "Pavement trim \xB7 3"
+    category: Ground & boundaries
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 3338261312069874223, guid: 9b939ada7a3e0da478967ddc89c76a23, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 3
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_pedestrian_walk_suburbs_04
+    displayName: "Pavement trim \xB7 4"
+    category: Ground & boundaries
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 3213884050247536525, guid: b5e15a79c6f14cb45b4cdba5969986f5, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 3
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_pedestrian_walk_suburbs_05
+    displayName: "Pavement trim \xB7 5"
+    category: Ground & boundaries
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 2477287432031798969, guid: ee24fe2d52122e148930cead42d3dbd0, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 3
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_pedestrian_crossing
+    displayName: Crosswalk marking (visual)
+    category: Ground & boundaries
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 5002019638923053377, guid: 566abeba252e95c45b00163fe320d604, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 5
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_solarpane
+    displayName: Roof solar panels
+    category: Industrial
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 1350528739346546819, guid: 99b53b0448d99d7489d9275e3b95bc69, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 3
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_antenna_01
+    displayName: "Roof antenna \xB7 1"
+    category: Industrial
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 7569860511690396312, guid: 120c7a218fe926b4296b123af9d7fe12, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 2
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/SM_antenna_02
+    displayName: "Roof antenna \xB7 2"
+    category: Industrial
+    description: Decorative scenery. Does not create garbage, residents or traffic.
+    prefab: {fileID: 370134256920125067, guid: a9a30e4102dfdfd4190d56e1523d02e9, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 2
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/corner-grocer
+    displayName: Corner grocery
+    category: Shops & buildings
+    description: 'Detailed two-storey grocer with framed displays, striped awning,
+      roof trim and delivery crates. Working collection stop: street snapping, curb
+      garbage and route metadata are added automatically.'
+    prefab: {fileID: 4649073244475379430, guid: 59e7363a52c864b0a885743fada723eb, type: 3}
+    role: 4
+    defaultScale: 1
+    spacing: 14
+    randomYaw: 0
+    houseModel: 
+    collectionType: shop
+    propertyFrontYaw: 180
+  - id: builtin/corner-cafe
+    displayName: Sidewalk cafe
+    category: Shops & buildings
+    description: 'Peach corner cafe with bistro tables, chairs, deep awning and planted
+      terrace. Working collection stop: street snapping, curb garbage and route metadata
+      are added automatically.'
+    prefab: {fileID: 3251965903807249647, guid: 783251513b8e648dfa0fb7daa9fb726b, type: 3}
+    role: 4
+    defaultScale: 1
+    spacing: 15
+    randomYaw: 0
+    houseModel: 
+    collectionType: restaurant
+    propertyFrontYaw: 180
+  - id: builtin/bakery
+    displayName: Neighborhood bakery
+    category: Shops & buildings
+    description: 'Cream bakery with coral awning, display windows, chimney and entrance
+      planter. Working collection stop: street snapping, curb garbage and route metadata
+      are added automatically.'
+    prefab: {fileID: 1245394180875717295, guid: 48fed7df386174014b27ca6cc3a56802, type: 3}
+    role: 4
+    defaultScale: 1
+    spacing: 14
+    randomYaw: 0
+    houseModel: 
+    collectionType: restaurant
+    propertyFrontYaw: 180
+  - id: builtin/courtyard-apartment
+    displayName: Balcony apartment
+    category: Shops & buildings
+    description: 'Four-storey brick apartment: projecting balconies, individual rails,
+      cornices and rooftop stair house. Working collection stop: street snapping,
+      curb garbage and route metadata are added automatically.'
+    prefab: {fileID: 4042413535747344851, guid: 7a772291c15a94789bad24455cb961f1, type: 3}
+    role: 4
+    defaultScale: 1
+    spacing: 20
+    randomYaw: 0
+    houseModel: 
+    collectionType: tower
+    propertyFrontYaw: 180
+  - id: builtin/workshop
+    displayName: Repair workshop
+    category: Industrial
+    description: 'Small pitched-roof workshop with roller doors, clerestory windows,
+      drainpipes and safety bollards. Working collection stop: street snapping, curb
+      garbage and route metadata are added automatically.'
+    prefab: {fileID: 465122656222238516, guid: aa21db4e816454cb7b96894c88634df9, type: 3}
+    role: 4
+    defaultScale: 1
+    spacing: 17
+    randomYaw: 0
+    houseModel: 
+    collectionType: shop
+    propertyFrontYaw: 180
+  - id: builtin/warehouse
+    displayName: Loading warehouse
+    category: Industrial
+    description: 'Large loading hall with raised gable roof, vent equipment, slatted
+      bay doors and pallet crates. Working collection stop: street snapping, curb
+      garbage and route metadata are added automatically.'
+    prefab: {fileID: 2107923172041583325, guid: fe2a6ea2bf629486f9b6a1829d02fc63, type: 3}
+    role: 4
+    defaultScale: 1
+    spacing: 23
+    randomYaw: 0
+    houseModel: 
+    collectionType: shop
+    propertyFrontYaw: 180
+  - id: builtin/bus-shelter
+    displayName: Bus stop shelter
+    category: Street furniture
+    description: Three-dimensional shelter, tinted glass, bench, timetable and stop
+      pole. Scenic stop; does not add bus AI. Decorative kit; no new collection stop.
+    prefab: {fileID: 4082211519437622834, guid: 4783d8f13f6c94927a1305568fb428ca, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 8
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/pocket-park
+    displayName: Pocket park kit
+    category: Parks
+    description: 'Complete walk-through park: crossing paths, mature trees, planted
+      bed, benches and rear fence. Entry remains open. Decorative kit; no new collection
+      stop.'
+    prefab: {fileID: 6937128426216142236, guid: 8d1ab64ed8e5e4daa929ef6d2e61d411, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 15
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/wooded-grove
+    displayName: Wooded grove kit
+    category: Trees & greenery
+    description: Five varied faceted trees, stepping stones, quiet bench and boulder.
+      Leave walking space between groves. Decorative kit; no new collection stop.
+    prefab: {fileID: 7777900416291911755, guid: b02b618ef559345a781bf16c29d88a8d, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 15
+    randomYaw: 1
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/service-alley
+    displayName: Service alley kit
+    category: Industrial
+    description: Coherent paved service nook with masonry boundary, dumpster, stacked
+      delivery crates and drain. Decorative kit; no new collection stop.
+    prefab: {fileID: 7591958684995396569, guid: 60e270a3b176843508794ae86ffce19b, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 8
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/raised-planter
+    displayName: Flowering street planter
+    category: Trees & greenery
+    description: Raised stone planter with inset soil, dimensional shrubs and warm-color
+      flowers. Decorative kit; no new collection stop.
+    prefab: {fileID: 6956126884047811427, guid: c49775088b32548b0bf75688139caa61, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 4.5
+    randomYaw: 1
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/bicycle-parking
+    displayName: Bicycle rack cluster
+    category: Street furniture
+    description: Four individual U-racks mounted to a slab; retains open space between
+      racks. Decorative kit; no new collection stop.
+    prefab: {fileID: 113037259566425548, guid: ac83cd46bf4724609bfc764c06e1dd75, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 6
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/picket-fence
+    displayName: "Picket fence \xB7 6 m"
+    category: Ground & boundaries
+    description: Connecting 6 m boundary with individual pointed pickets, rails,
+      posts and caps. Decorative kit; no new collection stop.
+    prefab: {fileID: 1831025594225591128, guid: 891ebb1f729814cca9a13220002af5c6, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 6
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/brick-wall
+    displayName: "Brick garden wall \xB7 6 m"
+    category: Ground & boundaries
+    description: Low wall with staggered mortar, end piers and projecting stone coping.
+      Decorative kit; no new collection stop.
+    prefab: {fileID: 1181986355102563671, guid: c23a9fe6601434f60bd636bae31cce76, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 6
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/hedge-border
+    displayName: "Clipped hedge \xB7 6 m"
+    category: Ground & boundaries
+    description: Solid green boundary with low-poly rounded crowns rather than a
+      single flat plane. Decorative kit; no new collection stop.
+    prefab: {fileID: 8489559397320972393, guid: 03bb363c9da8641cb8df8657899474af, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 6
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/garden-gateway
+    displayName: Open garden arch
+    category: Ground & boundaries
+    description: Fence wings and trellised garden arch; clear central walk-through
+      is deliberately unobstructed. Decorative kit; no new collection stop.
+    prefab: {fileID: 3722784955219725615, guid: bcbb5b9f2861b4162a650f70c1368cf6, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 8
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/parking-bay
+    displayName: Two parking bays
+    category: Cars
+    description: Two marked spaces, wheel stops, reflectors and a planted end border.
+      Place parked cars separately. Decorative kit; no new collection stop.
+    prefab: {fileID: 6907210523265808972, guid: 8e9888f82625b499d85be101d3d2a4c7, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 8
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/utility-corner
+    displayName: Utility cabinet cluster
+    category: Industrial
+    description: Transformer, louvres, service door, warning plate, communications
+      box and protective bollards. Decorative kit; no new collection stop.
+    prefab: {fileID: 1337049575418033740, guid: 1c56ae04e95ba41c284cee42c9d63893, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 6
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/market-stall
+    displayName: Produce market stall
+    category: Shops & buildings
+    description: Wood-framed stall, pitched cloth canopy, counter, produce trays
+      and delivery crates. Scenic, not a trading UI. Decorative kit; no new collection
+      stop.
+    prefab: {fileID: 6605174262787982204, guid: 09ff00a3c63f84b818815f8fb3bd9323, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 8
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/garden-pergola
+    displayName: Garden pergola
+    category: Parks
+    description: Open timber structure with beams, nine rafters, seating and flowering
+      entrance planters. Decorative kit; no new collection stop.
+    prefab: {fileID: 1993073962224169134, guid: f739a217af9904efebdff680c001fadc, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 8
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/evergreen
+    displayName: Layered evergreen
+    category: Trees & greenery
+    description: Six-metre conifer with three faceted canopy tiers and a physical
+      trunk. Decorative kit; no new collection stop.
+    prefab: {fileID: 9058244811015431176, guid: 200341872f7d64c689f6f4bc311b12bf, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 5
+    randomYaw: 1
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/flower-border
+    displayName: Long flower border
+    category: Trees & greenery
+    description: Long planted border with modeled leaves, flowers, soil and a stone
+      rim. Decorative kit; no new collection stop.
+    prefab: {fileID: 4778009224079549273, guid: a4f8923ed12a24bb685e1e21edc2977f, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 6
+    randomYaw: 1
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/bollard-row
+    displayName: Safety bollards
+    category: Street furniture
+    description: Four individually colliding yellow bollards with reflective bands
+      and octagonal footings. Decorative kit; no new collection stop.
+    prefab: {fileID: 4265942630366879449, guid: 9729935081b5943d9a5bece56d6499d1, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 6
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/small-fountain
+    displayName: Octagonal fountain
+    category: Parks
+    description: Stepped octagonal basin, water, pedestal and upper bowl. Decorative
+      water does not apply slippery weather. Decorative kit; no new collection stop.
+    prefab: {fileID: 6453328307891994795, guid: 74e8bf1cc19cb45009e31b3b6c9b14b6, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 7
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/sidewalk-module
+    displayName: "Paved sidewalk \xB7 6 m"
+    category: Ground & boundaries
+    description: 'Seamed surface and low curb edge. Decoration only: use the street
+      tool for navigable roads. Decorative kit; no new collection stop.'
+    prefab: {fileID: 5314922589164826174, guid: 9bfb63d53072f4542adc1532430e1d95, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 6
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0
+  - id: builtin/community-planters
+    displayName: Community garden kit
+    category: Parks
+    description: Four raised beds, crossing paths, bench and notice board. A ready-made
+      little destination between homes. Decorative kit; no new collection stop.
+    prefab: {fileID: 958250812946765463, guid: 6b868b867a6c34512b9357cc3fbc7016, type: 3}
+    role: 0
+    defaultScale: 1
+    spacing: 11
+    randomYaw: 0
+    houseModel: 
+    collectionType: 
+    propertyFrontYaw: 0

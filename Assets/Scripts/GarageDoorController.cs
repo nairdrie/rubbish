@@ -10,8 +10,11 @@ using UnityEngine;
 /// targetSpawnPointNameDriving (SceneController / PlayerSpawner / TruckRequester do the rest).
 /// <para><b>Depot Row (co-op one world, package N3):</b> a door with <see cref="depotLot"/> ≥ 0 belongs to that lot's shop
 /// (built by Setup_DepotRow): <see cref="depotExit"/> false = the street-side garage door, true = the door inside the pocket
-/// interior. Using it moves only the local player (fade + teleport, or the truck drives through). In the one world the old
-/// town depot door (depotLot −1) is closed: the old building is the Town Yard.</para>
+/// interior. Using it moves only the local player (fade + teleport, or the truck drives through). In the one world a
+/// legacy town door (depotLot −1) is closed.</para>
+/// <para><b>Legacy scene flow (solo):</b> the street door of lot <see cref="DepotRowWorld.LegacyShopLot"/> is the garage
+/// door: it swaps to ShopScene (on foot, or driving with the truck), and ShopScene's door brings you back to that lot's
+/// apron. Every other Depot Row door is shut. One way in, one way out, in both flows.</para>
 /// </summary>
 public class GarageDoorController : MonoBehaviour, IInteractable
 {
@@ -40,10 +43,17 @@ public class GarageDoorController : MonoBehaviour, IInteractable
 
     public bool CanInteract()
     {
-        if (depotLot >= 0) return DepotRowWorld.Active && !DepotRowWorld.Transitioning;
-        if (DepotRowWorld.Active) return false; // the old depot is the Town Yard in the one world
+        if (depotLot >= 0)
+        {
+            if (DepotRowWorld.Active) return !DepotRowWorld.Transitioning;
+            return IsLegacyShopDoor && !SceneController.IsTransitioning; // solo: lot 1's door is the garage door
+        }
+        if (DepotRowWorld.Active) return false; // a legacy town door is closed in the one world
         return !string.IsNullOrEmpty(targetSceneName) && !SceneController.IsTransitioning;
     }
+
+    /// <summary>This is the street door of the one shop in the legacy scene flow (it leads to ShopScene).</summary>
+    public bool IsLegacyShopDoor => depotLot >= 0 && !depotExit && DepotRowWorld.LegacyShopLot == depotLot;
 
     public string GetInteractionPrompt()
     {
@@ -68,7 +78,8 @@ public class GarageDoorController : MonoBehaviour, IInteractable
         }
         if (!CanInteract()) return;
 
-        if (depotLot >= 0)
+        bool legacyShop = IsLegacyShopDoor;
+        if (depotLot >= 0 && !legacyShop)
         {
             DepotRowWorld.UseDoor(depotLot, depotExit, interactor);
             return;
@@ -92,10 +103,18 @@ public class GarageDoorController : MonoBehaviour, IInteractable
         }
 
         string spawn = isDriving && !string.IsNullOrEmpty(targetSpawnPointNameDriving) ? targetSpawnPointNameDriving : targetSpawnPointName;
+        string scene = targetSceneName, onFootSpawn = targetSpawnPointName;
+        if (legacyShop)
+        {
+            // A Depot Row door carries no scene contract of its own: the legacy shop door always leads into the garage.
+            scene = SceneController.GarageSceneName;
+            spawn = DepotFlowRules.GarageMarker(isDriving);
+            onFootSpawn = DepotFlowRules.GarageMarker(false);
+        }
 
         if (SceneController.Instance != null)
         {
-            SceneController.Instance.TransitionToScene(targetSceneName, spawn, isDriving, targetSpawnPointName);
+            SceneController.Instance.TransitionToScene(scene, spawn, isDriving, onFootSpawn);
         }
         else
         {

@@ -18,8 +18,8 @@ using UnityEngine.SceneManagement;
 /// Everything (volume, camera, inputs, foam) is restored on cure, scene change, disable and destroy.
 /// F4 night shift (Docs/Multiplayer.md §14.4): rabies is per player in co-op (<see cref="NightNet"/> keeps a host record keyed
 /// by PlayerKey, so it survives a reconnect, and everyone sees everyone's foam); symptomatic players get goofy hiccups (a
-/// little hop + "*HIC*"); in the one world, passing out means lying there for up to 30 s so a friend can carry you to any
-/// shop's first-aid box (<see cref="RabiesShotKiosk"/>), then the hospital bill where you fell (no scene trip).
+/// little hop + "*HIC*"); in the one world, passing out means lying there for up to 30 s so a friend can jab you with a
+/// Rabies Shot (<see cref="RabiesJab"/>), then the hospital bill where you fell (no scene trip).
 ///
 /// Movement drift nudges StarterAssetsInputs.move before the ThirdPersonController reads it (execution order -80)
 /// and puts the real input back in LateUpdate — never while a UI lock / the sort station / driving owns the input.
@@ -151,7 +151,8 @@ public class RabiesStatus : MonoBehaviour
             warnedPassOut = false;
             nextReminderAt = GameClock.TotalHours + Economy.RabiesIncubationHours + 3.0;
             // A packed shot auto-injects ~1.5 s later ("Good thing you packed a Rabies Shot!"): no shop advert then.
-            if (GameSession.GetConsumable(CritterSpawner.RabiesShotId) > 0)
+            if (FeralStatus.LocalEmbraced) { } // Embrace It: FeralStatus greets the foam instead
+            else if (GameSession.GetConsumable(CritterSpawner.RabiesShotId) > 0)
                 GameHUD.Toast("CHOMP. That's rabies. Uh oh...", ToastStyle.Bad, 1.8f);
             else
                 GameHUD.Toast($"You got RABIES! Symptoms soon. {Scrapazon.Name} sells Rabies Shots.", ToastStyle.Bad, 3.5f);
@@ -168,7 +169,7 @@ public class RabiesStatus : MonoBehaviour
         if (!IsLocalPlayer) return;
         Local = this;
 
-        float target = Intensity01;
+        float target = FeralStatus.LocalShown(Intensity01); // Embrace It: a stylised hint, not the full trip
         // Snap up quickly when symptoms start, fade out over ~1 s when cured.
         shown = Mathf.MoveTowards(shown, target, Time.unscaledDeltaTime * (target > shown ? 0.5f : 1.2f));
         if (passOutVisuals) shown = 1f;
@@ -189,7 +190,7 @@ public class RabiesStatus : MonoBehaviour
         Hiss(shown);
         Hiccup(shown);
 
-        if (!passOutInProgress && GameSession.HasRabies && HoursInfected >= Economy.RabiesPassOutHours
+        if (!passOutInProgress && FeralStatus.LocalPassesOut && GameSession.HasRabies && HoursInfected >= Economy.RabiesPassOutHours
             && !SceneController.IsTransitioning && !ScreenFader.IsFading)
         {
             var host = (MonoBehaviour)CritterSpawner.Instance ?? this;
@@ -255,7 +256,7 @@ public class RabiesStatus : MonoBehaviour
     /// <summary>Goofy rabies hiccups (F4): a little involuntary hop now and then. Everyone sees the hop (it's real movement).</summary>
     void Hiccup(float i)
     {
-        if (passOutInProgress || pc == null || pc.IsDriving || pc.IsPlayingChess || i < 0.1f) return;
+        if (passOutInProgress || pc == null || pc.IsDriving || pc.IsPlayingChess || i < 0.1f || !FeralStatus.LocalStumbles) return;
         if (nextHiccup < 0f) { nextHiccup = Time.time + NightDice.Cosmetic.Range(3f, 7f); return; }
         if (Time.time < nextHiccup) return;
         nextHiccup = Time.time + NightDice.Cosmetic.Range(5f, 12f) / Mathf.Lerp(0.8f, 1.6f, i);
@@ -268,7 +269,7 @@ public class RabiesStatus : MonoBehaviour
 
     void Messages()
     {
-        if (!GameSession.HasRabies || passOutInProgress) return;
+        if (!GameSession.HasRabies || passOutInProgress || FeralStatus.LocalEmbraced) return; // the embraced get no warnings: nothing to warn about
         double h = HoursInfected;
         if (!toldSymptoms && h >= Economy.RabiesIncubationHours)
         {
@@ -302,7 +303,7 @@ public class RabiesStatus : MonoBehaviour
     void ApplyDrift(float i)
     {
         if (driftActive) RemoveDrift();
-        if (!InputIsOurs || i <= 0.01f) return;
+        if (!InputIsOurs || i <= 0.01f || !FeralStatus.LocalStumbles) return;
 
         Vector2 baseMove = inputs.move;
         Vector2 drift = Vector2.zero;
@@ -384,13 +385,13 @@ public class RabiesStatus : MonoBehaviour
         Sfx.Play("thud", null, 1f, 0.7f);
         Juice.Shake(0.35f, 0.3f);
 
-        // Co-op one world (F4): lie there for up to 30 s; a friend can carry you to any shop's first-aid box.
+        // Co-op one world (F4): lie there for up to 30 s; a friend can jab you with a Rabies Shot where you lie.
         if (DepotRowWorld.Active)
         {
             var hn = HandsNet.Instance;
             bool flopped = hn != null && hn.Active;
             if (flopped) hn.LocalFlop(true);
-            GameHUD.Toast("You passed out! A friend can carry you to any shop's first-aid box for a Rabies Shot...", ToastStyle.Bad, 4f);
+            GameHUD.Toast($"You passed out! A friend can jab you with a Rabies Shot ({Economy.Money(NightShift.RabiesShotPrice)})...", ToastStyle.Bad, 4f);
             float waitUntil = Time.unscaledTime + 30f;
             if (Local != null) Local.passOutTip = 0.3f;
             while (Time.unscaledTime < waitUntil && GameSession.HasRabies) yield return null;

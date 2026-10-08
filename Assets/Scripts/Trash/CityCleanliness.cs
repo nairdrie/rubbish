@@ -6,7 +6,8 @@ using UnityEngine;
 /// <summary>
 /// How clean the city is, 0..1 (Trash system), PER DISTRICT (Docs/Progression.md §3.3). Each district's value comes from
 /// its curb bags weighted by age in that district's windows — fresh bags barely count, late ones a lot, neglected
-/// piles most — plus loose litter lying in that district, against the district's DirtForZero (30 / 26 / 21 / 17).
+/// piles most — plus loose litter lying in that district (loose items, and stray bags with no curb record such as a load
+/// tipped in the street: <see cref="StreetLitter"/>), against the district's DirtForZero (30 / 26 / 21 / 17).
 /// <see cref="Value01"/> (the HUD meter, critter pressure) is the bags-per-day-weighted average of the UNLOCKED
 /// districts, so with only the starter suburb open it is exactly the old city-wide number.
 ///
@@ -84,7 +85,7 @@ public static class CityCleanliness
         {
             _ = Value01;
             float w = 1f;
-            foreach (var d in Districts.Unlocked) w = Mathf.Min(w, District01(d.id));
+            foreach (var d in Districts.All) if (DistrictAccess.OpenInTown(d)) w = Mathf.Min(w, District01(d.id));
             return w;
         }
     }
@@ -125,7 +126,7 @@ public static class CityCleanliness
         return Color.Lerp(CurbTrash.NeglectedColor, CurbTrash.LateColor, Mathf.InverseLerp(0.1f, 0.35f, v));
     }
 
-    /// <summary>Loose items lying around the Neighborhood (last known count while you're elsewhere).</summary>
+    /// <summary>Loose items lying around the Neighborhood, stray bags counted as their contents (last known count while you're elsewhere).</summary>
     public static int LitterCount { get { _ = Value01; return litterCount; } }
 
     /// <summary>Dirt contributed by one curb bag of this age (starter-suburb windows).</summary>
@@ -199,6 +200,20 @@ public static class CityCleanliness
                 n++;
                 districtLitter[IndexOf(Districts.AtPosition(li.transform.position))]++;
             }
+            // Stray bags on the street (a load tipped outdoors, a bag carried out of a shop): each counts as its contents
+            // lying loose. Curb bags are counted above by their records; bags in hands, trucks or shops are not litter.
+            var carryables = Carryable.All;
+            for (int i = 0; i < carryables.Count; i++)
+            {
+                if (!(carryables[i] is TrashBag bag) || bag.Contents == null || bag.HasBurst) continue;
+                if (bag.gameObject.scene != scene) continue;
+                Vector3 at = bag.transform.position;
+                bool held = bag.State == CarryState.Consumed || bag.State == CarryState.Carried;
+                if (!StreetLitter.Counts(bag.IsCurbBag, bag.SourceStop != null, held, DepotRowLayout.InteriorAt(at) >= 0)) continue;
+                int worth = StreetLitter.ItemEquivalents(bag.Contents.items != null ? bag.Contents.items.Count : 0);
+                n += worth;
+                districtLitter[IndexOf(Districts.AtPosition(at))] += worth;
+            }
             litterCount = n;
         }
 
@@ -209,7 +224,7 @@ public static class CityCleanliness
             districtDirt[i] += districtLitter[i] * LitterDirt;
             total += districtDirt[i];
             districtClean[i] = Mathf.Clamp01(1f - districtDirt[i] / Mathf.Max(1f, d.dirtForZero));
-            if (!Districts.IsUnlocked(d)) { districtClean[i] = 1f; continue; }
+            if (!DistrictAccess.OpenInTown(d)) { districtClean[i] = 1f; continue; }
             float w = Mathf.Max(0.01f, d.bagsPerDay);
             weighted += districtClean[i] * w;
             weights += w;
@@ -229,8 +244,8 @@ public static class CityCleanliness
 
     /// <summary>
     /// The midnight inspection (host, once per day rollover): per unlocked district pays the Clean Streets bonus and the
-    /// neglect fines through the Ledger, updates the clean streaks, toasts the result and returns the report (Kevin's
-    /// wage and the Midnight fact are the spawner's next steps; Docs/Progression.md §9.3 midnight order).
+    /// neglect fines through the Ledger, updates the clean streaks, toasts the result and returns the report (the
+    /// Midnight fact is the spawner's next step; Docs/Progression.md §9.3 midnight order).
     /// </summary>
     public static MidnightReport MidnightInspection()
     {
@@ -245,7 +260,7 @@ public static class CityCleanliness
 
         float factor = CleanCityFactor;
         float totalBonus = 0f;
-        var unlocked = Districts.Unlocked;
+        var unlocked = Districts.ProgressionOrder;
         var parts = new StringBuilder();
         var businesses = MunicipalEconomy.OperatingBusinesses();
         var bonuses = new long[businesses.Count];
@@ -253,6 +268,7 @@ public static class CityCleanliness
         int neglectedTotal = 0;
         foreach (var d in unlocked)
         {
+            if (!DistrictAccess.OpenInTown(d)) continue;
             float clean = District01(d.id);
             int streakNights = CleanStreak(d.id);
             float streak = Mathf.Min(1.5f, 1f + 0.1f * streakNights);
@@ -330,7 +346,9 @@ public static class CityCleanliness
         {
             case Districts.MildlyPleasant: return "Mildly Pleasant";
             case Districts.MinivanMeadows: return "Meadows";
+            case Districts.CouponCommons: return "Coupon Commons";
             case Districts.SnootingtonHills: return "Snootington";
+            case Districts.StackingtonHeights: return "Stackington";
             case Districts.BillionaireBluffs: return "Bluffs";
             default: return d.name;
         }

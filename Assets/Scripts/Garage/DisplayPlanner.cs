@@ -56,7 +56,7 @@ public sealed class DisplayPlan
 /// (<see cref="GameSession.Inventory"/>), the upgrade levels and the "Arrange" pins (company counters). Every machine
 /// computes the same plan from the same state, so the host decides nothing extra and guests just present it.
 /// Best finds go in the best piece: rarity first, then value. Pinned slots (Arrange) keep their pick while it's still
-/// in the inventory and allowed there. Selling or listing a find on ebae takes it out of the inventory, so it leaves
+/// in the inventory and allowed there. Selling or listing a find on ebag takes it out of the inventory, so it leaves
 /// the display on the next refresh.
 /// </summary>
 public static class DisplayPlanner
@@ -100,7 +100,7 @@ public static class DisplayPlanner
 
     // ------------------------------------------------------------------ ranking
 
-    /// <summary>Display value of a find: ebae's appraisal (rolled value; curiosities a couple of bucks).</summary>
+    /// <summary>Display value of a find: ebag's appraisal (rolled value; curiosities a couple of bucks).</summary>
     public static float ValueOf(ItemInstance it) => it == null ? 0f : EbaeMarket.Appraise(it);
 
     /// <summary>Best first: rarity, then value, then uid (stable on every machine).</summary>
@@ -113,12 +113,13 @@ public static class DisplayPlanner
         return string.CompareOrdinal(a.uid ?? "", b.uid ?? "");
     }
 
-    /// <summary>The inventory's finds, best first (null / unknown defs skipped).</summary>
+    /// <summary>The inventory's finds, best first: VALUABLES only (null / unknown defs, stolen goods and kept parts are skipped:
+    /// a shelf of old boots impresses nobody and earns no Showcase Rep).</summary>
     public static List<ItemInstance> Ranked(IReadOnlyList<ItemInstance> inventory)
     {
         var list = new List<ItemInstance>();
         if (inventory != null)
-            foreach (var it in inventory) if (it != null && it.Def != null && !string.IsNullOrEmpty(it.uid)) list.Add(it);
+            foreach (var it in inventory) if (it != null && !it.hot && it.Def != null && it.Def.category == ItemCategory.Valuable && !string.IsNullOrEmpty(it.uid)) list.Add(it);
         list.Sort(Compare);
         return list;
     }
@@ -132,6 +133,20 @@ public static class DisplayPlanner
     {
         int h = PickupVisuals.StableHash(uid ?? "");
         return h == 0 ? 1 : h;
+    }
+
+    /// <summary>True when an owned piece has a slot pinned to this find (Arrange). The Workshop bench never consumes a pinned find.</summary>
+    public static bool IsPinnedUid(string uid, Func<string, int> level = null, Func<string, int> counter = null)
+    {
+        if (string.IsNullOrEmpty(uid)) return false;
+        level ??= UpgradeEffects.Level; counter ??= GameSession.GetCounter;
+        int tag = PinTag(uid);
+        foreach (var p in Pieces)
+        {
+            if (!p.OwnedAt(level)) continue;
+            for (int i = 0; i < p.slots; i++) if (counter(PinKey(p.key, i)) == tag) return true;
+        }
+        return false;
     }
 
     // ------------------------------------------------------------------ the plan

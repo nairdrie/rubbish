@@ -6,13 +6,16 @@ using UnityEngine;
 /// Applies what you bought on Scrapazon, and the read-only API other systems use to honor it.
 /// A DontDestroyOnLoad <see cref="ShopEffectsRunner"/> (auto-created in play mode) re-applies every effect
 /// on scene load, player spawn and truck spawn:
-///   truck_capacity -> GameSession.SetTruckCapacity(UpgradeEffects.CapacityKg[level]) (200/240/280/340 kg)
+///   truck_model + truck_capacity -> business chassis capacity plus transferable hopper upgrades (TruckProgression)
 ///   truck_* -> on every TruckControllerV2: <see cref="ShopTruckMods"/> (absolute engine tiers, horn L1/L2, headlights,
 ///              hopper ram), <see cref="TruckHandlingMods"/>, <see cref="TruckRecovery"/> (Hold R), <see cref="TruckSideLoader"/>
 ///              (Grabby Arm), <see cref="GoldenTruckFx"/> (golden truck, paints, horn pack, radio)
 ///   gear -> <see cref="GearMods"/> on the local player (gloves + Back Sack, boots, wand, UV lamp, Garbage Juice);
 ///           rabies_vaccine -> GameSession.InfectionResist01; hard_hat -> read by CritterKnockback
 ///   headlamp -> <see cref="ShopHeadlamp"/> on PlayerController.Local (on at night)
+///   (personal gear is PRINTED in SolidWaste 3D's blueprint tree now, not bought here: CallingCatalog holds each
+///   level's how-to line and the build raises the same upgrade ids, so everything above re-applies through
+///   GameSession.UpgradeChanged exactly as it did after a purchase)
 /// All numbers come from <see cref="UpgradeEffects"/> (Docs/Progression.md §6).
 ///   rabies_shot -> bought while infected: used instantly (RabiesStatus.CureWithShot via reflection, fallback
 ///                  GameSession.CureRabies); otherwise stored and auto-used ~1.5 s after an infection (CritterSpawner
@@ -43,12 +46,8 @@ public static class ShopEffects
     /// <summary>Radius (m) in which a truck honk scares critters: 12 / 25 / 40 m by air_horn level (UpgradeEffects).</summary>
     public static float HornScareRadius => UpgradeEffects.HornScareRadius;
 
-    /// <summary>Hopper kg for a truck_capacity level: 160 / 200 / 240 / 280 / 340 (the UpgradeEffects table, not a formula).</summary>
-    public static float TruckCapacityFor(int level)
-    {
-        var t = UpgradeEffects.CapacityKg;
-        return t[Mathf.Clamp(level, 0, t.Length - 1)];
-    }
+    /// <summary>Hopper kg for this business's chassis and a truck_capacity level.</summary>
+    public static float TruckCapacityFor(int level) => UpgradeEffects.CapacityKgFor(TruckProgression.CurrentModel, level);
 
     /// <summary>
     /// True while a spritzed bottle of Eau de Raccoon-Be-Gone is protecting the player (until morning). Mirrors
@@ -70,6 +69,10 @@ public static class ShopEffects
 
         switch (it.id)
         {
+            case ShopIds.TruckModel:
+                ApplyAll();
+                if (!quiet) GameHUD.Toast(InstallMessage(it, now), ToastStyle.Good, 4f);
+                break;
             case ShopIds.TruckCapacity:
                 ApplyTruckCapacity();
                 if (!quiet) GameHUD.Toast($"Hopper extended! Truck holds {GameSession.TruckCapacityKg:0} kg now", ToastStyle.Good);
@@ -84,7 +87,6 @@ public static class ShopEffects
                 if (!quiet)
                     GameHUD.Toast("Raccoon-Be-Gone in your pocket. It spritzes itself the moment a critter tries something.", ToastStyle.Good);
                 break;
-            case ShopIds.Headlamp:
             case ShopIds.TruckTurbo:
             case ShopIds.AirHorn:
                 ApplyAll();
@@ -100,8 +102,6 @@ public static class ShopEffects
                 if (!quiet) GameHUD.Toast(InstallMessage(it, now), ToastStyle.Good, 3f);
                 break;
         }
-
-        ScrapazonBox.Deliver(it);
     }
 
     /// <summary>"{name} installed!" plus how to use it, for the toast after a purchase.</summary>
@@ -114,13 +114,13 @@ public static class ShopEffects
             name = it.levelTitles[now - 1];
         switch (it.id)
         {
+            case ShopIds.TruckModel:
+                return $"Rear-loader ready! {GameSession.TruckCapacityKg:0} kg payload. Your cargo and every upgrade carry over.";
             case ShopIds.TruckTurbo:
                 return $"{name} installed! Top speed {UpgradeEffects.Engine.maxSpeed:0.#} m/s. Flames: yes.";
             case ShopIds.AirHorn:
                 return now >= 2 ? $"{name} installed! Honk (H) scares critters {FoghornScareRadius:0} m away. And the sky."
                                 : $"{name} installed! Honk (H) scares critters within {AirHornScareRadius:0} m.";
-            case ShopIds.Headlamp:
-                return now >= 2 ? $"{name} installed! At night, some treasure bags glow purple." : $"{name} installed! It clicks on by itself at night.";
             case ShopIds.TruckHandling:
                 return now >= 3 ? $"{name} installed! Hold Space while driving to DRIFT." :
                        now == 2 ? $"{name} installed! Tony's anti-tip keeps you upright under 12 m/s." :
@@ -132,22 +132,17 @@ public static class ShopEffects
             case ShopIds.TruckHeadlights:
                 return now >= 2 ? $"{name} installed! Night is now a Tuesday afternoon. Raccoons hate it."
                                 : $"{name} installed! Raccoons in the beam run for it.";
-            case ShopIds.WorkGloves:
-                return now >= 3 ? $"{name} on! No carry slowdown. Two bags on your back."
-                     : now == 2 ? $"{name} on! Carrying a bag, press E on another: the first goes on your back."
-                                : $"{name} on! Heavy bags slow you down half as much. Throws go further.";
-            case ShopIds.WorkBoots:
-                return now >= 2 ? $"{name} on! +20% speed. Ctrl to STOMP critters away." : $"{name} on! +10% walk and sprint. Squeak squeak.";
-            case ShopIds.TreasureWand:
-                return now >= 2 ? $"{name} acquired! Beeps at bling when you grab a bag or walk past one." : $"{name} acquired! It beeps when you grab a bag with treasure in it. Sometimes.";
-            case ShopIds.RabiesVaccine:
-                return now >= 2 ? $"{name} administered! You're immune to rabies. Smug." : $"{name} administered! Rabid bites only infect you half as often.";
-            case ShopIds.HardHat:
-                return $"{name} on! Critter bonks knock you half as far, and you often keep hold of your bag.";
+            case ShopIds.AutoTipper:
+                return $"{name} installed! Hold {TruckTipper.KeyLabel} in the driver's seat: the whole load is out in {DumpRules.AutoTipperSeconds:0} s.";
+            case ShopIds.ConveyorBelt:
+                return now >= 3 ? $"{name} installed! Small junk gets shaken out into the compactor on the way in."
+                     : now == 2 ? $"{name} installed! The belt carries HEAVY bags to the queue too."
+                                : $"{name} installed! Tip your load in the bay: bags ride to the rack by the table. Grab one and rip it.";
+            case ShopIds.SortingTable:
+                return now >= 2 ? $"{name} installed! There's a second sorting spot at the table's left end: sort beside Magnus or a friend."
+                                : $"{name} installed!";
             case ShopIds.BagCannon:
                 return $"{name} bolted on! Hold a bag within ~14 m of your truck and HOLD R to aim, let go to FWOOMP.";
-            case ShopIds.GrabberPole:
-                return $"{name} acquired! Press V: grab far bags (over fences), poke friends, snatch their bags.";
             case ShopIds.GarbageJuice:
                 return $"Garbage Juice™ in your pocket ({GarbageJuiceCans}). Press J to chug: +25% speed for 2 hours.";
             case ShopIds.HornPackMusical:

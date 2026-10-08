@@ -463,6 +463,7 @@ public class SortingTable : MonoBehaviour, ICarryReceiver, ICarryReceiverFeedbac
             foreach (var item in contents.items) if (item != null) spray.items.Add(item);
         sprays.Add(spray);
         bag.Consume();
+        Workshop.BagRipped(this); // a business with no SolidWaste 3D disk yet finds one in its first bags
 
         if (contents == null || contents.items == null || contents.items.Count == 0)
         {

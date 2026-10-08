@@ -31,7 +31,7 @@ public static class HandsBots
 
     internal static Vector3 Arena()
     {
-        Vector3 p = DepotRowWorld.Active ? DepotRowLayout.DoorPoint(0) + new Vector3(12f, 0f, 10f) : new Vector3(0f, 0f, 0f);
+        Vector3 p = DepotRowWorld.Active ? DepotRowLayout.StreetPoint(0, new Vector3(12f, 0f, 10f)) : Vector3.zero;
         return Ground(p);
     }
 

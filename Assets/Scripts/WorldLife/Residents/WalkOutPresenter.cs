@@ -18,7 +18,7 @@ using UnityEngine;
 /// time (shown on scene load mid-walk otherwise). Billionaire Bluffs uses the butler's cloche (<see cref="ButlerPosts"/>).</para>
 ///
 /// <para>Interruptions: "Take bag" (E) hands the same bagId to the player (+1 Rep, neighborly); flattened → the bag(s)
-/// fly out of their arms as resting bags (never burst; same bagId); the record vanishes (Kevin's sweep, another player)
+/// fly out of their arms as resting bags (never burst; same bagId); the record vanishes (a raccoon crew's sweep, another player)
 /// → a shrug, "Oh. Okay then."; a raccoon within 6 m at night → "RACCOON!", the bag drops on the spot and they sprint
 /// back in. Night walk-outs come in pajamas with a flashlight.</para>
 /// </summary>

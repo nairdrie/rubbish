@@ -32,7 +32,7 @@ public class StorefrontPresentationTests
         var card = (VisualElement)Field(cardView, "card");
         var details = (VisualElement)Field(cardView, "details");
         Assert.AreEqual(DisplayStyle.None, details.style.display.value);
-        foreach (var name in new[] { "priceRow", "effect", "lockChip", "buy", "wage" })
+        foreach (var name in new[] { "priceRow", "effect", "lockChip", "buy" })
         {
             var element = (VisualElement)Field(cardView, name);
             Assert.IsTrue(card.Contains(element), name + " must remain on the card");
@@ -61,11 +61,11 @@ public class StorefrontPresentationTests
 
     [TestCase("Upgrade", "Installs automatically")]
     [TestCase("Consumable", "Added to your supplies")]
-    public void DeliveryCopyExplainsImmediateEffectAndDecorativePackaging(string kind, string expectation)
+    public void DeliveryCopyExplainsImmediateEffectWithoutAnyPackaging(string kind, string expectation)
     {
         string text = (string)Runtime("ScrapazonApp").GetMethod("DeliveryDescription", Static).Invoke(null, new[] { Product(kind) });
         StringAssert.Contains(expectation, text);
-        StringAssert.Contains("box is decorative", text);
+        StringAssert.DoesNotContain("box", text, "the delivery box is gone: purchases simply take effect");
     }
 
     [Test]
@@ -104,10 +104,9 @@ public class StorefrontPresentationTests
     }
 
     [Test]
-    public void PackagingIsBriefAndBoundedNotPermanentOfficeClutter()
+    public void PurchasesNoLongerSpawnADeliveryBox()
     {
-        var type = Runtime("ScrapazonBox");
-        Assert.That((float)type.GetField("Lifetime").GetRawConstantValue(), Is.InRange(3f, 8f));
-        Assert.That((int)type.GetField("MaxBoxes").GetRawConstantValue(), Is.InRange(1, 3));
+        Assert.IsNull(System.Type.GetType("ScrapazonBox, Assembly-CSharp", false), "the smiling delivery box was removed");
+        Assert.IsNull(Runtime("ScrapazonArt").GetMethod("Box", Static), "and so was its in-laptop drop animation");
     }
 }

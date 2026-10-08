@@ -12,6 +12,15 @@ public static class EbaeItemValidation
 
     public static bool IsValid(ItemInstance item, out string reason)
     {
+        if (!IsPlausible(item, out reason)) return false;
+        // Stolen goods (ItemInstance.hot, Scavenger calling) never go through ebag, Pawn Pete or a neighbour trade.
+        if (item.hot) { reason = "Hot goods. ebag won't touch them: find a fence."; return false; }
+        return true;
+    }
+
+    /// <summary>The catalog bounds alone (what <see cref="IsValid"/> checked before hot goods existed). The fence uses this.</summary>
+    public static bool IsPlausible(ItemInstance item, out string reason)
+    {
         reason = null;
         if (item == null) { reason = "Item is missing."; return false; }
         if (string.IsNullOrEmpty(item.uid) || Encoding.UTF8.GetByteCount(item.uid) > MaxUidBytes)
@@ -39,7 +48,7 @@ public static class EbaeItemValidation
                a.massKg == b.massKg && a.value == b.value && a.condition == b.condition &&
                // JsonUtility may normalize absent optional strings to empty on a network round-trip.
                string.Equals(a.foundAt ?? "", b.foundAt ?? "", StringComparison.Ordinal) &&
-               a.dayFound == b.dayFound &&
+               a.dayFound == b.dayFound && a.hot == b.hot &&
                string.Equals(a.note ?? "", b.note ?? "", StringComparison.Ordinal);
     }
 

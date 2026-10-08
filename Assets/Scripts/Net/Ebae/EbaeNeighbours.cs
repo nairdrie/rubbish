@@ -5,7 +5,7 @@ using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
 
-/// <summary>One neighbour's ebae listing as every machine in the Town sees it (host-written; <see cref="EbaeNeighbours"/>).</summary>
+/// <summary>One neighbour's ebag listing as every machine in the Town sees it (host-written; <see cref="EbaeNeighbours"/>).</summary>
 public struct NeighbourListing : INetworkSerializable, IEquatable<NeighbourListing>
 {
     public const byte FlagSettling = 1;
@@ -64,7 +64,7 @@ public struct NeighbourOffer : INetworkSerializable, IEquatable<NeighbourOffer>
     public int id;
     public FixedString32Bytes listingId;
     public FixedString64Bytes seller, buyer;
-    /// <summary>Cash on the table now (the buyer pays it; the seller gets it minus ebae's fee).</summary>
+    /// <summary>Cash on the table now (the buyer pays it; the seller gets it minus ebag's fee).</summary>
     public long cashCents;
     /// <summary>The buyer's own last amount (a buyer counter must beat it).</summary>
     public long buyerCents;
@@ -123,15 +123,15 @@ public struct NeighbourOffer : INetworkSerializable, IEquatable<NeighbourOffer>
 }
 
 /// <summary>
-/// ebae between players (Docs/Multiplayer.md §13.8, package N5), on <c>NetSession.prefab</c>.
+/// ebag between players (Docs/Multiplayer.md §13.8, package N5), on <c>NetSession.prefab</c>.
 /// <list type="bullet">
-/// <item><b>Listings.</b> Every player's ebae listings live in their own business (<see cref="EbaeMarket"/>, saved with it). In a
+/// <item><b>Listings.</b> Every player's ebag listings live in their own business (<see cref="EbaeMarket"/>, saved with it). In a
 /// Town each owner publishes them to the host, which shows them to everyone (<see cref="Listings"/>, the laptop's Neighbours
 /// tab). A business that leaves takes its listings home; they come back when it rejoins and publishes again.</item>
 /// <item><b>Buying.</b> <see cref="RequestBuyNow"/> at the asking price, or <see cref="RequestOffer"/>: cash, an item from the
 /// buyer's keep crate, or both. The seller answers Accept / Counter / Decline (<see cref="Respond"/>) with the NPC rules: offers
 /// live 60–90 s, a counter has to beat the offer and can't go over asking, at most <see cref="MaxCounterRounds"/> counters,
-/// <see cref="EbaeMarket.MaxOffersPerListing"/> offers per listing, ebae's fee (the seller's own) comes off the cash.</item>
+/// <see cref="EbaeMarket.MaxOffersPerListing"/> offers per listing, ebag's fee (the seller's own) comes off the cash.</item>
 /// <item><b>Settling (host).</b> The host locks the listing, asks the seller (and the buyer, for a traded item) to hold the
 /// item(s), then in one frame takes the cash from the buyer and pays the seller through <see cref="Ledger"/> and tells both
 /// owners to swap the items. If anything is missing (item gone, buyer can't pay, someone left) nothing moves and the holds are
@@ -331,7 +331,7 @@ public partial class EbaeNeighbours : NetworkBehaviour
 
     public static Color32 Tint(string businessId) => Businesses.TryGet(businessId, out var b) ? b.Tint : new Color32(128, 128, 128, 255);
 
-    /// <summary>The fee the seller pays on a sale (1–8%: theirs, with ebae Power Seller).</summary>
+    /// <summary>The fee the seller pays on a sale (1–8%: theirs, with ebag Power Seller).</summary>
     public static float ClampFee(float fee) => float.IsNaN(fee) ? Economy.EbaeFeeFraction : Mathf.Clamp(fee, 0.01f, Economy.EbaeFeeFraction);
 
     // ------------------------------------------------------------------ requests (any player)
@@ -687,7 +687,7 @@ public partial class EbaeNeighbours : NetworkBehaviour
         string what = trade != null
             ? $"{buyerName} traded you their {EbaeMarket.NameOf(trade)}" + (cash > 0 ? $" + {Economy.Money(cash / 100f)}" : "") + $" for your {itemName}!"
             : $"{buyerName} bought your {itemName} for {Economy.Money(cash / 100f)}!";
-        ShowNotice("ebae: " + what, ToastStyle.Rare);
+        ShowNotice("ebag: " + what, ToastStyle.Rare);
         Sfx.Play("cash");
     }
 
@@ -699,7 +699,7 @@ public partial class EbaeNeighbours : NetworkBehaviour
         var item = ParseItem(itemJson);
         EbaeMarket.ReceiveItem(item);
         Audit("ebae-own", ("op", "bought"), ("settle", settleId), ("item", item != null ? item.uid : ""), ("gave", tradeUid ?? ""), ("cash", cash));
-        ShowNotice($"ebae: you got {sellerName}'s {EbaeMarket.NameOf(item)}! it's in your keep crate.", ToastStyle.Good);
+        ShowNotice($"ebag: you got {sellerName}'s {EbaeMarket.NameOf(item)}! it's in your keep crate.", ToastStyle.Good);
         Sfx.Play("cash");
     }
 
@@ -708,7 +708,7 @@ public partial class EbaeNeighbours : NetworkBehaviour
         Audit("ebae-notice", ("text", text));
         try { Notice?.Invoke(text, style); }
         catch (Exception e) { Debug.LogException(e); }
-        if (EbaeUI.IsOpen) EbaeUI.Instance.LaptopToast(text.StartsWith("ebae: ") ? text.Substring(6) : text, style == ToastStyle.Bad ? "bad" : "offer");
+        if (EbaeUI.IsOpen) EbaeUI.Instance.LaptopToast(text.StartsWith("ebag: ") ? text.Substring(6) : text, style == ToastStyle.Bad ? "bad" : "offer");
         else GameHUD.Toast(text, style, 3f);
         Sfx.Play("notify");
     }
@@ -791,8 +791,8 @@ public partial class EbaeNeighbours : NetworkBehaviour
             var o = offers[i];
             if (o.Settling || now < o.expiresAt) continue;
             RemoveOffer(i, "expired");
-            TellBiz(o.Buyer, $"ebae: your offer on {ShopName(o.Seller)}'s {ListingName(o)} ran out.", ToastStyle.Info);
-            TellBiz(o.Seller, $"ebae: {OwnerName(o.Buyer)}'s offer on your {ListingName(o)} ran out.", ToastStyle.Info);
+            TellBiz(o.Buyer, $"ebag: your offer on {ShopName(o.Seller)}'s {ListingName(o)} ran out.", ToastStyle.Info);
+            TellBiz(o.Seller, $"ebag: {OwnerName(o.Buyer)}'s offer on your {ListingName(o)} ran out.", ToastStyle.Info);
         }
         if (settlements.Count > 0)
         {
@@ -836,8 +836,8 @@ public partial class EbaeNeighbours : NetworkBehaviour
             bool sellerGone = !live.Contains(o.Seller), buyerGone = !live.Contains(o.Buyer);
             if (!sellerGone && !buyerGone) continue;
             RemoveOffer(i, sellerGone ? "seller left" : "buyer left");
-            if (!buyerGone) TellBiz(o.Buyer, "ebae: your offer was cancelled. the seller went home.", ToastStyle.Bad);
-            if (!sellerGone) TellBiz(o.Seller, $"ebae: {OwnerName(o.Buyer)} went home; their offer is off.", ToastStyle.Info);
+            if (!buyerGone) TellBiz(o.Buyer, "ebag: your offer was cancelled. the seller went home.", ToastStyle.Bad);
+            if (!sellerGone) TellBiz(o.Seller, $"ebag: {OwnerName(o.Buyer)} went home; their offer is off.", ToastStyle.Info);
         }
         for (int i = listings.Count - 1; i >= 0; i--)
         {
@@ -995,7 +995,7 @@ public partial class EbaeNeighbours : NetworkBehaviour
             if (o.id == exceptOffer || o.Seller != seller || o.ListingId != listingId) continue;
             if (o.Settling) continue; // its settlement finds the listing gone and aborts
             RemoveOffer(i, why);
-            TellBiz(o.Buyer, $"ebae: your offer on {ShopName(seller)}'s listing is off: {why}.", ToastStyle.Bad);
+            TellBiz(o.Buyer, $"ebag: your offer on {ShopName(seller)}'s listing is off: {why}.", ToastStyle.Bad);
         }
     }
 
@@ -1014,14 +1014,14 @@ public partial class EbaeNeighbours : NetworkBehaviour
         if (!BizOf(sender, out var buyer)) return;
         if (!hostListings.TryGetValue(Key(seller, listingId), out var h))
         {
-            Tell(sender, "ebae: too slow! that listing is gone.", ToastStyle.Bad);
+            Tell(sender, "ebag: too slow! that listing is gone.", ToastStyle.Bad);
             Refused(sender, "buynow", "gone");
             return;
         }
-        if (seller == buyer.Id) { Tell(sender, "ebae: you can't buy your own stuff.", ToastStyle.Bad); return; }
-        if (h.pub.Settling) { Tell(sender, "ebae: too slow! someone else is buying that.", ToastStyle.Bad); Refused(sender, "buynow", "settling"); return; }
+        if (seller == buyer.Id) { Tell(sender, "ebag: you can't buy your own stuff.", ToastStyle.Bad); return; }
+        if (h.pub.Settling) { Tell(sender, "ebag: too slow! someone else is buying that.", ToastStyle.Bad); Refused(sender, "buynow", "settling"); return; }
         long cash = h.pub.askingCents;
-        if (CashOf(buyer.Id) < cash) { Tell(sender, $"ebae: you need {Economy.Money(cash / 100f)} for that.", ToastStyle.Bad); return; }
+        if (CashOf(buyer.Id) < cash) { Tell(sender, $"ebag: you need {Economy.Money(cash / 100f)} for that.", ToastStyle.Bad); return; }
         StartSettlement(h, buyer.Id, sender, cash, null, null, -1, buyNow: true);
     }
 
@@ -1029,7 +1029,7 @@ public partial class EbaeNeighbours : NetworkBehaviour
     {
         if (!BizOf(sender, out var buyerBiz)) return;
         string buyer = buyerBiz.Id;
-        void Fail(string why) { Tell(sender, "ebae: " + why, ToastStyle.Bad); Refused(sender, "offer", why); }
+        void Fail(string why) { Tell(sender, "ebag: " + why, ToastStyle.Bad); Refused(sender, "offer", why); }
         if (!hostListings.TryGetValue(Key(seller, listingId), out var h)) { Fail("that listing is gone."); return; }
         if (seller == buyer) { Fail("you can't make an offer on your own stuff."); return; }
         if (h.pub.Settling) { Fail("someone is buying that right now."); return; }
@@ -1078,7 +1078,7 @@ public partial class EbaeNeighbours : NetworkBehaviour
               ("trade", trade != null ? trade.uid : ""));
         string what = Economy.Money(cash / 100f) + (trade != null ? (cash > 0 ? " + " : "") + EbaeMarket.NameOf(trade) : "");
         if (trade != null && cash == 0) what = "their " + EbaeMarket.NameOf(trade);
-        TellBiz(seller, $"ebae: {OwnerName(buyer)} (neighbour) offered {what} for your {h.pub.ItemName}!", ToastStyle.Good);
+        TellBiz(seller, $"ebag: {OwnerName(buyer)} (neighbour) offered {what} for your {h.pub.ItemName}!", ToastStyle.Good);
     }
 
     /// <summary>60–90 s, like an NPC offer (spread by id; no RNG on the host for this).</summary>
@@ -1088,15 +1088,15 @@ public partial class EbaeNeighbours : NetworkBehaviour
     {
         if (!BizOf(sender, out var party)) return;
         int i = OfferIndex(offerId);
-        if (i < 0) { Tell(sender, "ebae: that offer is gone.", ToastStyle.Bad); return; }
+        if (i < 0) { Tell(sender, "ebag: that offer is gone.", ToastStyle.Bad); return; }
         var o = offers[i];
         bool isSeller = party.Id == o.Seller, isBuyer = party.Id == o.Buyer;
         if (!isSeller && !isBuyer) { Refused(sender, "respond", "not a party"); return; }
-        if (o.Settling) { Tell(sender, "ebae: that deal is already going through.", ToastStyle.Info); return; }
+        if (o.Settling) { Tell(sender, "ebag: that deal is already going through.", ToastStyle.Info); return; }
         if (Now >= o.expiresAt)
         {
             RemoveOffer(i, "expired");
-            Tell(sender, "ebae: that offer has expired.", ToastStyle.Bad);
+            Tell(sender, "ebag: that offer has expired.", ToastStyle.Bad);
             return;
         }
         bool myTurn = (o.turn == NeighbourOffer.TurnSeller && isSeller) || (o.turn == NeighbourOffer.TurnBuyer && isBuyer);
@@ -1105,26 +1105,26 @@ public partial class EbaeNeighbours : NetworkBehaviour
         if (action == ActDecline)
         {
             RemoveOffer(i, isSeller ? "declined" : "withdrawn");
-            if (isSeller) TellBiz(o.Buyer, $"ebae: {OwnerName(o.Seller)} declined your offer on their {item}.", ToastStyle.Bad);
-            else TellBiz(o.Seller, $"ebae: {OwnerName(o.Buyer)} walked away from the deal on your {item}.", ToastStyle.Info);
+            if (isSeller) TellBiz(o.Buyer, $"ebag: {OwnerName(o.Seller)} declined your offer on their {item}.", ToastStyle.Bad);
+            else TellBiz(o.Seller, $"ebag: {OwnerName(o.Buyer)} walked away from the deal on your {item}.", ToastStyle.Info);
             return;
         }
-        if (!myTurn) { Tell(sender, "ebae: waiting on the other side.", ToastStyle.Info); return; }
+        if (!myTurn) { Tell(sender, "ebag: waiting on the other side.", ToastStyle.Info); return; }
 
         if (action == ActCounter)
         {
-            if (o.rounds >= MaxCounterRounds) { Tell(sender, "ebae: no more haggling. accept or decline.", ToastStyle.Bad); return; }
+            if (o.rounds >= MaxCounterRounds) { Tell(sender, "ebag: no more haggling. accept or decline.", ToastStyle.Bad); return; }
             int li = ListingIndex(o.Seller, o.ListingId);
             long asking = li >= 0 ? listings[li].askingCents : o.cashCents;
             bool ok = isSeller ? counter > o.cashCents && counter <= asking
                                : counter > o.buyerCents && counter < o.cashCents;
             if (!ok)
             {
-                Tell(sender, isSeller ? $"ebae: a counter has to beat {Economy.Money(o.Cash)} and can't go over asking ({Economy.Money(asking / 100f)})."
-                                      : $"ebae: a counter has to land between {Economy.Money(o.buyerCents / 100f)} and {Economy.Money(o.Cash)}.", ToastStyle.Bad);
+                Tell(sender, isSeller ? $"ebag: a counter has to beat {Economy.Money(o.Cash)} and can't go over asking ({Economy.Money(asking / 100f)})."
+                                      : $"ebag: a counter has to land between {Economy.Money(o.buyerCents / 100f)} and {Economy.Money(o.Cash)}.", ToastStyle.Bad);
                 return;
             }
-            if (isBuyer && CashOf(o.Buyer) < counter) { Tell(sender, "ebae: you can't afford that.", ToastStyle.Bad); return; }
+            if (isBuyer && CashOf(o.Buyer) < counter) { Tell(sender, "ebag: you can't afford that.", ToastStyle.Bad); return; }
             o.cashCents = counter;
             if (isBuyer) o.buyerCents = counter;
             o.turn = isSeller ? NeighbourOffer.TurnBuyer : NeighbourOffer.TurnSeller;
@@ -1133,17 +1133,17 @@ public partial class EbaeNeighbours : NetworkBehaviour
             o.expiresAt = Now + o.lifetime;
             offers[i] = o;
             Audit("ebae-trade", ("op", "counter"), ("offer", o.id), ("by", isSeller ? "seller" : "buyer"), ("cash", counter), ("round", o.rounds));
-            if (isSeller) TellBiz(o.Buyer, $"ebae: {OwnerName(o.Seller)} countered at {Economy.Money(counter / 100f)} for their {item}.", ToastStyle.Good);
-            else TellBiz(o.Seller, $"ebae: {OwnerName(o.Buyer)} came back with {Economy.Money(counter / 100f)} for your {item}.", ToastStyle.Good);
+            if (isSeller) TellBiz(o.Buyer, $"ebag: {OwnerName(o.Seller)} countered at {Economy.Money(counter / 100f)} for their {item}.", ToastStyle.Good);
+            else TellBiz(o.Seller, $"ebag: {OwnerName(o.Buyer)} came back with {Economy.Money(counter / 100f)} for your {item}.", ToastStyle.Good);
             return;
         }
 
         // accept
-        if (!hostListings.TryGetValue(Key(o.Seller, o.ListingId), out var h)) { RemoveOffer(i, "listing gone"); Tell(sender, "ebae: that listing is gone.", ToastStyle.Bad); return; }
-        if (h.pub.Settling) { Tell(sender, "ebae: someone else is buying that right now.", ToastStyle.Bad); return; }
+        if (!hostListings.TryGetValue(Key(o.Seller, o.ListingId), out var h)) { RemoveOffer(i, "listing gone"); Tell(sender, "ebag: that listing is gone.", ToastStyle.Bad); return; }
+        if (h.pub.Settling) { Tell(sender, "ebag: someone else is buying that right now.", ToastStyle.Bad); return; }
         if (CashOf(o.Buyer) < o.cashCents)
         {
-            Tell(sender, isSeller ? $"ebae: {OwnerName(o.Buyer)} can't afford that right now." : "ebae: you can't afford that right now.", ToastStyle.Bad);
+            Tell(sender, isSeller ? $"ebag: {OwnerName(o.Buyer)} can't afford that right now." : "ebag: you can't afford that right now.", ToastStyle.Bad);
             return;
         }
         o.settling = 1;
@@ -1243,8 +1243,8 @@ public partial class EbaeNeighbours : NetworkBehaviour
         int oi = s.offerId >= 0 ? OfferIndex(s.offerId) : -1;
         if (oi >= 0) RemoveOffer(oi, "fell through: " + why);
         Audit("ebae-trade", ("op", "settle-abort"), ("settle", s.id), ("offer", s.offerId), ("why", why), ("seller", s.seller), ("buyer", s.buyer));
-        TellBiz(s.buyer, $"ebae: the deal fell through ({why}). nothing changed hands.", ToastStyle.Bad);
-        if (!s.buyNow) TellBiz(s.seller, $"ebae: the deal fell through ({why}). nothing changed hands.", ToastStyle.Bad);
+        TellBiz(s.buyer, $"ebag: the deal fell through ({why}). nothing changed hands.", ToastStyle.Bad);
+        if (!s.buyNow) TellBiz(s.seller, $"ebag: the deal fell through ({why}). nothing changed hands.", ToastStyle.Bad);
     }
 
     /// <summary>Host, one frame: re-check, take the cash, pay the seller, swap the items. Never half a trade.</summary>
@@ -1261,12 +1261,12 @@ public partial class EbaeNeighbours : NetworkBehaviour
         {
             bool paid;
             using (Ledger.ToBusiness(s.buyer))
-                paid = Ledger.Spend(s.cash / 100f, $"ebae: {itemName} from {sellerName}", LedgerIds.Ebae);
+                paid = Ledger.Spend(s.cash / 100f, $"ebag: {itemName} from {sellerName}", LedgerIds.Ebae);
             if (!paid) { Abort(s, $"{buyerName} can't afford it"); return; }
             net = (long)Math.Round(s.cash * (1.0 - h.fee));
             if (net > 0)
                 using (Ledger.ToBusiness(s.seller))
-                    Ledger.Credit(net / 100f, $"ebae sale to {buyerName}", LedgerIds.Ebae);
+                    Ledger.Credit(net / 100f, $"ebag sale to {buyerName}", LedgerIds.Ebae);
         }
         settlements.Remove(s.id);
 
@@ -1335,7 +1335,7 @@ public partial class EbaeNeighbours : NetworkBehaviour
         ulong s = p.Receive.SenderClientId;
         if (!Allowed(MsgPublish, s, json.Length + 52))
         {
-            PublishAnswer(s, id.ToString(), version, false, "Too many ebae updates; retrying shortly.", true);
+            PublishAnswer(s, id.ToString(), version, false, "Too many ebag updates; retrying shortly.", true);
             return;
         }
         HostPublish(s, id.ToString(), version, asking, json.ToString(), fee);

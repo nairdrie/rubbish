@@ -48,7 +48,8 @@ public struct DepotLotState : INetworkSerializable, IEquatable<DepotLotState>
 /// <summary>
 /// Depot Row's replicated state and host logic (Docs/Multiplayer.md §13.2–§13.4, package N3). Lives on
 /// <c>NetSession.prefab</c> (<c>Setup_Coop</c> adds every <see cref="NetSessionComponentAttribute"/>), so it exists in solo
-/// too but does nothing until a co-op host turns on the one world (<see cref="DepotRowWorld"/>).
+/// too. There it hands out no lots: it only keeps <c>DepotRow</c> loaded next to the town (<see cref="ServerEnsureLegacyStreet"/>)
+/// so the solo shop stands on lot 1 (presented by <see cref="DepotRowScene"/>, <see cref="DepotFlowRules"/>).
 /// <list type="bullet">
 /// <item><b>Host:</b> loads the town (Single) + <c>DepotRow</c> (Additive) through NGO, so everyone is in one world and
 /// nobody is ever moved by someone else's door. Assigns each business the lowest free lot (host = lot 1; a rejoin gets
@@ -79,7 +80,7 @@ public class DepotRowNet : NetworkBehaviour
     readonly Dictionary<string, int> lotByKey = new Dictionary<string, int>(StringComparer.Ordinal);
     readonly Dictionary<string, string> nameByKey = new Dictionary<string, string>(StringComparer.Ordinal);
     readonly float[] truckDueAt = new float[DepotRowLayout.LotCount];
-    bool listening, worldLoading, syncQueued;
+    bool listening, worldLoading, syncQueued, legacyLoading, legacyMissingWarned;
     NetGuard renameGuard;
 
     /// <summary>Seconds between a lot plopping and its truck rolling out of the door.</summary>
@@ -90,6 +91,7 @@ public class DepotRowNet : NetworkBehaviour
     public override void OnNetworkSpawn()
     {
         Instance = this;
+        legacyLoading = false;
         lots.OnListChanged += OnLotsChanged;
         oneWorld.OnValueChanged += OnOneWorldChanged;
         if (IsServer)
@@ -236,6 +238,59 @@ public class DepotRowNet : NetworkBehaviour
     }
 
     // =====================================================================
+    // Host: the legacy flow's street (solo)
+    // =====================================================================
+
+    /// <summary>
+    /// Host, legacy scene flow (solo / <c>-depotrow-off</c>): whenever the town is the loaded world, load <c>DepotRow</c>
+    /// next to it through NGO, exactly like the one world does. Nobody claims a lot; <see cref="DepotRowScene"/> presents
+    /// lot 1 as the shop and its door swaps to ShopScene. The next Single load (back into the garage) unloads it again.
+    /// </summary>
+    void ServerEnsureLegacyStreet()
+    {
+        if (legacyLoading || !DepotRowWorld.HostWantsLegacyStreet) return;
+        if (SceneTransitionData.IsPending) return; // a door transition is mid-load: the town may be on its way out
+        if (!DepotRowWorld.IsSceneLoaded(DepotRowWorld.TownSceneName) || DepotRowWorld.IsSceneLoaded(DepotRowLayout.SceneName)) return;
+        if (!Application.CanStreamedLevelBeLoaded(DepotRowLayout.SceneName))
+        {
+            if (!legacyMissingWarned)
+            {
+                legacyMissingWarned = true;
+                Debug.LogError("[DepotRow] DepotRow.unity isn't in the build settings (run Rubbish/Setup/DepotRow): the town has no shop building.");
+            }
+            return;
+        }
+        StartCoroutine(LoadLegacyStreet());
+    }
+
+    IEnumerator LoadLegacyStreet()
+    {
+        legacyLoading = true;
+        var nm = NetworkManager;
+        string town = DepotRowWorld.TownSceneName;
+        float giveUp = Time.realtimeSinceStartup + 30f;
+        bool started = false;
+        // NGO refuses a new scene event while the town's own load is still finishing: retry for a little while.
+        while (Time.realtimeSinceStartup < giveUp && nm != null && nm.SceneManager != null && !OneWorld &&
+               DepotRowWorld.IsSceneLoaded(town) && !DepotRowWorld.IsSceneLoaded(DepotRowLayout.SceneName))
+        {
+            if (!started)
+            {
+                started = nm.SceneManager.LoadScene(DepotRowLayout.SceneName, LoadSceneMode.Additive) == SceneEventProgressStatus.Started;
+                if (!started) { yield return new WaitForSecondsRealtime(0.1f); continue; }
+            }
+            yield return null;
+        }
+        if (DepotRowWorld.IsSceneLoaded(DepotRowLayout.SceneName))
+        {
+            Debug.Log("[DepotRow] Legacy flow: Depot Row's street side is up (lot 1 is the shop).");
+            NetAudit.Event("depotrow", "legacy street loaded");
+        }
+        else if (DepotRowWorld.IsSceneLoaded(town)) Debug.LogWarning("[DepotRow] Legacy flow: couldn't load Depot Row next to the town.");
+        legacyLoading = false;
+    }
+
+    // =====================================================================
     // Host: lots
     // =====================================================================
 
@@ -257,6 +312,7 @@ public class DepotRowNet : NetworkBehaviour
             syncQueued = false;
             ServerSync(teleportPresent: false);
         }
+        if (!OneWorld && !worldLoading) ServerEnsureLegacyStreet();
         if (!OneWorld || worldLoading) return;
         for (int i = 0; i < truckDueAt.Length; i++)
         {
@@ -435,9 +491,8 @@ public class DepotRowNet : NetworkBehaviour
         if (TruckAlive(s.truckId)) { ServerBringTruckOut(lot); return; }
         var prefab = TruckPrefab();
         if (prefab == null) { Debug.LogError("[DepotRow] No truck prefab in the NetworkManager's prefab list."); return; }
-        Vector3 door = DepotRowLayout.DoorPoint(lot);
-        Vector3 pos = door + new Vector3(0f, 0.35f, 3.0f);
-        var inst = Instantiate(prefab, pos, DepotRowLayout.StreetFacing);
+        var pose = DepotRowLayout.StreetTruckRollout(lot);
+        var inst = Instantiate(prefab, pose.position, pose.rotation);
         inst.DontDestroyWithOwner = true;
         inst.Spawn(destroyWithScene: true);
         s.truckId = inst.NetworkObjectId;

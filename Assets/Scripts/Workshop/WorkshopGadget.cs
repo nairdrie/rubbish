@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>Handmade toys are opt-in, local to one shop, and never pay money or replace purchased automation.</summary>
+/// <summary>Shop toys (Scrapazon decor) are opt-in, local to one shop, and never pay money or replace purchased automation.</summary>
 public sealed class WorkshopGadget : MonoBehaviour, IInteractable
 {
     public WorkshopModel model;
@@ -55,7 +55,7 @@ public sealed class WorkshopGadget : MonoBehaviour, IInteractable
         "break_sofa" => SeatedClient == Permissions.LocalClientId ? "Get off the questionable sofa" : "Take a break on the sofa",
         "scrap_radio" => RadioOn ? "Switch scrap radio OFF" : "Switch scrap radio ON",
         "doorbell" => "Ring the ridiculous doorbell",
-        _ => "Handmade workshop gadget"
+        _ => "Shop gadget"
     };
     public void OnInteract(GameObject interactor)
     {

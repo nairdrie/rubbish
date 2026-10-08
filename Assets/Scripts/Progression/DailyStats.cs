@@ -1,11 +1,14 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>One in-game day of company stats (Docs/Progression.md §9.5 A.2).</summary>
 public sealed class DayStats
 {
     public int day;
-    public int bags, onTime, kevinBags, curbs, items, contamination, treasures, crushes;
+    /// <summary><see cref="bags"/> went into a truck (by hand or the arm); <see cref="crewBags"/> were collected by the
+    /// business's raccoon crew instead and are counted apart (they never feed on-time %, the Shift bonus or a Clean Day).</summary>
+    public int bags, onTime, crewBags, curbs, items, contamination, treasures, crushes;
     /// <summary>Cash in (credits) / out (charges: fines, wages, hospital...). Purchases are <see cref="spent"/>, not charges.</summary>
     public float credits, charges, spent, rep;
     public float bestFindValue;
@@ -36,6 +39,24 @@ public static class DailyStats
 {
     const string DayCounter = "stats_day";
     const string T = "st0_", Y = "st1_";
+    /// <summary>Counter suffix of <see cref="DayStats.crewBags"/>, and the suffix it had before save v6 (Kevin's Crew).</summary>
+    const string CrewKey = "crew", LegacyCrewKey = "kevin";
+
+    /// <summary>
+    /// Save v6 renamed the background-crew bag counter. Pure load migration over a save's counters: today's and
+    /// yesterday's old values move to the new keys (added to anything already there) and the old keys are dropped.
+    /// Idempotent, and a save that never had them is untouched.
+    /// </summary>
+    public static void MigrateLegacyCrewCounters(IDictionary<string, int> counters)
+    {
+        if (counters == null) return;
+        foreach (string day in new[] { T, Y })
+        {
+            if (!counters.TryGetValue(day + LegacyCrewKey, out int old)) continue;
+            counters.Remove(day + LegacyCrewKey);
+            if (old > 0) counters[day + CrewKey] = (counters.TryGetValue(day + CrewKey, out int now) ? now : 0) + old;
+        }
+    }
 
     static DayStats today, yesterday;
 
@@ -113,7 +134,7 @@ public static class DailyStats
     public static void OnBag(BagCollectedFact f)
     {
         var t = Today;
-        if (f.byKevin) { t.kevinBags++; Set("kevin", t.kevinBags); }
+        if (f.byRaccoon) { t.crewBags++; Set(CrewKey, t.crewBags); }
         else
         {
             t.bags++;
@@ -164,7 +185,7 @@ public static class DailyStats
         return new DayStats
         {
             day = day,
-            bags = Get("bags"), onTime = Get("ontime"), kevinBags = Get("kevin"), curbs = Get("curbs"), items = Get("items"),
+            bags = Get("bags"), onTime = Get("ontime"), crewBags = Get(CrewKey), curbs = Get("curbs"), items = Get("items"),
             contamination = Get("contam"), treasures = Get("treasures"), crushes = Get("crushes"),
             credits = Money("credits"), charges = Money("charges"), spent = Money("spent"), rep = Get("rep") / 10f,
             bestFindValue = Money("best"), bestFindDefId = DefAt(defIdx),
@@ -175,7 +196,7 @@ public static class DailyStats
     {
         void W(string k, int v) => GameSession.SetCounter(p + k, v);
         void M(string k, float v) => GameSession.SetCounter(p + k, Mathf.RoundToInt(v * 100f));
-        W("bags", s.bags); W("ontime", s.onTime); W("kevin", s.kevinBags); W("curbs", s.curbs); W("items", s.items);
+        W("bags", s.bags); W("ontime", s.onTime); W(CrewKey, s.crewBags); W("curbs", s.curbs); W("items", s.items);
         W("contam", s.contamination); W("treasures", s.treasures); W("crushes", s.crushes);
         M("credits", s.credits); M("charges", s.charges); M("spent", s.spent); W("rep", Mathf.RoundToInt(s.rep * 10f));
         M("best", s.bestFindValue); W("best_def", DefIndex(s.bestFindDefId));
@@ -183,7 +204,7 @@ public static class DailyStats
 
     static DayStats Copy(DayStats s) => new DayStats
     {
-        day = s.day, bags = s.bags, onTime = s.onTime, kevinBags = s.kevinBags, curbs = s.curbs, items = s.items,
+        day = s.day, bags = s.bags, onTime = s.onTime, crewBags = s.crewBags, curbs = s.curbs, items = s.items,
         contamination = s.contamination, treasures = s.treasures, crushes = s.crushes, credits = s.credits,
         charges = s.charges, spent = s.spent, rep = s.rep, bestFindValue = s.bestFindValue, bestFindDefId = s.bestFindDefId,
     };

@@ -61,7 +61,7 @@ public class CollectibleLootTests
     [Test]
     public void OriginalFourRarityBucketsAndAbsoluteRarePlusOddsAreUnchanged()
     {
-        var profiles = Districts.Select(d => Field(d, "loot")).ToArray();
+        var profiles = Districts.Take(4).Select(d => Field(d, "loot")).ToArray();
         float[][] low = { new[]{84f,14f,1.7f,.3f}, new[]{68f,25f,6f,1f}, new[]{52f,32f,13f,3f}, new[]{55f,30f,12f,3f} };
         float[][] high = { new[]{74f,20f,5f,1f}, new[]{58f,30f,10f,2f}, new[]{42f,35f,18f,5f}, new[]{47f,33f,15f,5f} };
         float[] p0 = { .005f, .006f, .0068f, .0066f }, p1 = { .008f, .007f, .0068f, .0049f };
@@ -89,7 +89,7 @@ public class CollectibleLootTests
         var core = Runtime("ItemCatalog").GetMethod("RollBagCore", Static);
         var districts = Districts;
         int replacements = 0, rarePlus = 0;
-        for (int tier = 0; tier < 4; tier++) for (int seed = 0; seed < 750; seed++)
+        for (int tier = 0; tier < districts.Length; tier++) for (int seed = 0; seed < 750; seed++)
         {
             var profile = Field(districts[tier], "loot");
             string id = "odds-audit/" + tier + "/" + seed;
@@ -123,8 +123,9 @@ public class CollectibleLootTests
         Assert.Greater(rarePlus, 100, "Exercise actual rare outcomes and rich-theme guarantees, not only empty bags.");
     }
 
-    [Test]
-    public void FullStarterTruckUsuallyContainsSeveralLowTierFindsWithoutGuaranteedRares()
+    [TestCase(120f, 2.1f, 3.5f, .65f)]
+    [TestCase(160f, 2.8f, 4.5f, .75f)]
+    public void FullStarterTruckUsuallyContainsSeveralLowTierFindsWithoutGuaranteedRares(float capacity, float minFinds, float maxFinds, float minTwoFraction)
     {
         var catalog = Runtime("ItemCatalog");
         var roll = catalog.GetMethod("RollBag", new[] { typeof(string), typeof(int), typeof(float), typeof(string), Runtime("LootProfile"), typeof(float) });
@@ -134,11 +135,11 @@ public class CollectibleLootTests
         for (int truck = 0; truck < trucks; truck++)
         {
             float load = 0; int low = 0;
-            for (int attempt = 0; attempt < 100 && load < 156f; attempt++)
+            for (int attempt = 0; attempt < 100 && load < capacity - 4f; attempt++)
             {
                 int seed = unchecked(17327 + truck * 7919 + attempt * 104729 + 10000019);
                 var bag = roll.Invoke(null, new object[] { "probe/1/" + truck + "/" + attempt, seed, .5f, "audit", profile, .6f });
-                if (load + Kg(bag) > 160f) continue;
+                if (load + Kg(bag) > capacity) continue;
                 load += Kg(bag);
                 foreach (var item in Items(bag))
                 {
@@ -149,7 +150,7 @@ public class CollectibleLootTests
             totalLow += low;
             if (low >= 2) twoOrMore++;
         }
-        Assert.That(totalLow / (float)trucks, Is.InRange(2.8f, 4.5f));
-        Assert.Greater(twoOrMore / (float)trucks, .75f);
+        Assert.That(totalLow / (float)trucks, Is.InRange(minFinds, maxFinds));
+        Assert.Greater(twoOrMore / (float)trucks, minTwoFraction);
     }
 }

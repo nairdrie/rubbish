@@ -54,6 +54,7 @@ public class ShopTruckMods : MonoBehaviour
 
     public float BaseMotorTorque => baseTorque;
     public float BaseMaxSpeed => baseMaxSpeed;
+    int Level(string id) => BusinessUpgradeNet.LevelForTruck(truck, id);
 
     /// <summary>A truck mod's prompt that replaces the driving hint while set (recovery "Hold R…", arm status). null = none.</summary>
     public string HintOverride { get; set; }
@@ -76,10 +77,15 @@ public class ShopTruckMods : MonoBehaviour
     void OnEnable()
     {
         GameSession.UpgradeChanged += OnUpgradeChanged;
+        BusinessUpgradeNet.Changed += Apply;
         Apply();
     }
 
-    void OnDisable() => GameSession.UpgradeChanged -= OnUpgradeChanged;
+    void OnDisable()
+    {
+        GameSession.UpgradeChanged -= OnUpgradeChanged;
+        BusinessUpgradeNet.Changed -= Apply;
+    }
 
     void OnDestroy()
     {
@@ -109,13 +115,13 @@ public class ShopTruckMods : MonoBehaviour
     public void Apply()
     {
         if (truck == null) return;
-        int turbo = Mathf.Clamp(GameSession.GetUpgradeLevel(ShopIds.TruckTurbo), 0, 3);
-        int horn = Mathf.Clamp(GameSession.GetUpgradeLevel(ShopIds.AirHorn), 0, 2);
-        int cap = Mathf.Clamp(GameSession.GetUpgradeLevel(ShopIds.TruckCapacity), 0, 4);
+        int turbo = Mathf.Clamp(Level(ShopIds.TruckTurbo), 0, 3);
+        int horn = Mathf.Clamp(Level(ShopIds.AirHorn), 0, 2);
+        int cap = Mathf.Clamp(Level(ShopIds.TruckCapacity), 0, 4);
         int lights = BusinessUpgradeNet.HeadlightLevelForTruck(truck);
 
         // ---- engine (absolute tiers; golden_truck lifts top speed to the 18 m/s cap inside UpgradeEffects)
-        var e = UpgradeEffects.Engine;
+        var e = UpgradeEffects.EngineAtLevel(turbo, Level(ShopIds.GoldenTruck) > 0);
         truck.motorTorque = e.motorTorque;
         truck.maxSpeed = e.maxSpeed;
         truck.steeringRangeAtMaxSpeed = e.steerAtMaxSpeed;
@@ -183,7 +189,7 @@ public class ShopTruckMods : MonoBehaviour
         if (now >= nextLightOwnerCheck)
         {
             nextLightOwnerCheck = now + 0.25f;
-            if (shownLights != BusinessUpgradeNet.HeadlightLevelForTruck(truck)) Apply();
+            Apply(); // also resolves a truck whose lot was assigned after its spawn
         }
 
         bool driven = truck.HasDriver || truck.IsLocalPlayerSeated;
@@ -271,14 +277,17 @@ public class ShopTruckMods : MonoBehaviour
     string DriveHint()
     {
         var sb = new System.Text.StringBuilder(BaseDriveHint);
-        var arm = UpgradeEffects.Arm;
+        var tipper = GetComponent<TruckTipper>();
+        string tip = tipper != null ? tipper.DriveHintChip() : null;
+        if (tip != null) sb.Append(" · ").Append(tip);
+        var arm = UpgradeEffects.ArmAtLevel(Level(ShopIds.TruckArm));
         if (arm.present)
         {
             var loader = GetComponent<TruckSideLoader>();
             if (arm.auto) sb.Append(loader != null && loader.AutoOn ? " · X arm AUTO: ON" : " · X arm AUTO: off");
             else sb.Append(" · hold X: Grabby Arm (stopped)");
         }
-        if (UpgradeEffects.Handling.drift) sb.Append(" · Space drift");
+        if (UpgradeEffects.HandlingAtLevel(Level(ShopIds.TruckHandling)).drift) sb.Append(" · Space drift");
         int juice = GameSession.GetConsumable(ShopIds.GarbageJuice);
         if (juice > 0) sb.Append($" · J chug juice ({juice})");
         return sb.ToString();
@@ -314,7 +323,7 @@ public class ShopTruckMods : MonoBehaviour
         Juice.Shake(0.26f, 0.35f);
         if (hornGroup != null) Juice.Punch(hornGroup, 0.5f, 0.35f);
 
-        float radius = UpgradeEffects.HornScareRadius;
+        float radius = Level(ShopIds.AirHorn) >= 2 ? 40f : Level(ShopIds.AirHorn) >= 1 ? 25f : 12f;
         Vector3 pos = transform.position;
         if (ShopModKit.IsHost)
         {

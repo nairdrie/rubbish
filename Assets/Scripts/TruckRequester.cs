@@ -109,6 +109,8 @@ public class TruckRequester : NetworkBehaviour
 
     Pose ResolveArrivalPose(string markerName)
     {
+        // Driving out of the legacy garage: the shop's apron on Depot Row (the layout, not a scene marker, decides).
+        if (DepotFlowRules.TryArrivalPose(markerName, out Pose apron)) return apron;
         var marker = FlowUtil.FindMarker(markerName);
         if (marker == null)
         {

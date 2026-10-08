@@ -110,11 +110,6 @@ public static class Setup_Pickup
     // Debug menu (play mode)
     // =====================================================================
 
-    [MenuItem("Rubbish/Debug/Trash/Kevin's Crew: sweep now")]
-    static void DebugKevinSweep() { var r = KevinCrew.Sweep(GameClock.TotalHours); Debug.Log($"[Trash debug] Kevin swept: {r.collected} bags, {r.burst} burst, +{Economy.Money(r.fees)} (hire_kevin L{GameSession.GetUpgradeLevel(ShopIds.HireKevin)})"); }
-    [MenuItem("Rubbish/Debug/Trash/Kevin's Crew: sweep now", true)]
-    static bool DebugKevinSweepValid() => Application.isPlaying;
-
     [MenuItem("Rubbish/Debug/Trash/Midnight inspection now (raises Midnight)")]
     static void DebugMidnight()
     {

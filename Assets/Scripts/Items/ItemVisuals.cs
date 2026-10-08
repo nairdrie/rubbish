@@ -485,6 +485,8 @@ public static partial class ItemVisuals
     static bool BuildKey(Kit k, string key)
     {
         if (BuildCollectible(k, key)) return true;
+        if (BuildPart(k, key)) return true;
+        if (BuildStory(k, key)) return true;
         Color c = k.c;
         switch (key)
         {

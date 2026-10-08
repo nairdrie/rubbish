@@ -8,7 +8,7 @@ public sealed partial class NeighborhoodConnection
     /// <summary>Append-only runtime copy: existing house indices, nodes, cars and saved identities never move.</summary>
     public static StreetGraph WithConnection(StreetGraph source)
     {
-        if (source == null || source.nodes == null || source.nodes.Length == 0) return source;
+        if (source == null || source.layoutId == "coastal-v4" || source.nodes == null || source.nodes.Length == 0) return source;
         if (graphCopies.TryGetValue(source, out var cached) && cached != null) return cached;
         foreach (var gate in source.gates)
             if (gate.districtId == Districts.MinivanMeadows && gate.nodeIn < source.NodeCount &&

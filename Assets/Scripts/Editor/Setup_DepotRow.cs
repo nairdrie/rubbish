@@ -15,7 +15,7 @@ using Object = UnityEngine.Object;
 /// Builds <c>Assets/Scenes/DepotRow.unity</c> (Docs/Multiplayer.md §13.2, package N3), idempotently: everything lives
 /// under one root, <c>DepotRowGen</c>, rebuilt on every run.
 /// <list type="bullet">
-/// <item><b>Four lots</b> on Minivan Mile's south side (<see cref="DepotRowLayout"/>; the pads themselves are laid by
+/// <item><b>Four lots</b> on Depot Row's west side (<see cref="DepotRowLayout"/>; the pads themselves are laid by
 /// NeighborhoodBuilder): a shop facade (the town depot's building: blocks, roller door, bay shell), a two-line sign
 /// ("Nick's" / "RUBBISH CO."), shutters + "BACK SOON", a "FOR LEASE" board, a crane hook for the plop, the street door.</item>
 /// <item><b>Four pocket interiors</b> (red-team S2: one additive scene, never duplicate ShopScene loads): each is a copy
@@ -24,7 +24,7 @@ using Object = UnityEngine.Object;
 /// <see cref="DepotRowLayout.InteriorOrigin"/> and bound to its lot: world-space fields moved, the bay marker untagged and
 /// wired to the TIP IT lever, the door pointed back at the street, the chess NetworkObjects stripped (no in-scene
 /// NetworkObjects in lots: red-team T10), the laptop given a "rename business" desk.</item>
-/// <item>One shared laptop UI (ebae / Scrapazon) for the one world.</item>
+/// <item>One shared laptop UI (ebag / Scrapazon) for the one world.</item>
 /// </list>
 /// Re-run it after any ShopScene setup (SortingStation, GarageUpgrades, GarageDisplays, Shop) so the lots match.
 /// Never touches ShopScene, Neighborhood or Bootstrap. Adds DepotRow to the build settings.
@@ -215,10 +215,10 @@ public static class Setup_DepotRow
         log.Append($"chess={chessBoards}, ");
 
         // World-space fields move with the interior.
-        foreach (var u in interior.GetComponentsInChildren<TruckUnloader>(true)) u.pileCenter += origin;
+        foreach (var u in interior.GetComponentsInChildren<TippingFloor>(true)) u.pileCenter += origin;
         foreach (var c in interior.GetComponentsInChildren<Compactor>(true)) c.pileCenter += origin;
 
-        // Markers: untag (FlowUtil.FindTagged must never find a lot's copy), wire the bay to the TIP IT lever.
+        // Markers: untag (FlowUtil.FindTagged must never find a lot's copy), wire the bay to its tipping floor.
         Transform bay = null;
         foreach (var t in interior.GetComponentsInChildren<Transform>(true))
         {
@@ -231,7 +231,7 @@ public static class Setup_DepotRow
             }
             if (t.CompareTag(FlowUtil.PlayerSpawnerTag) || t.CompareTag(FlowUtil.TruckSpawnerTag)) t.tag = "Untagged";
         }
-        foreach (var u in interior.GetComponentsInChildren<TruckUnloader>(true)) u.bayAnchor = bay;
+        foreach (var u in interior.GetComponentsInChildren<TippingFloor>(true)) u.bayAnchor = bay;
 
         // The door inside goes back out to this lot's apron.
         foreach (var d in interior.GetComponentsInChildren<GarageDoorController>(true))
@@ -337,7 +337,7 @@ public static class Setup_DepotRow
             eso.FindProperty("ebae").objectReferenceValue = copy;
             eso.ApplyModifiedPropertiesWithoutUndo();
         }
-        else log.Append("EbaeUI has no 'ebae' document; ");
+        else log.Append("EbaeUI has no 'ebag' document; ");
     }
 
     // =====================================================================
@@ -387,7 +387,9 @@ public static class Setup_DepotRow
     static void BuildStreet(DepotLot lot, Mats m)
     {
         int k = lot.lot;
-        float cx = DepotRowLayout.LotCenterX(k), fz = DepotRowLayout.FacadeZ;
+        // Author the whole street assembly in its familiar +Z frame, then rigidly place only the facade/lease
+        // roots. Never rotate the DepotLot root: it also owns the unrelated underground pocket interior.
+        const float cx = 0f, fz = 0f;
 
         // ---- FOR LEASE board (on the empty pad; off once claimed)
         var lease = new GameObject("ForLease");
@@ -489,6 +491,7 @@ public static class Setup_DepotRow
         lot.streetDoor = gdc;
 
         lot.facade = f;
+        lot.ApplyStreetLayout();
         facade.SetActive(false);
     }
 

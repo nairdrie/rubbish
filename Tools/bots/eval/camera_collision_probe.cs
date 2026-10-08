@@ -3,15 +3,17 @@ if (!SaveRoot.IsOverridden || !UnityEngine.Application.isPlaying)
     throw new System.InvalidOperationException("Isolated play-test save required.");
 var player = PlayerController.Local;
 var cam = player.playerCamVCam;
-var origin = WorkshopAnnex.Origin(0);
+var origin = WorkshopWorld.Origin(0);
 var oldPosition = player.transform.position;
 var oldRotation = cam.Follow.rotation;
 int tested = 0;
 var failures = new System.Collections.Generic.List<object>();
 try
 {
-    foreach (var local in new[] { new UnityEngine.Vector3(12f, 0f, 0f), new UnityEngine.Vector3(12.25f, 0f, 2.8f),
-        new UnityEngine.Vector3(12.25f, 0f, -3.8f), new UnityEngine.Vector3(7.4f, 0f, -.15f) })
+    // garage-local spots where a player stands at the decor (WorkshopWorld.PlacementFor): the display line on the south
+    // wall, the wall display, the break corner by the office, and the laptop
+    foreach (var local in new[] { new UnityEngine.Vector3(-1f, 0f, -3.9f), new UnityEngine.Vector3(1.35f, 0f, -4.1f),
+        new UnityEngine.Vector3(5.2f, 0f, -.1f), new UnityEngine.Vector3(5.6f, .3f, 1.6f) })
     foreach (float pitch in new[] { -20f, 10f, 45f })
     for (int yaw = 0; yaw < 360; yaw += 45)
     {

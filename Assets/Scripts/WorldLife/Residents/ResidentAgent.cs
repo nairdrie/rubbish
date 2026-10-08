@@ -211,8 +211,8 @@ public sealed partial class ResidentAgent : ILifeBody
         {
             var tr = trucks[i];
             if (tr == null) continue;
-            Vector3 l = tr.transform.InverseTransformPoint(basePos + avoid);
-            var box = TruckControllerV2.BodyBoxMetres;
+            Vector3 l = Quaternion.Inverse(tr.transform.rotation) * (basePos + avoid - tr.transform.position);
+            var box = tr.ModelBodyBoxMetres;
             float ex = box.extents.x + 0.55f;
             if (l.z < box.min.z - 0.5f || l.z > box.max.z + 0.5f || Mathf.Abs(l.x) > ex) continue;
             float side = l.x >= 0f ? 1f : -1f;

@@ -5,8 +5,10 @@ using UnityEngine;
 /// One sorting receptacle, configured by category:
 ///   Metal / Plastic / Glass / Paper -> recycling bins (pay rate × kg, min $0.10, × combo, × recycling contracts)
 ///   Hazard                          -> hazard barrel (flat disposal pay × combo; hazmat contract raises it)
-///   Valuable                        -> KEEP crate (item goes to GameSession.Inventory for ebae)
-/// Wrong item -> "Contaminated!" penalty and the bin SPITS it back out (keep crate just calls you a hoarder).
+///   Valuable                        -> KEEP crate: takes ANYTHING. A valuable is a treasure (inventory, ebag, Rep, Trash-dex);
+///                                      anything else is a kept PART for printing (inventory only: no Rep, no combo, no stats);
+///                                      the SolidWaste 3D floppy goes into the laptop instead (DiskItem)
+/// Wrong item -> "Contaminated!" penalty and the bin SPITS it back out (the keep crate only refuses a part when the parts shelf is full).
 /// Takes LooseItems via auto-toss (Accept) or physical throws (CarryReceiverTrigger on the mouth child), and from
 /// robots (<see cref="AcceptFromRobot"/>: Magnus) which never touch the player's combo.
 /// Money goes through <see cref="Ledger"/>; every sort raises <see cref="ProgressionEvents.ItemSorted"/> (and
@@ -189,7 +191,14 @@ public class SortBin : MonoBehaviour, ICarryReceiver, ICarryReceiverFeedback
             yield return SortingKit.Arc(li.transform, m, SortingKit.ArcDuration(dist), Mathf.Min(0.6f, 0.15f + dist * 0.15f));
         if (li == null || li.State == CarryState.Consumed) yield break;
 
-        bool correct = li.Category == category;
+        // The KEEP crate takes anything (Docs/Progression.md "Blueprints"): a non-valuable is a part for printing.
+        bool correct = li.Category == category || IsKeepCrate;
+        // Hand-thrown parts stop at the cap. A robot's or a hired hand's keep is never bounced: it is already on its way to its owner.
+        if (IsKeepCrate && robot == null && Workshop.IsPart(li.Item) && GameSession.PartsFull && !PayrollNet.WouldHandOverKept(m))
+        {
+            yield return PartsShelfFull(li);
+            yield break;
+        }
         if (correct)
         {
             li.MarkConsumed(); // ours now: frees any holder, no physics, can't be grabbed mid-gulp
@@ -198,7 +207,6 @@ public class SortBin : MonoBehaviour, ICarryReceiver, ICarryReceiverFeedback
             else Sorted(li, robot != null, robot != null && robot.byMagnus);
             if (li != null) Destroy(li.gameObject);
         }
-        else if (IsKeepCrate) yield return Hoarder(li, robot);
         else yield return Contaminated(li, robot);
     }
 
@@ -258,6 +266,8 @@ public class SortBin : MonoBehaviour, ICarryReceiver, ICarryReceiverFeedback
 
     void Keep(LooseItem li, bool robot, bool byMagnus)
     {
+        if (DiskItem.Is(li.Item)) { KeepDisk(); return; }
+        if (Workshop.IsPart(li.Item)) { KeepPart(li, robot, byMagnus); return; }
         Vector3 m = TossTargetPosition;
         if (!robot) SortCombo.RegisterCorrect();
         var item = li.Item;
@@ -275,7 +285,7 @@ public class SortBin : MonoBehaviour, ICarryReceiver, ICarryReceiverFeedback
 
         var style = li.Rarity >= Rarity.Epic ? ToastStyle.Legendary : ToastStyle.Rare;
         // The owner receives their robot's keep notification with the inventory hand-back.
-        if (!routedRobot) GameHUD.Toast(byMagnus ? $"Magnus kept: {what}! (your credit)" : forBoss ? $"Kept: {what}, for the boss's crate." : $"Kept: {what} — sell it on ebae!", style, 3f);
+        if (!routedRobot) GameHUD.Toast(byMagnus ? $"Magnus kept: {what}! (your credit)" : forBoss ? $"Kept: {what}, for the boss's crate." : $"Kept: {what} — sell it on ebag!", style, 3f);
         if (item != null && item.value > 0f)
             GameHUD.FloatingText(m + Vector3.up * 0.4f, SortingKit.Appraisal(item.value), RarityInfo.Color(li.Rarity), 1.3f);
         Sfx.Play("cash", m);
@@ -288,6 +298,16 @@ public class SortBin : MonoBehaviour, ICarryReceiver, ICarryReceiverFeedback
             Fx.Sparkle(visualRoot, SortingKit.Gold, 1.6f);
         }
         BumpFill();
+    }
+
+    /// <summary>The SolidWaste 3D floppy: never inventory, never Rep. It goes into this shop's laptop (whoever threw it).</summary>
+    void KeepDisk()
+    {
+        Vector3 m = TossTargetPosition;
+        DiskItem.Kept(DepotMachineContext.LotOf(this), m);
+        Sfx.Play("sparkle", m, 0.8f);
+        Fx.Burst(m, DiskItem.Blue, 24, 3.5f);
+        if (visualRoot != null) Juice.Punch(visualRoot, 0.3f, 0.3f);
     }
 
     IEnumerator Contaminated(LooseItem li, RobotDrop robot)
@@ -316,16 +336,43 @@ public class SortBin : MonoBehaviour, ICarryReceiver, ICarryReceiverFeedback
         Spit(li, robot != null ? robot.spitTo : null);
     }
 
-    IEnumerator Hoarder(LooseItem li, RobotDrop robot)
+    /// <summary>
+    /// A non-valuable in the KEEP crate: a part for SolidWaste 3D. Silent bookkeeping on purpose: no Rep, no treasure
+    /// or sorted facts (Work Orders, day stats, Trash-dex, milestones), and the sort combo is neither fed nor broken, so
+    /// keeping junk can never be farmed. An employee's keep in the employer's shop goes to the employer; a robot's goes to
+    /// the lot's owner through the same host route as a rescued treasure.
+    /// </summary>
+    void KeepPart(LooseItem li, bool robot, bool byMagnus)
     {
         Vector3 m = TossTargetPosition;
-        if (robot == null) SortCombo.Break();
-        GameHUD.Toast(robot != null ? "Magnus tried to keep trash. Sentimental." : "That's just trash, you hoarder", ToastStyle.Bad);
-        GameHUD.FloatingText(m + Vector3.up * 0.45f, "nope.", SortingKit.BadRed, 1.1f);
+        var item = li.Item;
+        string what = li.Def != null ? li.Def.name : "Something";
+        bool routedRobot = robot && BusinessUpgradeNet.KeepRobotItem(DepotMachineContext.LotOf(this), item);
+        bool forBoss = !robot && PayrollNet.TryHandOverKept(item, m);
+        if (!routedRobot && !forBoss) GameSession.AddToInventory(item);
+        if (!routedRobot)
+        {
+            bool wanted = !forBoss && Workshop.IsWanted(item);
+            GameHUD.Toast(forBoss ? $"Kept: {what} (part), for the boss's crate." : wanted ? $"Kept: {what} (WANTED PART!)"
+                : byMagnus ? $"Magnus kept: {what} (part)" : $"Kept: {what} (part)", wanted ? ToastStyle.Good : ToastStyle.Info, wanted ? 2.4f : 1.6f);
+        }
+        Sfx.Play("toss_in", m, 0.5f, 1.25f);
+        Fx.Burst(m, ItemCategoryInfo.Color(li.Category), 8, 2.2f);
+        if (visualRoot != null) Juice.Punch(visualRoot, 0.12f, 0.18f);
+        BumpFill();
+    }
+
+    /// <summary>The parts shelf holds <see cref="GameSession.PartsCap"/> kept non-valuables: the next one comes straight back
+    /// (no penalty, no combo break). Valuables are never refused.</summary>
+    IEnumerator PartsShelfFull(LooseItem li)
+    {
+        Vector3 m = TossTargetPosition;
+        GameHUD.Toast($"Parts shelf is full ({GameSession.PartsCap}). Scrap some on ebag or build something first.", ToastStyle.Bad);
+        GameHUD.FloatingText(m + Vector3.up * 0.45f, "full!", SortingKit.BadRed, 1.1f);
         Sfx.Play("squeak", m, 0.9f, 0.8f);
         if (visualRoot != null) Juice.Squash(visualRoot, 0.25f, 0.25f);
         yield return new WaitForSeconds(0.1f);
-        Spit(li, robot != null ? robot.spitTo : null);
+        Spit(li, null);
     }
 
     /// <summary>

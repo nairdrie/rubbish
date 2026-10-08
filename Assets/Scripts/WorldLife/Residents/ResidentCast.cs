@@ -71,7 +71,8 @@ public static class ResidentCast
         foreach (int hi in order)
         {
             var h = g.houses[hi];
-            byte dist = (byte)Mathf.Min(3, h.district);
+            byte dist = (byte)Mathf.Min(Districts.All.Count - 1, h.district);
+            int style = Districts.StyleIndex(dist);
             ulong hh = LifeHash.U64(townSeed, LifeKind.Town, (int)LifeHash.Str(h.stopId), -1, 0xC457);
             int count;
             switch (dist)
@@ -79,6 +80,8 @@ public static class ResidentCast
                 case 1: count = LifeHash.Range(hh, 2, 5); break;
                 case 2: count = 3; break;
                 case 3: count = LifeHash.Chance(hh >> 3, 1, 2) ? 3 : 2; break;
+                case 4: count = LifeHash.Range(hh, 1, 3); break; // small shop staff
+                case 5: count = LifeHash.Range(hh, 2, 5); break; // condominium households
                 default: count = h.size == 0 ? LifeHash.Range(hh, 1, 3) : h.size == 1 ? LifeHash.Range(hh, 2, 4) : LifeHash.Range(hh, 2, 5); break;
             }
             households[hi] = new Household { first = (ushort)list.Count, count = (byte)count, district = dist };
@@ -92,8 +95,8 @@ public static class ResidentCast
                 else if (m == 0 && hi == pembertonHouse) a = ResidentArchetype.Pemberton;
                 else
                 {
-                    var cast = ResidentLook.DistrictCast[dist];
-                    int k = LifeHash.Pick(mh, ResidentLook.DistrictWeights[dist]);
+                    var cast = ResidentLook.DistrictCast[style];
+                    int k = LifeHash.Pick(mh, ResidentLook.DistrictWeights[style]);
                     a = cast[Mathf.Clamp(k, 0, cast.Length - 1)];
                 }
                 var mem = new Member
@@ -168,11 +171,13 @@ public static class ResidentCast
     /// <summary>A short census for reports: per-district residents, archetype counts, dogs.</summary>
     public static string Describe()
     {
-        var perD = new int[4];
+        var perD = new int[Districts.All.Count];
         var perA = new int[Enum.GetValues(typeof(ResidentArchetype)).Length];
         foreach (var m in members) { perD[m.district]++; perA[(int)m.archetype]++; }
         var sb = new System.Text.StringBuilder();
-        sb.Append($"{members.Length} residents (d0 {perD[0]}, d1 {perD[1]}, d2 {perD[2]}, d3 {perD[3]}), {dogOwner.Length} dogs; ");
+        sb.Append($"{members.Length} residents (");
+        for (int i = 0; i < perD.Length; i++) sb.Append($"{(i == 0 ? "" : ", ")}d{i} {perD[i]}");
+        sb.Append($"), {dogOwner.Length} dogs; ");
         for (int i = 0; i < perA.Length; i++) if (perA[i] > 0) sb.Append($"{(ResidentArchetype)i} {perA[i]} ");
         return sb.ToString().TrimEnd();
     }

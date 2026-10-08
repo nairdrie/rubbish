@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// All the dumb words on ebae: buyer names, offer messages, reviews, ticker lines and the
+/// All the dumb words on ebag: buyer names, offer messages, reviews, ticker lines and the
 /// item-aware "special buyers" (definitelynotdave shows up for Dave's wedding ring).
 /// Pure data + string picking; the economy logic lives in <see cref="EbaeMarket"/>.
 /// Message placeholders: {0} = offer amount ("$220"), {1} = item name, {2} = where it was found.
@@ -159,7 +159,7 @@ public static class EbaeContent
         "cash in hand. dignity not included",
     };
 
-    /// <summary>Fake "live" ticker lines + tips across the top of ebae.</summary>
+    /// <summary>Fake "live" ticker lines + tips across the top of ebag.</summary>
     public static readonly string[] Ticker =
     {
         "someone in Ohio just bought a used toothbrush for $4",
@@ -167,11 +167,11 @@ public static class EbaeContent
         "HOT RIGHT NOW: slightly damp couches",
         "raccoon_enjoyer left feedback: 'smelled great'",
         "BREAKING: local man sells his own trash back to himself",
-        "ebae tip: greedy prices get fewer, lower offers. sad but true",
-        "ebae tip: Pawn Pete pays instantly, but only 45%. he's got bills",
-        "ebae tip: price it low and buyers swarm like seagulls",
-        "ebae tip: offers expire in about a minute. buyers are flaky",
-        "ebae tip: decline a lowball and they might come back higher",
+        "ebag tip: greedy prices get fewer, lower offers. sad but true",
+        "ebag tip: Pawn Pete pays instantly, but only 45%. he's got bills",
+        "ebag tip: price it low and buyers swarm like seagulls",
+        "ebag tip: offers expire in about a minute. buyers are flaky",
+        "ebag tip: decline a lowball and they might come back higher",
         "xX_TrashLord_Xx just won an auction for 40 lbs of 'mystery wire'",
         "this just in: 'it's not junk, it's vintage' says man holding junk",
     };

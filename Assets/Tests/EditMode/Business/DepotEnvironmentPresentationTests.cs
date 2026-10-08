@@ -62,72 +62,22 @@ public class DepotEnvironmentPresentationTests
         return child;
     }
 
-    Component Laptop(float meshScale, float officeScale, float yaw)
-    {
-        var office = Root("Environment test office");
-        office.transform.position = new Vector3(8f, 1.31f, -6f);
-        office.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
-        office.transform.localScale = Vector3.one * officeScale;
-        var laptop = Child(office.transform, "laptop");
-        laptop.transform.localScale = Vector3.one * meshScale;
-        var component = laptop.AddComponent(Runtime("LaptopController"));
-        Ensure(component);
-        return component;
-    }
-
-    static void Ensure(Component laptop) => Runtime("RabiesShotKiosk").GetMethod("Ensure", Static).Invoke(null, new object[] { laptop });
-
-    [TestCase(1f, 1f, 0f)]
-    [TestCase(100f, 1.3f, 0f)]
-    [TestCase(100f, 1.3f, 90f)]
-    public void MedicalBoxAndShelfStaySupportedAtMetreScale(float meshScale, float officeScale, float yaw)
-    {
-        var laptop = Laptop(meshScale, officeScale, yaw);
-        var shelf = laptop.transform.Find("RabiesShotShelf");
-        Assert.NotNull(shelf);
-        Assert.That(shelf.TransformVector(Vector3.right).magnitude, Is.EqualTo(1f).Within(0.0001f));
-        Assert.That(shelf.TransformVector(Vector3.up).magnitude, Is.EqualTo(1f).Within(0.0001f));
-        Assert.That(shelf.TransformVector(Vector3.forward).magnitude, Is.EqualTo(1f).Within(0.0001f));
-
-        var anchor = shelf.Find("MedicalShelfAnchor");
-        var top = anchor.Find("ShelfTop").GetComponent<Renderer>();
-        var box = anchor.Find("Box/Case").GetComponent<Renderer>();
-        Assert.That(box.bounds.min.y, Is.EqualTo(top.bounds.max.y).Within(0.0001f), "medicine rests on the tray");
-        int legs = 0;
-        foreach (Transform child in anchor)
-        {
-            if (child.name != "ShelfLeg") continue;
-            legs++;
-            var bounds = child.GetComponent<Renderer>().bounds;
-            Assert.That(bounds.min.y, Is.EqualTo(0.005f).Within(0.001f), "authored laptop pivot is 1.31 m above the garage floor");
-            Assert.That(bounds.max.y, Is.GreaterThanOrEqualTo(top.bounds.min.y - 0.001f), "legs meet the tray");
-        }
-        Assert.AreEqual(4, legs);
-        Assert.IsEmpty(shelf.GetComponentsInChildren<Collider>(true), "decorative shelf must not add a walking obstacle");
-    }
-
     [Test]
-    public void EnsuringAHiddenDepotDoesNotDuplicateItsMedicalShelf()
+    public void TheLaptopDeskHasNoMedicalShelfAndShotsAreNotTiedToAKioskAnyMore()
     {
-        var laptop = Laptop(100f, 1.3f, 0f);
-        Ensure(laptop);
-        Ensure(laptop);
-        Assert.AreEqual(1, laptop.GetComponentsInChildren(Runtime("RabiesShotKiosk"), true).Length);
-        Assert.AreEqual(1, laptop.GetComponentsInChildren(Runtime("InteractionZone"), true).Length);
-    }
+        Assert.IsNull(Type.GetType("RabiesShotKiosk, Assembly-CSharp", false), "the first-aid shelf by the laptop was removed");
+        // A friend's jab is an interaction on the downed player instead (NightRunner ensures one per remote player).
+        var jab = Runtime("RabiesJab");
+        Assert.IsTrue(Runtime("IInteractable").IsAssignableFrom(jab));
+        Assert.AreEqual(3f, (float)jab.GetField("Reach").GetRawConstantValue(), "the same 3 m the host allows for a downed friend");
+        Assert.NotNull(jab.GetMethod("Ensure", Static));
 
-    [TestCase(1f, 1f)]
-    [TestCase(100f, 1.3f)]
-    public void MedicalInteractionZoneKeepsItsReachWhenImportedLaptopIsScaled(float meshScale, float officeScale)
-    {
-        var laptop = Laptop(meshScale, officeScale, 90f);
-        var zone = laptop.GetComponentInChildren(Runtime("InteractionZone"), true);
-        var contains = zone.GetType().GetMethod("Contains", Instance);
-        Vector3 origin = laptop.transform.position;
-        Assert.IsTrue((bool)contains.Invoke(zone, new object[] { origin + Vector3.right * 2f }));
-        Assert.IsFalse((bool)contains.Invoke(zone, new object[] { origin + Vector3.right * 2.4f }));
-        Assert.AreEqual("OnFoot", zone.GetType().GetField("mode", Instance).GetValue(zone).ToString());
-        Assert.AreSame(laptop.GetComponentInChildren(Runtime("RabiesShotKiosk"), true), zone.GetType().GetField("targetOverride", Instance).GetValue(zone));
+        // Nothing adds a shelf to a laptop: a bare laptop object keeps no children and no interaction zone.
+        var office = Root("Environment test office");
+        var laptop = Child(office.transform, "laptop");
+        laptop.AddComponent(Runtime("LaptopController"));
+        Assert.AreEqual(0, laptop.transform.childCount);
+        Assert.IsEmpty(laptop.GetComponentsInChildren(Runtime("InteractionZone"), true));
     }
 
     [Test]

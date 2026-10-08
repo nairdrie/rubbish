@@ -10,6 +10,8 @@ using UnityEngine;
 /// <item>claimed: the plop (the shop drops in on a crane hook, dust, the sign bolts on; the host rolls the truck out),
 /// the owner's sign ("Nick's" over "RUBBISH CO.") and colour;</item>
 /// <item>owner away: shutters down and "BACK SOON";</item>
+/// <item>legacy scene flow (solo): <see cref="PresentLegacy"/>: lot 1 is the player's shop (its street door swaps to
+/// ShopScene), the other lots are shuttered FOR LEASE units; no pocket interior is ever switched on;</item>
 /// <item>the pocket interior is on for its owner, visitors, and the host while its owner is online (host-run chess/robots);
 /// upgrades are visible to observers, while personal inventory displays remain owner-only.</item>
 /// </list>
@@ -19,7 +21,7 @@ public class DepotLot : MonoBehaviour
 {
     public int lot;
 
-    [Header("Street (DepotRow scene, on the Minivan Mile pad)")]
+    [Header("Street (DepotRow scene, east-facing road frontage)")]
     public Transform facade;
     public Transform signRoot;
     public TextMeshPro ownerText;
@@ -63,6 +65,25 @@ public class DepotLot : MonoBehaviour
     {
         if (facade != null) { facadeHome = facade.localPosition; homeKnown = true; }
         BuildTableRestCollider();
+    }
+
+    /// <summary>
+    /// Reposition only the two street roots after a blueprint edit. Pocket interiors, their world-space machine
+    /// fields, table-rest colliders and business identities must never follow the facade into town.
+    /// Call outside a running plop (the scene builder/editor's incremental layout pass does this in Edit Mode).
+    /// </summary>
+    public void ApplyStreetLayout()
+    {
+        if (plopping) return;
+        if (facade != null)
+        {
+            facade.SetPositionAndRotation(DepotRowLayout.DoorPoint(lot), DepotRowLayout.StreetFacing);
+            facadeHome = facade.localPosition;
+            homeKnown = true;
+        }
+        if (forLeaseSign != null)
+            forLeaseSign.transform.SetPositionAndRotation(
+                DepotRowLayout.StreetPoint(lot, new Vector3(7f, 0f, 8f)), DepotRowLayout.StreetFacing);
     }
 
     /// <summary>
@@ -121,6 +142,7 @@ public class DepotLot : MonoBehaviour
 
         SetActive(forLeaseSign, !claimed);
         if (facade != null && !plopping) SetActive(facade.gameObject, claimed);
+        if (streetDoor != null) SetActive(streetDoor.gameObject, true);
         SetActive(pocketFloor, claimed);
         SetActive(shutters, claimed && !online);
         SetActive(backSoonSign, claimed && !online);
@@ -152,14 +174,50 @@ public class DepotLot : MonoBehaviour
     SortingTable workingTable;
     Compactor workingCompactor;
 
-    void ApplySign(in DepotLotState s)
+    /// <summary>Sign colour of a unit nobody rents (legacy flow).</summary>
+    public static readonly Color VacantColor = new Color(0.42f, 0.44f, 0.47f);
+    const int VacantColorKey = -2;
+    string vacantLine;
+
+    /// <summary>
+    /// The legacy scene flow's street (solo; <see cref="DepotRowScene"/> calls this every frame instead of
+    /// <see cref="Present"/>). Only the street side exists here: the garage is ShopScene, so the pocket interior, its
+    /// floor and its rest colliders stay off. <see cref="DepotLotLook.Open"/>: the player's shop, whose roller door is the
+    /// garage door; <see cref="DepotLotLook.Vacant"/>: a shuttered unit with the FOR LEASE board out front.
+    /// </summary>
+    public void PresentLegacy(DepotLotLook look, string owner, string businessName, int color)
     {
-        string owner = s.ownerName.ToString();
-        string name = s.businessName.ToString();
-        if (owner != shownOwner && ownerText != null)
+        seenPlop = int.MinValue; // nothing plops here; a later one-world claim would be a first sight
+        bool open = look == DepotLotLook.Open;
+        SetActive(forLeaseSign, DepotFlowRules.ShowsLeaseBoard(look));
+        if (facade != null && !plopping) SetActive(facade.gameObject, DepotFlowRules.ShowsFacade(look));
+        SetActive(shutters, DepotFlowRules.ShowsShutters(look));
+        SetActive(backSoonSign, look == DepotLotLook.BackSoon);
+        SetActive(pocketFloor, false);
+        SetActive(interior, false);
+        SetActive(tableRestCollider, false);
+        if (ownerOnly != null)
+            foreach (var go in ownerOnly) SetActive(go, false);
+        if (streetDoor != null)
         {
-            shownOwner = owner;
-            ownerText.text = string.IsNullOrEmpty(owner) ? "" : Possessive(owner);
+            // One door per shop, and only the shop has one: a vacant unit offers no prompt and no route arrow.
+            SetActive(streetDoor.gameObject, DepotFlowRules.StreetDoorUsable(DepotFlow.LegacyScenes, lot, look));
+            streetDoor.targetSceneName = open ? SceneController.GarageSceneName : "";
+        }
+        if (open) ApplySign(owner, businessName, color, DepotColors.Get(color));
+        else if (look == DepotLotLook.Vacant) ApplySign("", "FOR LEASE", VacantColorKey, VacantColor, vacantLine ??= $"LOT {lot + 1}");
+    }
+
+    void ApplySign(in DepotLotState s) => ApplySign(s.ownerName.ToString(), s.businessName.ToString(), s.color, DepotColors.Get(s.color));
+
+    void ApplySign(string owner, string name, int colorKey, Color paint, string ownerLine = null)
+    {
+        owner = owner ?? "";
+        string ownerShown = ownerLine ?? (string.IsNullOrEmpty(owner) ? "" : Possessive(owner));
+        if (ownerShown != shownOwner && ownerText != null)
+        {
+            shownOwner = ownerShown;
+            ownerText.text = ownerShown;
         }
         if (name != shownName && nameText != null)
         {
@@ -168,10 +226,10 @@ public class DepotLot : MonoBehaviour
             nameText.text = string.IsNullOrEmpty(name) ? DepotBusinesses.DefaultName : name;
             if (!first && !plopping && signRoot != null) { Juice.Punch(signRoot, 0.12f, 0.3f); Sfx.Play("clang", signRoot.position, 0.5f); }
         }
-        if (s.color != shownColor)
+        if (colorKey != shownColor)
         {
-            shownColor = s.color;
-            Paint(paintRenderers, DepotColors.Get(s.color));
+            shownColor = colorKey;
+            Paint(paintRenderers, paint);
         }
     }
 
@@ -230,9 +288,9 @@ public class DepotLot : MonoBehaviour
         // Touchdown.
         Sfx.Play("slam", door, 1f, 0.7f);
         Sfx.Play("thud", door, 1f, 0.6f);
-        for (int i = -2; i <= 2; i++) Fx.Dust(door + new Vector3(i * 4.5f, 0.3f, 1.2f), 2.2f);
-        Fx.Dust(door + new Vector3(-10f, 0.3f, -4f), 2f);
-        Fx.Dust(door + new Vector3(10f, 0.3f, -4f), 2f);
+        for (int i = -2; i <= 2; i++) Fx.Dust(DepotRowLayout.StreetPoint(lot, new Vector3(i * 4.5f, 0.3f, 1.2f)), 2.2f);
+        Fx.Dust(DepotRowLayout.StreetPoint(lot, new Vector3(-10f, 0.3f, -4f)), 2f);
+        Fx.Dust(DepotRowLayout.StreetPoint(lot, new Vector3(10f, 0.3f, -4f)), 2f);
         float near = Vector3.Distance(DepotRowWorld.LocalViewPoint, door);
         if (near < 45f) Juice.Shake(Mathf.Lerp(0.5f, 0.1f, near / 45f), 0.35f);
         Juice.Squash(facade, 0.08f, 0.35f);

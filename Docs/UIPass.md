@@ -23,7 +23,7 @@
 
 1. **One UI tech for everything new: runtime-built uGUI on a small `UiKit` that grows out of `FeelUi`.** The HUD, its springs and
    outlined text, the edit-mode screenshot rig and MP's B14 plan are all uGUI already. UI Toolkit stays only where it already lives:
-   the laptop apps (ebae, Scrapazon). No new prefabs or asset files for UI; everything is built in code (§2 D1).
+   the laptop apps (ebag, Scrapazon). No new prefabs or asset files for UI; everything is built in code (§2 D1).
 2. **The map is vector, baked once.** An idempotent setup script scans the built Neighborhood (every road, lot, park and pad is an
    axis-aligned rectangle) and writes a cartoon map PNG and a small data asset. One texture serves both the minimap and the
    full-screen map. The runtime cost is one quad. No render-texture camera (§2 D2, §7).
@@ -518,7 +518,8 @@ A read-only table grouped by context, generated from `UI/Settings/Keybinds.cs`:
   throw, **J** chug Garbage Juice (when owned), **Ctrl** stomp (Stompy Boots Lv 2).
 - **Truck:** W/S drive, A/D steer, **H** horn, **Space** drift, **X** side-loader arm (when owned), **hold R** tow or unflip,
   **E** get out.
-- **Sort station:** **E/LMB** grab or slam, **RMB** chuck, **R** next bag, **Q/Esc** step away.
+- **Sort station:** **E/LMB** grab or slam, **RMB** chuck, **Q/Esc** step away. (No "next bag" key since 2026-10-08.)
+- **Truck (added 2026-10-08):** **Hold G** (pad: hold B) = TIP IT, dump the load behind the truck.
 - **Anywhere:** **Esc** menu/back, **M** map, **hold Tab** peek map, **F2** invite (SteamHud), **Shift+Tab** Steam overlay.
 - **Key labels** use the same key-cap sprite as the prompts. Rows gated by an upgrade say so ("with Stompy Boots Lv 2").
 - **Source of truth:** the table holds the code's defaults, and an acceptance eval checks it against the serialized values:

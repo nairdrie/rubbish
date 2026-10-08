@@ -10,18 +10,20 @@ using UnityEngine.SceneManagement;
 /// Builds every garage + Magnus upgrade (Docs/Progression.md §6.2, §6.3, §9.5 C) in ShopScene under one root,
 /// "GarageUpgrades" (idempotent: the root is deleted and rebuilt every run). Everything is made from primitives and is
 /// always in the scene; GarageUpgradeVisuals shows each piece by upgrade level at runtime (no runtime scene edits):
-///   - rail branch + Sort Stop (comes with Magnus's job, magnus_brain L1), racing stripes + spoiler (magnus_rail_motor L1)
-///   - Bag Belt: back-wall bucket elevator, overhead belts above the workshop doorway and around the north wall, slides
-///     of the garage into the tray (conveyor L1; slitter L2; lane 2 at L3)
-///   - Auto-Tipper piston + lamp by the TIP IT lever (auto_tipper L1), Direct Feed chute (L2)
-///   - XL table leaf (sorting_table L1, handed to SortingTable.xlLeaf), cupholders + magnet strip (L2)
+///   - the rail to the Sort Stop (comes with Magnus's job, magnus_brain L1; Setup_MagnusRail builds the cart and the
+///     chess siding first), racing stripes + a rail motor on the cart (magnus_rail_motor L1)
+///   - Bag Belt: back-wall bucket elevator, overhead belt above the workshop doorway and around the north wall, a slide
+///     down into the two-bay queue rack beside the table (conveyor L1; Heavy-Duty Motor L2; Junk Diverter grate, shaker
+///     and junk tube to the compactor L3). The belt never opens a bag.
+///   - XL table leaf (sorting_table L1, handed to SortingTable.xlLeaf); the second sorting spot's mat, stool and sign,
+///     cupholders + magnet strip (L2)
 ///   - Compactor Mk II badge (L1), Hazard Sniffer Nose (L2), Treasure Rescue Grate (L3)
-///   - recycling contract banner, hazmat license, disco ball, Kevin's delivery chute
+///   - recycling contract banner, hazmat license, disco ball, the raccoon crew's delivery chute (Collar Chip)
 ///     (the trophy shelf + museum wing moved to the display line: Setup_Displays, root "GarageDisplays")
 ///   - Magnus props riding his cart / wrist / fingers (UpgradeAttachment): kitchen tongs (the job, until a gripper),
 ///     lobster claw (gripper L1), arcade claw (gripper L2),
 ///     X-ray googly eyes + scan beam, monocle, the jar-brain dome (grows per level) and a graduation cap at L4
-///   - behaviour: GarageRig (wiring), MagnusSorter, MagnusVisionFlags, ConveyorFeeder/Line/Tray, AutoTipper,
+///   - behaviour: GarageRig (wiring), MagnusSorter, MagnusVisionFlags, ConveyorFeeder/Line/Tray (the queue rack),
 ///     MagnetStrip, DepotDeliveryDropper.
 /// Materials go to Assets/Materials/Generated/Garage/. Never touches the SortingStation / Magnus objects themselves
 /// (props attach to Magnus at runtime).
@@ -37,14 +39,14 @@ public static class Setup_GarageUpgrades
     const float FallbackFloorY = -0.066f;
 
     // ---- world layout (ShopScene; see Docs/Progression.md §6.2 "Garage geometry") ----
-    static readonly Vector3 ChessStopXZ = new Vector3(3.275f, 0f, 0.72f);
-    static readonly Vector3 SortStopPos = new Vector3(-3.4f, 0f, 1.2f);          // cart y = 0 like the chess stop
+    static readonly Vector3 ChessStopXZ = Setup_MagnusRail.ChessStop;
+    static readonly Vector3 SortStopPos = Setup_MagnusRail.SortStop;             // cart y = 0 like the chess stop
     static readonly Vector3 ElevatorPos = GarageConveyorLayout.Elevator;
-    static readonly Vector3 TraySlot0 = new Vector3(-1.2f, 1.0f, 2.55f);         // y = above the floor
-    static readonly Vector3 TraySlot1 = new Vector3(-0.6f, 1.0f, 2.55f);
-    static readonly Vector3 DirectFeedChute = GarageConveyorLayout.DirectFeed;
-    static readonly Vector3 KevinChuteMouth = GarageConveyorLayout.KevinChute + Vector3.up * FallbackFloorY;
+    static readonly Vector3 TraySlot0 = new Vector3(-1.1f, 1.0f, 2.55f);         // queue rack bays; y = above the floor
+    static readonly Vector3 TraySlot1 = new Vector3(-0.35f, 1.0f, 2.55f);
+    static readonly Vector3 DeliveryChuteMouth = GarageConveyorLayout.DeliveryChute + Vector3.up * FallbackFloorY;
     static readonly Vector3 DiscoPos = new Vector3(0.4f, 5.2f, 0.9f);
+    const float JunkTubeHeight = 5.0f;   // the junk tube's run along the north wall: above the museum wing's sign
 
     const string CartPath = "Magnus Cart";
     const string WristPath = "Magnus Cart/Magnus/BasePivot/Shoulder/Elbow/Wrist";
@@ -132,7 +134,8 @@ public static class Setup_GarageUpgrades
         public SortStation station;
         public SortingTable table;
         public Compactor compactor;
-        public TruckUnloader unloader;
+        public TippingFloor tippingFloor;
+        public SortStation station2;
         public MagnusTrack track;
         public MagnusArm arm;
         public MagnusChessBot chessBot;
@@ -146,10 +149,14 @@ public static class Setup_GarageUpgrades
         {
             foreach (var r in scene.GetRootGameObjects())
             {
-                if (!station) station = r.GetComponentInChildren<SortStation>(true);
+                foreach (var s in r.GetComponentsInChildren<SortStation>(true))
+                {
+                    if (s.seat == 0 && !station) station = s;
+                    else if (s.seat == 1 && !station2) station2 = s;
+                }
                 if (!table) table = r.GetComponentInChildren<SortingTable>(true);
                 if (!compactor) compactor = r.GetComponentInChildren<Compactor>(true);
-                if (!unloader) unloader = r.GetComponentInChildren<TruckUnloader>(true);
+                if (!tippingFloor) tippingFloor = r.GetComponentInChildren<TippingFloor>(true);
                 if (!track) track = r.GetComponentInChildren<MagnusTrack>(true);
                 if (!arm) arm = r.GetComponentInChildren<MagnusArm>(true);
                 if (!chessBot) chessBot = r.GetComponentInChildren<MagnusChessBot>(true);
@@ -170,7 +177,7 @@ public static class Setup_GarageUpgrades
             thumb = UpgradeAttachment.Resolve(scene, ThumbPath);
             cart = UpgradeAttachment.Resolve(scene, CartPath);
             clawCenter = wrist != null ? wrist.Find("Claw Center") : null;
-            return station && table && compactor && unloader && track && arm && wrist && cart;
+            return station && table && compactor && tippingFloor && track && arm && wrist && cart;
         }
 
         public void Gate(GameObject go, string id, int min, int max = 99)
@@ -192,18 +199,18 @@ public static class Setup_GarageUpgrades
         public void BuildAll()
         {
             var rig = root.gameObject.AddComponent<GarageRig>();
-            rig.station = station; rig.table = table; rig.compactor = compactor; rig.unloader = unloader;
+            rig.station = station; rig.table = table; rig.compactor = compactor; rig.tippingFloor = tippingFloor;
+            rig.secondStation = station2;
             rig.track = track; rig.arm = arm; rig.chessBot = chessBot; rig.chess = chess;
 
             BuildRailBranch(rig);
             BuildCartStripes();
             BuildConveyor(rig);
-            BuildAutoTipper(rig);
             BuildTable(rig);
             BuildCompactorMods();
             BuildContractsAndLicense();
             BuildDisco();
-            BuildKevinChute(rig);
+            BuildDeliveryChute(rig);
             BuildMagnusProps();
 
             var sorter = root.gameObject.AddComponent<MagnusSorter>();
@@ -225,39 +232,43 @@ public static class Setup_GarageUpgrades
             var stop = Node(root, "Sort Stop", SortStopPos, Quaternion.identity);
             rig.sortStop = stop;
 
+            // The job's stretch of track: from where the always-there chess siding ends (Setup_MagnusRail) to the Sort
+            // Stop, with a buffer stop at the table end. One straight line; there is no other branch.
             var g = Node(root, "RailBranch", Vector3.zero, Quaternion.identity);
-            Vector3 a = new Vector3(ChessStopXZ.x, 0f, ChessStopXZ.z), b = new Vector3(SortStopPos.x, 0f, SortStopPos.z);
-            Vector3 dir = (b - a).normalized;
-            Vector3 n = Vector3.Cross(Vector3.up, dir).normalized;
-            float len = Vector3.Distance(a, b);
-            Quaternion along = Quaternion.LookRotation(dir, Vector3.up);
-            foreach (float side in new[] { -0.45f, 0.45f })
-            {
-                Box(g, "Rail", (a + b) * 0.5f + n * side + Vector3.up * 0.04f, new Vector3(0.05f, 0.04f, len), m.Steel, along);
-                Box(g, "End Stop", b + n * side + dir * 0.33f + Vector3.up * 0.07f, new Vector3(0.12f, 0.1f, 0.06f), m.Red, along);
-            }
-            for (float t = 0.4f; t < len - 0.2f; t += 0.45f)
-                Box(g, "Tie", a + dir * t + Vector3.up * 0.01f, new Vector3(1.1f, 0.02f, 0.1f), m.Wood, along);
-            // Painted parking box + sign at the Sort Stop.
-            foreach (var (p, s) in new[] { (new Vector3(0f, 0.004f, 0.48f), new Vector3(1.2f, 0.006f, 0.06f)), (new Vector3(0f, 0.004f, -0.48f), new Vector3(1.2f, 0.006f, 0.06f)),
-                                          (new Vector3(0.6f, 0.004f, 0f), new Vector3(0.06f, 0.006f, 1.0f)), (new Vector3(-0.6f, 0.004f, 0f), new Vector3(0.06f, 0.006f, 1.0f)) })
-                Box(g, "ParkLine", F(SortStopPos + p), s, m.Yellow, Quaternion.identity, false);
-            Text(g, "ParkText", "MAGNUS\nPARKING", F(SortStopPos + new Vector3(0f, 0.008f, -0.2f)), Quaternion.Euler(90f, 0f, 0f), new Vector2(0.9f, 0.4f), new Color(1f, 0.85f, 0.2f));
-            Gate(g.gameObject, ShopIds.MagnusBrain, 1);   // career step 1 "Magnus Gets a Job" brings the branch
+            Vector3 dir = Setup_MagnusRail.Dir;
+            Quaternion along = Setup_MagnusRail.Along;
+            var rm = new Setup_MagnusRail.Mats(MaterialDir);
+            Setup_MagnusRail.BuildTrack(g, rm, ChessStopXZ + dir * Setup_MagnusRail.SidingReach, SortStopPos + dir * Setup_MagnusRail.BufferBeyond, floor, false, true);
+            // Painted parking box + sign at the Sort Stop (squared to the track).
+            Vector3 c = F(SortStopPos);
+            foreach (var (p, s) in new[] { (new Vector3(0.62f, 0.004f, 0f), new Vector3(0.06f, 0.006f, 1.26f)), (new Vector3(-0.62f, 0.004f, 0f), new Vector3(0.06f, 0.006f, 1.26f)),
+                                          (new Vector3(0f, 0.004f, 0.6f), new Vector3(1.3f, 0.006f, 0.06f)), (new Vector3(0f, 0.004f, -0.6f), new Vector3(1.3f, 0.006f, 0.06f)) })
+                Box(g, "ParkLine", c + along * p, s, m.Yellow, along, false);
+            Text(g, "ParkText", "MAGNUS\nPARKING", c + along * new Vector3(-0.78f, 0.008f, 0f), along * Quaternion.Euler(90f, 90f, 0f), new Vector2(0.9f, 0.3f), new Color(1f, 0.85f, 0.2f));
+            Gate(g.gameObject, ShopIds.MagnusBrain, 1);   // career step 1 "Magnus Gets a Job" brings the rail
         }
 
         void BuildCartStripes()
         {
-            // Racing stripes + a tiny spoiler on the cart (body top ≈ y 0.4, back bumper z ≈ 0.35 at the chess stop).
-            Vector3 c = cart.position;
-            var stripes = Node(root, "CartStripes", c, Quaternion.identity);
-            foreach (float x in new[] { -0.12f, 0.12f })
-                Box(stripes, "Stripe", c + new Vector3(x, 0.402f, 0f), new Vector3(0.09f, 0.006f, 0.74f), m.Red);
-            var spoilerPost = c + new Vector3(0f, 0.47f, -0.33f);
-            foreach (float x in new[] { -0.25f, 0.25f }) Box(stripes, "SpoilerPost", spoilerPost + new Vector3(x, 0f, 0f), new Vector3(0.03f, 0.14f, 0.03f), m.Dark);
-            Box(stripes, "Spoiler", c + new Vector3(0f, 0.55f, -0.35f), new Vector3(0.72f, 0.025f, 0.14f), m.Red, Quaternion.Euler(-12f, 0f, 0f));
-            Text(stripes, "Decal", "TURBO", c + new Vector3(0f, 0.28f, -0.375f), Quaternion.Euler(0f, 0f, 0f), new Vector2(0.4f, 0.1f), Color.white);
-            Attach(stripes.gameObject, cart);
+            // Rail motor (magnus_rail_motor L1): twin racing stripes down both skirts, a finned motor housing with a
+            // little chrome exhaust under the rear headstock, and a tidy spoiler on the back. No lettering.
+            var chassis = cart.Find(Setup_MagnusRail.ChassisName);
+            var frame = chassis != null ? chassis : cart;
+            Vector3 P(float x, float y, float z) => frame.TransformPoint(new Vector3(x, y, z));
+            Quaternion R(float x = 0f, float y = 0f, float z = 0f) => frame.rotation * Quaternion.Euler(x, y, z);
+            const float L = Setup_MagnusRail.CartHalfLength;
+            var stripes = Node(root, "CartStripes", frame.position, frame.rotation);
+            foreach (float sx in new[] { -1f, 1f })
+                foreach (float y in new[] { 0.195f, 0.215f })
+                    Box(stripes, "Stripe", P(sx * 0.473f, y, 0f), new Vector3(0.006f, 0.012f, 0.74f), m.Red, R(), false);
+            Box(stripes, "Motor", P(0f, 0.17f, -L + 0.2f), new Vector3(0.34f, 0.12f, 0.22f), m.Red, R());
+            for (int i = 0; i < 5; i++)
+                Box(stripes, "Fin", P(-0.12f + i * 0.06f, 0.17f, -L + 0.2f), new Vector3(0.012f, 0.14f, 0.24f), m.Dark, R(), false);
+            Cyl(stripes, "Exhaust", P(0.24f, 0.15f, -L - 0.02f), new Vector3(0.035f, 0.07f, 0.035f), m.Steel, R(90f, 0f, 0f));
+            foreach (float x in new[] { -0.3f, 0.3f })
+                Box(stripes, "SpoilerPost", P(x, Setup_MagnusRail.DeckTop + 0.06f, -L + 0.03f), new Vector3(0.025f, 0.12f, 0.025f), m.Dark, R());
+            Box(stripes, "Spoiler", P(0f, Setup_MagnusRail.DeckTop + 0.125f, -L + 0.01f), new Vector3(0.78f, 0.02f, 0.12f), m.Red, R(-10f, 0f, 0f));
+            Attach(stripes.gameObject, frame);
             Gate(stripes.gameObject, ShopIds.MagnusRailMotor, 1);
         }
 
@@ -269,67 +280,112 @@ public static class Setup_GarageUpgrades
             var feeder = conv.gameObject.AddComponent<ConveyorFeeder>();
             feeder.rig = rig;
 
-            // Tray (one slot per lane) with the slitter blade above it.
+            // The queue rack beside the table: two bays the belt drops bags into. A bag in a bay is an ordinary resting
+            // bag again (grab it from the sort station or on foot), so the rack has real colliders to hold it.
             var trayGo = Node(conv, "Tray", F(TraySlot0), Quaternion.identity);
             var tray = trayGo.gameObject.AddComponent<ConveyorTray>();
             tray.rig = rig;
             var slot0 = Node(trayGo, "Slot0", F(TraySlot0), Quaternion.identity);
             var slot1 = Node(trayGo, "Slot1", F(TraySlot1), Quaternion.identity);
             tray.slots = new[] { slot0, slot1 };
-            var trayVis0 = BuildTrayVisual(conv, "TrayVisual0", F(TraySlot0));
-            Gate(trayVis0, ShopIds.ConveyorBelt, 1);
-            var trayVis1 = BuildTrayVisual(conv, "TrayVisual1", F(TraySlot1));
-            Gate(trayVis1, ShopIds.ConveyorBelt, 3);
-
-            var slitter = Node(conv, "Slitter", F(TraySlot0 + new Vector3(0f, 0.75f, 0.1f)), Quaternion.identity);
-            Box(slitter, "Housing", slitter.position + new Vector3(0f, 0.1f, 0f), new Vector3(0.36f, 0.12f, 0.2f), m.Yellow);
-            Box(slitter, "Arm", slitter.position + new Vector3(0f, 0.45f, 0.05f), new Vector3(0.05f, 0.6f, 0.05f), m.Dark);
-            var blade = Node(slitter, "Blade", slitter.position, Quaternion.identity);
-            Cyl(blade, "Disc", blade.position, new Vector3(0.28f, 0.005f, 0.28f), m.Steel, Quaternion.Euler(0f, 0f, 90f));
-            for (int i = 0; i < 6; i++)
-                Box(blade, "Tooth", blade.position + Quaternion.Euler(i * 60f, 0f, 0f) * new Vector3(0f, 0.15f, 0f), new Vector3(0.012f, 0.05f, 0.05f), m.Steel, Quaternion.Euler(i * 60f, 0f, 0f));
-            Text(slitter, "Label", "AUTO-SLITTER", slitter.position + new Vector3(0f, 0.1f, -0.105f), Quaternion.identity, new Vector2(0.34f, 0.08f), new Color(0.1f, 0.1f, 0.1f));
-            tray.slitterBlade = blade;
-            Gate(slitter.gameObject, ShopIds.ConveyorBelt, 2);
+            var rack = BuildQueueRack(conv, "QueueRack", F(TraySlot0), F(TraySlot1));
+            Gate(rack, ShopIds.ConveyorBelt, 1);
 
             // Twin-column bucket elevator against the back wall, directly behind the truck.
             var elevator = BuildElevator(conv);
             Gate(elevator, ShopIds.ConveyorBelt, 1);
 
             // Shared with the runtime migration of existing scene copies: above the workshop doorway, around the
-            // north wall, inward ahead of its structural pillar, and down behind the unchanged sorting trays.
-            var lane0 = BuildLane(conv, 0, tray, GarageConveyorLayout.Route(0));
-            var lane1 = BuildLane(conv, 1, tray, GarageConveyorLayout.Route(1));
-            feeder.lanes = new[] { lane0, lane1 };
+            // north wall, inward ahead of its structural pillar, and down behind the queue rack.
+            var lane0 = BuildLane(conv, 0, tray, GarageConveyorLayout.Route());
+            feeder.lanes = new[] { lane0 };
 
-            // Tip-O-Matic Direct Feed chute (auto_tipper L2): tipped bags queue here for the elevator.
-            var chute = Node(conv, "DirectFeedChute", F(DirectFeedChute), Quaternion.identity);
-            var chuteVis = Node(chute, "Visual", chute.position, Quaternion.identity);
-            Vector3 cc = chute.position;
-            Box(chuteVis, "Floor", cc + new Vector3(0f, 0.05f, 0f), new Vector3(0.7f, 0.06f, 0.7f), m.Dark);
-            foreach (var (p, s) in new[] { (new Vector3(0f, 0.25f, 0.34f), new Vector3(0.7f, 0.45f, 0.03f)), (new Vector3(0f, 0.25f, -0.34f), new Vector3(0.7f, 0.45f, 0.03f)),
-                                          (new Vector3(0.34f, 0.25f, 0f), new Vector3(0.03f, 0.45f, 0.7f)), (new Vector3(-0.34f, 0.25f, 0f), new Vector3(0.03f, 0.45f, 0.7f)) })
-                Box(chuteVis, "Wall", cc + p, s, m.Yellow);
-            for (int i = 0; i < 5; i++) Box(chuteVis, "Stripe", cc + new Vector3(-0.28f + i * 0.14f, 0.3f, -0.36f), new Vector3(0.07f, 0.35f, 0.005f), m.Dark, Quaternion.Euler(0f, 0f, 30f));
-            Text(chuteVis, "Sign", "TIP-O-MATIC\nDIRECT FEED", cc + new Vector3(0f, 0.75f, -0.36f), Quaternion.identity, new Vector2(0.7f, 0.25f), new Color(1f, 0.85f, 0.2f));
-            Box(chuteVis, "SignBoard", cc + new Vector3(0f, 0.75f, -0.345f), new Vector3(0.74f, 0.28f, 0.02f), m.Dark);
-            Box(chuteVis, "SignPost", cc + new Vector3(0f, 0.5f, -0.34f), new Vector3(0.04f, 0.3f, 0.03f), m.Dark);
-            feeder.chute = Node(chute, "QueueSpot", cc + new Vector3(0f, 0.08f, 0f), Quaternion.identity);
-            Gate(chuteVis.gameObject, ShopIds.AutoTipper, 2);
-            chute.rotation = Quaternion.Euler(0f, 180f, 0f); // construction helpers use world poses; turn the finished sign inward
+            // L2 Heavy-Duty Motor: a chunky drive unit bolted to the elevator head (it lifts the heavy bags now).
+            Vector3 head = F(ElevatorPos) + new Vector3(-0.42f, 3.95f, 0f);
+            var motor = Node(conv, "HeavyMotor", head, GarageConveyorLayout.WallFacing);
+            Box(motor, "Housing", head, new Vector3(0.5f, 0.42f, 0.46f), m.Red, GarageConveyorLayout.WallFacing);
+            for (int i = 0; i < 5; i++)
+                Box(motor, "Fin", head + new Vector3(0f, 0f, -0.18f + i * 0.09f), new Vector3(0.54f, 0.46f, 0.02f), m.Dark, null, false);
+            Cyl(motor, "Flywheel", head + new Vector3(-0.27f, 0f, 0f), new Vector3(0.36f, 0.03f, 0.36f), m.Steel, Quaternion.Euler(0f, 0f, 90f));
+            Cyl(motor, "Hub", head + new Vector3(-0.31f, 0f, 0f), new Vector3(0.1f, 0.02f, 0.1f), m.Gold, Quaternion.Euler(0f, 0f, 90f));
+            Box(motor, "PlateBoard", head + new Vector3(-0.1f, -0.36f, 0f), new Vector3(0.03f, 0.2f, 0.72f), m.Yellow);
+            Text(motor, "Plate", "HEAVY DUTY", head + new Vector3(-0.12f, -0.36f, 0f), Quaternion.Euler(0f, 90f, 0f), new Vector2(0.68f, 0.16f), new Color(0.1f, 0.1f, 0.1f));
+            Gate(motor.gameObject, ShopIds.ConveyorBelt, 2);
+
+            // L3 Junk Diverter: a shaker box with a grate on the north-wall run, and a junk tube from under it along the
+            // wall to a spout over the compactor's hopper. What falls through the grate comes out of the spout.
+            Vector3 gp = F(GarageConveyorLayout.Grate), sp = F(GarageConveyorLayout.JunkSpout);
+            var div = Node(conv, "JunkDiverter", gp, Quaternion.identity);
+            var grate = Node(div, "Grate", gp, Quaternion.identity);
+            Box(grate, "ShakerL", gp + new Vector3(0f, 0.1f, -0.31f), new Vector3(0.9f, 0.34f, 0.05f), m.Yellow);
+            Box(grate, "ShakerR", gp + new Vector3(0f, 0.1f, 0.31f), new Vector3(0.9f, 0.34f, 0.05f), m.Yellow);
+            for (int i = 0; i < 7; i++)
+                Box(grate, "Bar", gp + new Vector3(-0.36f + i * 0.12f, -0.07f, 0f), new Vector3(0.03f, 0.03f, 0.58f), m.Steel, null, false);
+            foreach (float x in new[] { -0.3f, 0.3f })
+                GooglyEye(grate, gp + new Vector3(x, 0.14f, -0.345f), Quaternion.identity, 0.14f);
+            Box(div, "SignBoard", gp + new Vector3(0f, 0.42f, -0.31f), new Vector3(0.92f, 0.2f, 0.03f), m.Dark);
+            Text(div, "Sign", "JUNK DIVERTER", gp + new Vector3(0f, 0.42f, -0.33f), Quaternion.identity, new Vector2(0.88f, 0.16f), new Color(1f, 0.85f, 0.2f));
+            // A catch funnel under the grate, then a vacuum tube: up the wall, west along it ABOVE the museum shelves,
+            // out over the compactor and down to the spout over its hopper.
+            Box(div, "Funnel", gp + new Vector3(0f, -0.3f, 0f), new Vector3(0.6f, 0.36f, 0.5f), m.Frame);
+            float high = floor + JunkTubeHeight;
+            Vector3 t0 = gp + new Vector3(-0.2f, -0.4f, 0.33f);  // out of the funnel's back, against the wall
+            Vector3 t1 = new Vector3(t0.x, high, t0.z);          // up the wall
+            Vector3 t2 = new Vector3(sp.x, high, t0.z);          // west along it, over the display shelves
+            Vector3 t3 = new Vector3(sp.x, high, sp.z);          // out from the wall over the hopper
+            Tube(div, "Tube", t0, t1);
+            Tube(div, "Tube", t1, t2);
+            Tube(div, "Tube", t2, t3);
+            Tube(div, "Tube", t3, sp);
+            foreach (var p in new[] { t0, t1, t2, t3 }) Sphere(div, "Elbow", p, 0.3f, m.Steel);
+            Cyl(div, "SpoutLip", sp, new Vector3(0.34f, 0.03f, 0.34f), m.Yellow);
+            Box(div, "VacBox", t1 + new Vector3(0f, 0.1f, 0f), new Vector3(0.42f, 0.42f, 0.36f), m.Red);
+            Text(div, "VacSign", "JUNK VAC", t1 + new Vector3(0f, 0.1f, -0.19f), Quaternion.identity, new Vector2(0.38f, 0.12f), Color.white);
+            for (float x = t1.x - 1.2f; x > t2.x + 0.4f; x -= 1.6f)
+                Box(div, "Strap", new Vector3(x, (high + 8f) * 0.5f, t0.z), new Vector3(0.03f, 8f - high, 0.03f), m.Frame, null, false);
+            lane0.divertAt = GarageConveyorLayout.DivertDistance();
+            lane0.grate = grate;
+            lane0.junkSpout = Node(div, "JunkSpout", sp + Vector3.down * 0.1f, Quaternion.identity);
+            Gate(div.gameObject, ShopIds.ConveyorBelt, 3);
         }
 
-        GameObject BuildTrayVisual(Transform parent, string name, Vector3 top)
+        /// <summary>A round steel tube from a to b (visual only).</summary>
+        void Tube(Transform parent, string name, Vector3 a, Vector3 b)
         {
-            var t = Node(parent, name, top, Quaternion.identity);
-            Box(t, "Pan", top + new Vector3(0f, -0.03f, 0f), new Vector3(0.62f, 0.05f, 0.62f), m.Steel);
-            foreach (var (p, s) in new[] { (new Vector3(0f, 0.04f, 0.3f), new Vector3(0.62f, 0.1f, 0.03f)), (new Vector3(0.3f, 0.04f, 0f), new Vector3(0.03f, 0.1f, 0.62f)),
-                                          (new Vector3(-0.3f, 0.04f, 0f), new Vector3(0.03f, 0.1f, 0.62f)), (new Vector3(0f, 0.02f, -0.3f), new Vector3(0.62f, 0.05f, 0.03f)) })
-                Box(t, "Lip", top + p, s, m.Yellow);
-            float legH = top.y - floor - 0.05f;
-            foreach (var (x, z) in new[] { (-0.26f, -0.26f), (0.26f, -0.26f), (-0.26f, 0.26f), (0.26f, 0.26f) })
-                Box(t, "Leg", new Vector3(top.x + x, floor + legH * 0.5f, top.z + z), new Vector3(0.04f, legH, 0.04f), m.Dark);
-            Text(t, "Label", "NEXT BAG!", top + new Vector3(0f, -0.03f, -0.32f), Quaternion.identity, new Vector2(0.55f, 0.06f), new Color(0.1f, 0.1f, 0.1f));
+            float len = Vector3.Distance(a, b);
+            if (len < 0.02f) return;
+            Cyl(parent, name, (a + b) * 0.5f, new Vector3(0.24f, len * 0.5f, 0.24f), m.Steel, Quaternion.FromToRotation(Vector3.up, (b - a).normalized));
+        }
+
+        /// <summary>
+        /// The queue rack: a low steel table with two walled bays (one per slot) and a "GRAB A BAG" plate. It has
+        /// colliders: a floor under both bays, a back wall, end walls and a divider, low enough to reach over.
+        /// </summary>
+        GameObject BuildQueueRack(Transform parent, string name, Vector3 slotA, Vector3 slotB)
+        {
+            Vector3 c = (slotA + slotB) * 0.5f;
+            float span = Mathf.Abs(slotB.x - slotA.x);
+            float w = span + 0.84f, d = 0.84f, top = c.y;
+            var t = Node(parent, name, c, Quaternion.identity);
+            Box(t, "Pan", c + new Vector3(0f, -0.03f, 0f), new Vector3(w, 0.05f, d), m.Steel);
+            // walls: back (north, toward the slide) is tall, the front (south) is a low lip you reach over
+            Box(t, "Back", c + new Vector3(0f, 0.16f, d * 0.5f - 0.015f), new Vector3(w, 0.34f, 0.03f), m.Yellow);
+            Box(t, "FrontLip", c + new Vector3(0f, 0.03f, -d * 0.5f + 0.015f), new Vector3(w, 0.08f, 0.03f), m.Yellow);
+            foreach (float x in new[] { -w * 0.5f + 0.015f, w * 0.5f - 0.015f })
+                Box(t, "End", c + new Vector3(x, 0.1f, 0f), new Vector3(0.03f, 0.22f, d), m.Yellow);
+            Box(t, "Divider", c + new Vector3(0f, 0.06f, 0f), new Vector3(0.03f, 0.14f, d - 0.06f), m.Dark);
+            float legH = top - floor - 0.05f;
+            foreach (var (x, z) in new[] { (-w * 0.5f + 0.06f, -d * 0.5f + 0.06f), (w * 0.5f - 0.06f, -d * 0.5f + 0.06f), (-w * 0.5f + 0.06f, d * 0.5f - 0.06f), (w * 0.5f - 0.06f, d * 0.5f - 0.06f) })
+                Box(t, "Leg", new Vector3(c.x + x, floor + legH * 0.5f, c.z + z), new Vector3(0.05f, legH, 0.05f), m.Dark);
+            Box(t, "Brace", new Vector3(c.x, floor + legH * 0.35f, c.z), new Vector3(w - 0.12f, 0.03f, 0.03f), m.Dark, null, false);
+            Box(t, "PlateBoard", c + new Vector3(0f, -0.13f, -d * 0.5f - 0.005f), new Vector3(0.7f, 0.12f, 0.02f), m.Dark);
+            Text(t, "Label", "BAG QUEUE  ·  GRAB ONE", c + new Vector3(0f, -0.13f, -d * 0.5f - 0.018f), Quaternion.identity, new Vector2(0.66f, 0.08f), new Color(1f, 0.85f, 0.2f));
+            var cols = Node(t, "Colliders", c, Quaternion.identity);
+            Col(cols, "Pan", c + new Vector3(0f, -0.03f, 0f), new Vector3(w, 0.05f, d), DefaultLayer);
+            Col(cols, "Back", c + new Vector3(0f, 0.16f, d * 0.5f - 0.015f), new Vector3(w, 0.34f, 0.03f), DefaultLayer);
+            Col(cols, "FrontLip", c + new Vector3(0f, 0.03f, -d * 0.5f + 0.015f), new Vector3(w, 0.08f, 0.03f), DefaultLayer);
+            foreach (float x in new[] { -w * 0.5f + 0.015f, w * 0.5f - 0.015f })
+                Col(cols, "End", c + new Vector3(x, 0.1f, 0f), new Vector3(0.03f, 0.22f, d), DefaultLayer);
             return t.gameObject;
         }
 
@@ -382,7 +438,7 @@ public static class Setup_GarageUpgrades
                 else Segment(vis, "Slide", a, b, 0.5f, m.Steel, m.Yellow);
             }
             line.rollers = rollers.ToArray();
-            Gate(vis.gameObject, ShopIds.ConveyorBelt, lane == 0 ? 1 : 3);
+            Gate(vis.gameObject, ShopIds.ConveyorBelt, 1);
             return line;
         }
 
@@ -430,29 +486,6 @@ public static class Setup_GarageUpgrades
                 Box(parent, name + "Wall", mid + side * s + normal * 0.07f, new Vector3(0.03f, 0.18f, len), wallMat, rot);
         }
 
-        // ------------------------------------------------------------------ Auto-tipper
-
-        void BuildAutoTipper(GarageRig rig)
-        {
-            var lever = unloader.transform;
-            Vector3 basePos = lever.position + new Vector3(0f, 0f, 0.42f);  // beside the lever post (north side)
-            var t = Node(root, "AutoTipper", basePos, Quaternion.identity);
-            var at = t.gameObject.AddComponent<AutoTipper>();
-            at.rig = rig;
-            var vis = Node(t, "Visual", basePos, Quaternion.identity);
-            Box(vis, "Base", basePos + new Vector3(0f, 0.04f, 0f), new Vector3(0.3f, 0.08f, 0.3f), m.Yellow);
-            Cyl(vis, "Cylinder", basePos + new Vector3(0f, 0.6f, 0f), new Vector3(0.14f, 0.5f, 0.14f), m.Steel);
-            var piston = Node(vis, "Piston", basePos + new Vector3(0f, 1.15f, 0f), Quaternion.identity);
-            Box(piston, "Rod", piston.position + new Vector3(0f, 0.08f, -0.2f), new Vector3(0.04f, 0.04f, 0.42f), m.Steel, Quaternion.Euler(-20f, 0f, 0f));
-            Sphere(piston, "Fist", piston.position + new Vector3(0f, 0.15f, -0.4f), 0.09f, m.Red);
-            at.piston = piston;
-            var lamp = Sphere(vis, "Lamp", basePos + new Vector3(0f, 1.32f, 0.05f), 0.1f, m.Lamp);
-            at.lamp = lamp.GetComponent<Renderer>();
-            foreach (float x in new[] { -0.045f, 0.045f }) GooglyEye(vis, basePos + new Vector3(x, 0.95f, -0.075f), Quaternion.identity, 0.06f);
-            Text(vis, "Label", "AUTO", basePos + new Vector3(0f, 0.6f, -0.075f), Quaternion.identity, new Vector2(0.14f, 0.06f), new Color(0.1f, 0.1f, 0.1f));
-            Gate(vis.gameObject, ShopIds.AutoTipper, 1);
-        }
-
         // ------------------------------------------------------------------ table: XL leaf, cupholders, magnet strip
 
         void BuildTable(GarageRig rig)
@@ -493,8 +526,34 @@ public static class Setup_GarageUpgrades
             leaf.gameObject.SetActive(false);   // SortingTable.ApplyUpgrades shows it with sorting_table L1
             rig.tableLeaf = leaf.gameObject;
 
-            // L2: cupholders on the front corners + the magnet strip along the splash guard.
+            // L2: the second sorting spot reads in the world (numbered floor mats at both spots, a stool tucked beside
+            // the second one, a "2 SORTERS" plate on the apron), cupholders on the front corners + the magnet strip.
             var l2 = Node(g, "DoubleWide", tt.position, tt.rotation);
+            if (station != null && station2 != null && station.standPoint != null && station2.standPoint != null)
+            {
+                // Spot 1 is Magnus's parking box on the track; spot 2 gets its own mat (it stands clear of the rails).
+                {
+                    Vector3 sp = station2.standPoint.position;
+                    sp.y = floor;
+                    Box(l2, "SpotMat", sp + new Vector3(0f, 0.006f, 0f), new Vector3(0.78f, 0.012f, 0.62f), m.Rubber, tt.rotation, false);
+                    Box(l2, "SpotMatEdge", sp + new Vector3(0f, 0.004f, 0f), new Vector3(0.86f, 0.008f, 0.7f), m.Yellow, tt.rotation, false);
+                    Text(l2, "SpotNumber", "2", sp + new Vector3(0f, 0.014f, -0.12f), tt.rotation * Quaternion.Euler(90f, 0f, 0f), new Vector2(0.3f, 0.3f), new Color(1f, 0.85f, 0.2f));
+                }
+                // A stool behind and to the left of spot 2 (out of the standing spot, the track and the compactor's front).
+                Vector3 stool = station2.standPoint.position + tt.rotation * new Vector3(-0.75f, 0f, -0.45f);
+                stool.y = floor;
+                Cyl(l2, "StoolSeat", stool + new Vector3(0f, 0.6f, 0f), new Vector3(0.34f, 0.03f, 0.34f), m.Red);
+                Cyl(l2, "StoolCushion", stool + new Vector3(0f, 0.64f, 0f), new Vector3(0.3f, 0.015f, 0.3f), m.Yellow);
+                for (int i = 0; i < 3; i++)
+                {
+                    Vector3 off = Quaternion.Euler(0f, i * 120f, 0f) * new Vector3(0.13f, 0f, 0f);
+                    Box(l2, "StoolLeg", stool + off * 1.2f + new Vector3(0f, 0.29f, 0f), new Vector3(0.03f, 0.58f, 0.03f), m.Dark, Quaternion.FromToRotation(Vector3.up, (Vector3.up * 0.58f - off * 0.5f).normalized));
+                }
+                Cyl(l2, "StoolRing", stool + new Vector3(0f, 0.22f, 0f), new Vector3(0.3f, 0.008f, 0.3f), m.Steel);
+                float midX = (tt.InverseTransformPoint(station2.standPoint.position).x);
+                Box(l2, "SpotPlate", L(midX, top - 0.3f, z0 - 0.012f), new Vector3(0.46f, 0.12f, 0.012f), m.Dark, tt.rotation, false);
+                Text(l2, "SpotPlateText", "SPOT 2  ·  SORT TOGETHER", L(midX, top - 0.3f, z0 - 0.02f), tt.rotation, new Vector2(0.43f, 0.08f), new Color(1f, 0.85f, 0.2f));
+            }
             foreach (float x in new[] { -hx + 0.12f, hx - 0.12f })
             {
                 Cyl(l2, "Cupholder", L(x, top - 0.05f, z0 - 0.07f), new Vector3(0.11f, 0.05f, 0.11f), m.Dark, tt.rotation);
@@ -614,22 +673,22 @@ public static class Setup_GarageUpgrades
             Gate(g.gameObject, ShopIds.GarageDiscoBall, 1);
         }
 
-        // ------------------------------------------------------------------ Kevin's delivery chute
+        // ------------------------------------------------------------------ the raccoon crew's delivery chute
 
-        void BuildKevinChute(GarageRig rig)
+        void BuildDeliveryChute(GarageRig rig)
         {
-            var g = Node(root, "KevinChute", KevinChuteMouth, Quaternion.identity);
+            var g = Node(root, GarageConveyorLayout.DeliveryChuteName, DeliveryChuteMouth, Quaternion.identity);
             var dropper = g.gameObject.AddComponent<DepotDeliveryDropper>();
             dropper.rig = rig;
-            dropper.chute = Node(g, "Mouth", KevinChuteMouth + new Vector3(-0.2f, -0.1f, 0f), Quaternion.identity);
-            var vis = Node(g, "Visual", KevinChuteMouth, Quaternion.identity);
-            Vector3 wall = KevinChuteMouth + new Vector3(.39f, .45f, 0f);
-            Segment(vis, "Duct", wall, KevinChuteMouth, 0.7f, m.Steel, m.Frame);
-            Box(vis, "Flap", KevinChuteMouth + new Vector3(-0.05f, -0.05f, 0f), new Vector3(0.04f, 0.4f, 0.66f), m.Yellow, Quaternion.Euler(0f, 0f, 20f));
-            Box(vis, "SignBoard", KevinChuteMouth + new Vector3(.37f, 1.05f, 0f), new Vector3(0.03f, 0.32f, 1.3f), m.Green);
-            Text(vis, "Sign", "KEVIN'S CREW DELIVERIES\n(he says hi)", KevinChuteMouth + new Vector3(.35f, 1.05f, 0f), Quaternion.Euler(0f, 90f, 0f), new Vector2(1.25f, 0.28f), Color.white);
+            dropper.chute = Node(g, "Mouth", DeliveryChuteMouth + new Vector3(-0.2f, -0.1f, 0f), Quaternion.identity);
+            var vis = Node(g, "Visual", DeliveryChuteMouth, Quaternion.identity);
+            Vector3 wall = DeliveryChuteMouth + new Vector3(.39f, .45f, 0f);
+            Segment(vis, "Duct", wall, DeliveryChuteMouth, 0.7f, m.Steel, m.Frame);
+            Box(vis, "Flap", DeliveryChuteMouth + new Vector3(-0.05f, -0.05f, 0f), new Vector3(0.04f, 0.4f, 0.66f), m.Yellow, Quaternion.Euler(0f, 0f, 20f));
+            Box(vis, "SignBoard", DeliveryChuteMouth + new Vector3(.37f, 1.05f, 0f), new Vector3(0.03f, 0.32f, 1.3f), m.Green);
+            Text(vis, "Sign", DepotDeliveryDropper.SignText, DeliveryChuteMouth + new Vector3(.35f, 1.05f, 0f), Quaternion.Euler(0f, 90f, 0f), new Vector2(1.25f, 0.28f), Color.white);
             g.rotation = GarageConveyorLayout.WallFacing;
-            Gate(vis.gameObject, ShopIds.HireKevin, 1);
+            Gate(vis.gameObject, CallingIds.CollarChip, 1);
         }
 
         // ------------------------------------------------------------------ Magnus props (attach at runtime)

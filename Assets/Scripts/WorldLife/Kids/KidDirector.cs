@@ -322,11 +322,11 @@ public sealed class KidDirector : WorldLifeDirector
     static bool InsideATruck(Vector3 p, float pad)
     {
         var trucks = TruckControllerV2.All;
-        var box = TruckControllerV2.BodyBoxMetres;
         for (int t = 0; t < trucks.Count; t++)
         {
             var tr = trucks[t];
             if (tr == null || !tr.isActiveAndEnabled) continue;
+            var box = tr.ModelBodyBoxMetres;
             var rb = tr.Body;
             Quaternion rot = rb != null ? rb.rotation : tr.transform.rotation;
             Vector3 origin = rb != null ? rb.position : tr.transform.position;

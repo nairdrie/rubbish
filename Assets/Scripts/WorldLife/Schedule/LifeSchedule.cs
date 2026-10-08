@@ -211,8 +211,8 @@ public sealed class LifeSim
     readonly Func<Vector3, Vector3, bool> lineBlocked;
 
     /// <summary>Per-district loop indices, Park nodes and walk nodes.</summary>
-    readonly List<int>[] loopsByDistrict = new List<int>[4];
-    readonly List<int>[] parksByDistrict = new List<int>[4];
+    readonly List<int>[] loopsByDistrict = new List<int>[Districts.All.Count];
+    readonly List<int>[] parksByDistrict = new List<int>[Districts.All.Count];
     readonly float[][] loopCum;     // per loop: cumulative length at each node (closed: the last entry = full length)
 
     // Per house: the ramp node (Drive) and the walk join → loop entry index cache.
@@ -238,20 +238,20 @@ public sealed class LifeSim
         Graph = g; Seed = seed; lineBlocked = blocked;
         Roster = LifeRoster.Build(g, seed);
         AStar = new LifeAStar(g);
-        for (int d = 0; d < 4; d++) { loopsByDistrict[d] = new List<int>(); parksByDistrict[d] = new List<int>(); }
+        for (int d = 0; d < loopsByDistrict.Length; d++) { loopsByDistrict[d] = new List<int>(); parksByDistrict[d] = new List<int>(); }
         int nl = g.loops?.Length ?? 0;
         loopCum = new float[nl][];
         for (int l = 0; l < nl; l++)
         {
             var lp = g.loops[l].nodes;
             if (lp == null || lp.Length < 3) continue;
-            loopsByDistrict[Mathf.Clamp(g.loops[l].district, 0, 3)].Add(l);
+            loopsByDistrict[Mathf.Clamp(g.loops[l].district, 0, loopsByDistrict.Length - 1)].Add(l);
             var c = new float[lp.Length + 1];
             for (int i = 0; i < lp.Length; i++) c[i + 1] = c[i] + Vector3.Distance(g.nodes[lp[i]].pos, g.nodes[lp[(i + 1) % lp.Length]].pos);
             loopCum[l] = c;
         }
         for (int i = 0; i < g.NodeCount; i++)
-            if (g.nodes[i].kind == StreetGraph.NodeKind.Park) parksByDistrict[Mathf.Clamp(g.nodes[i].district, 0, 3)].Add(i);
+            if (g.nodes[i].kind == StreetGraph.NodeKind.Park) parksByDistrict[Mathf.Clamp(g.nodes[i].district, 0, parksByDistrict.Length - 1)].Add(i);
 
         rampOf = new int[g.houses.Length];
         for (int h = 0; h < g.houses.Length; h++)

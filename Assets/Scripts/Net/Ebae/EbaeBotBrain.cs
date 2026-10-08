@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// <c>-botbrain ebae</c> (package N5 test rig, 3 bots: bot-1 hosts, bot-2 and bot-3 join). Each bot stocks its keep crate with
+/// <c>-botbrain ebag</c> (package N5 test rig, 3 bots: bot-1 hosts, bot-2 and bot-3 join). Each bot stocks its keep crate with
 /// six cheap valuables (uids <c>&lt;bot&gt;-i0..i5</c>, item k = the k-th cheapest valuable), tops its cash up to $200 through the
-/// Ledger, lists i0–i2 on ebae and then plays a script on the shared server clock (s since the host started):
+/// Ledger, lists i0–i2 on ebag and then plays a script on the shared server clock (s since the host started):
 /// <list type="table">
 /// <item>30: bot-2 buys bot-1's i0 (Buy now). bot-3 offers half on bot-1's i1; bot-1 counters at 85%, bot-3 accepts.</item>
 /// <item>36: bot-2 offers half on bot-3's i0; bot-3 declines.</item>

@@ -173,13 +173,15 @@ public sealed class SortStationNetBot : IBotBrain
                 var nc = bag.GetComponent<NetCarry>();
                 remoteRest = nc != null && nc.St.Phase == HandsPhase.Rest && bag.NetRemote && bag.Body != null && bag.Body.isKinematic;
                 if (!remoteRest) { if (c.Elapsed - stageAt > 20f) Fail("guest bag never became a remote Rest copy"); break; }
+                // No "next bag" key any more: grab the bag like a player would and carry it to the table.
+                HandsBots.Teleport(c.Player.gameObject, bag.transform.position + Vector3.back * 0.6f, Vector3.forward);
+                fetched = carrier.PickUp(bag);
                 HandsBots.Teleport(c.Player.gameObject, station.standPoint.position, station.standPoint.forward);
                 if (!station.Enter()) { Fail("could not enter station"); break; }
-                fetched = station.NextBag();
                 Log("fetch", ("employee", employeeMode), ("lot", lot), ("canWork", Permissions.LocalCanWorkAt(station.transform.position)),
                     ("remoteRest", remoteRest), ("selected", fetched), ("localSortMode", SortStation.LocalInSortMode),
                     ("bodyKinematic", bag.Body.isKinematic), ("netPhase", nc.St.Phase.ToString()));
-                if (!fetched) { Fail("R found no bag in guest depot"); break; }
+                if (!fetched) { Fail("could not grab the bag in guest depot"); break; }
                 stage = 3;
                 stageAt = c.Elapsed;
                 break;

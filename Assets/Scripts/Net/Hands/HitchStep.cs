@@ -122,7 +122,7 @@ public class HitchStep : MonoBehaviour, IInteractable
         Vector3 local = ShopModKit.ToTruckMetres(truckTransform, p);
         var view = Camera.main;
         Vector3 forward = view != null ? view.transform.forward : (Me != null ? Me.transform.forward : truckTransform.forward);
-        Vector3 localForward = Quaternion.Inverse(truckTransform.rotation) * forward;
+        Vector3 localForward = TruckModelVisuals.UnmapMetres(truckTransform, Quaternion.Inverse(truckTransform.rotation) * forward);
         for (int k = 0; k < RideHolds.Count; k++)
         {
             if (!RideHolds.WithinBoardingBounds(k, local) || !RideHolds.FacesBoardingHold(k, local, localForward)) continue;

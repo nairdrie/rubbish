@@ -241,11 +241,11 @@ public sealed class CarScenes
     static bool InsideTruck(Vector3 p, float pad)
     {
         var trucks = TruckControllerV2.All;
-        var bb = TruckControllerV2.BodyBoxMetres;
         for (int i = 0; i < trucks.Count; i++)
         {
             var tk = trucks[i];
             if (tk == null || !tk.isActiveAndEnabled) continue;
+            var bb = tk.ModelBodyBoxMetres;
             var rb = tk.Body;
             Vector3 pos = rb != null ? rb.position : tk.transform.position;
             Quaternion rot = rb != null ? rb.rotation : tk.transform.rotation;

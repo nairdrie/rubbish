@@ -291,7 +291,7 @@ public sealed class WorldLifeAuthority : IWorldLifeAuthority
         };
         ThrownHits++;
         Present(body, in hit);
-        if (kind == NpcHitKind.ShortFlop) Commit(in hit, body, true, books);
+        if (kind == NpcHitKind.ShortFlop && body.Id.kind != LifeKind.Crossing) Commit(in hit, body, true, books);
         return hit;
     }
 

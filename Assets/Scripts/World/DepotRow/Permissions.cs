@@ -10,7 +10,7 @@ using UnityEngine;
 /// <item>Pick up / sort / bin / smash trash, use the station, tip the truck, put things in the keep crate:
 /// <see cref="CanWorkIn"/> (owner + on-shift employees through <see cref="EmployeeHook"/>, set by N4's PayrollNet).</item>
 /// <item>Rearrange the display shelves: <see cref="LocalCanManageAt"/> (owner only).</item>
-/// <item>Laptop (upgrades, Scrapazon, ebae, rename): <see cref="CanUseLaptop"/> (owner only).</item>
+/// <item>Laptop (upgrades, Scrapazon, ebag, rename): <see cref="CanUseLaptop"/> (owner only).</item>
 /// <item>Drive a business truck: <see cref="CanDrive"/> (owner; N4 adds on-shift employees).</item>
 /// </list>
 /// Outside the one world (solo, the legacy garage flow) every check passes. Checks are cheap; call them every frame.
@@ -41,7 +41,7 @@ public static class Permissions
         return Ask(EmployeeHook, clientId, lot);
     }
 
-    /// <summary>The laptop (upgrades, Scrapazon, ebae, payroll, rename) is the owner's alone.</summary>
+    /// <summary>The laptop (upgrades, Scrapazon, ebag, payroll, rename) is the owner's alone.</summary>
     public static bool CanUseLaptop(ulong clientId, int lot)
     {
         var net = DepotRowNet.Instance;

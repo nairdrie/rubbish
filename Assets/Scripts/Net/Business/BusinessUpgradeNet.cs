@@ -11,21 +11,26 @@ public struct BusinessUpgradeInfo : INetworkSerializable, IEquatable<BusinessUpg
     public FixedString64Bytes businessId;
     public ulong ownerClientId;
     public ulong levels;
-    // Protocol 3/content 2: garage pack is full. Bit0 = personal pole; bits1–2 = truck headlights (0..2).
+    public ulong truckLevels;
+    // Bit0 = personal pole; bits1–2 = headlights; bits3–7 = five append-only collection permits.
     public byte gearBits;
+    /// <summary>Six district trust values, 5 bits each (0..31); stable Districts.All order.</summary>
+    public uint districtTrust;
 
     public void NetworkSerialize<T>(BufferSerializer<T> s) where T : IReaderWriter
     {
         s.SerializeValue(ref businessId);
         s.SerializeValue(ref ownerClientId);
         s.SerializeValue(ref levels);
+        s.SerializeValue(ref truckLevels);
         s.SerializeValue(ref gearBits);
+        s.SerializeValue(ref districtTrust);
     }
 
     public bool Equals(BusinessUpgradeInfo other) => businessId.Equals(other.businessId) &&
-        ownerClientId == other.ownerClientId && levels == other.levels && gearBits == other.gearBits;
+        ownerClientId == other.ownerClientId && levels == other.levels && truckLevels == other.truckLevels && gearBits == other.gearBits && districtTrust == other.districtTrust;
     public override bool Equals(object obj) => obj is BusinessUpgradeInfo other && Equals(other);
-    public override int GetHashCode() => businessId.GetHashCode() ^ ownerClientId.GetHashCode() ^ levels.GetHashCode() ^ gearBits;
+    public override int GetHashCode() => businessId.GetHashCode() ^ ownerClientId.GetHashCode() ^ levels.GetHashCode() ^ truckLevels.GetHashCode() ^ gearBits ^ (int)districtTrust;
 }
 
 /// <summary>Transient host state for one lot's sorter; claim serial prevents a late phase from a previous owner.</summary>
@@ -62,7 +67,21 @@ public sealed class BusinessUpgradeNet : NetworkBehaviour
         ShopIds.MagnusGripper, ShopIds.MagnusVision, ShopIds.TrophyShelf, ShopIds.DisplayPlankShelf,
         ShopIds.DisplayGlassCase, ShopIds.DisplayPedestal, ShopIds.DisplayVault, ShopIds.GarageDiscoBall,
     };
-    static readonly int[] maxima = { 2, 3, 2, 3, 4, 2, 4, 1, 2, 2, 2, 1, 1, 1, 1, 1 };
+    // auto_tipper is one level since tipping moved onto the truck (old saves' L2 is migrated and refunded on load).
+    static readonly int[] maxima = { 1, 3, 2, 3, 4, 2, 4, 1, 2, 2, 2, 1, 1, 1, 1, 1 };
+    // Protocol 7: vehicle equipment is business-owned, independent of whoever currently drives it.
+    static readonly string[] truckIds = {
+        ShopIds.TruckModel, ShopIds.TruckCapacity, ShopIds.TruckTurbo, ShopIds.TruckHandling,
+        ShopIds.TruckArm, ShopIds.AirHorn, ShopIds.GoldenTruck, ShopIds.TruckPaintPrimer,
+        ShopIds.TruckPaintFlames, ShopIds.TruckPaintRaccoonCamo, ShopIds.TruckPaintChrome,
+        ShopIds.HornPackMusical, ShopIds.TrashFmRadio,
+    };
+    static readonly int[] truckMaxima = { 1, 4, 3, 3, 3, 2, 1, 1, 1, 1, 1, 1, 1 };
+    // Preserve this order: bit3 Meadows, bit4 Hills, bit5 Bluffs, bit6 Commons, bit7 Heights.
+    static readonly string[] permitIds = {
+        ShopIds.PermitMinivanMeadows, ShopIds.PermitSnootingtonHills, ShopIds.PermitBillionaireBluffs,
+        ShopIds.PermitCouponCommons, ShopIds.PermitStackingtonHeights,
+    };
     const float SendInterval = 0.25f;
     const string MsgUpgrades = "rb.biz.upgrades";
     const string MsgShoo = "rb.biz.magnus.shoo";
@@ -71,7 +90,9 @@ public sealed class BusinessUpgradeNet : NetworkBehaviour
     readonly HashSet<string> deliveredItems = new HashSet<string>(StringComparer.Ordinal);
     string sentId;
     ulong sentLevels;
+    ulong sentTruckLevels;
     byte sentGear;
+    uint sentTrust;
     float lastSentAt;
     float nextSend;
 
@@ -118,35 +139,97 @@ public sealed class BusinessUpgradeNet : NetworkBehaviour
         if (!BusinessSlots.Declared || !Businesses.TryGet(GameSession.BusinessId, out var b) ||
             b.ownerClientId != NetworkManager.LocalClientId) return;
         ulong packed = PackLocal();
+        ulong truckPacked = PackLocalTruck();
         byte gear = LocalGear();
+        uint trust = LocalTrust();
         int current = IndexOf(b.Id);
         if (current >= 0 && snapshots[current].ownerClientId == b.ownerClientId && snapshots[current].levels == packed &&
-            snapshots[current].gearBits == gear)
+            snapshots[current].gearBits == gear && snapshots[current].truckLevels == truckPacked && snapshots[current].districtTrust == trust)
         {
             sentId = b.Id;
             sentLevels = packed;
+            sentTruckLevels = truckPacked;
             sentGear = gear;
+            sentTrust = trust;
             return;
         }
         // The host may have ignored an early declaration or a rate-limited message. Retry until its echo matches.
-        if (sentId == b.Id && sentLevels == packed && sentGear == gear && Time.realtimeSinceStartup < lastSentAt + 2f) return;
+        if (sentId == b.Id && sentLevels == packed && sentTruckLevels == truckPacked && sentGear == gear && sentTrust == trust && Time.realtimeSinceStartup < lastSentAt + 2f) return;
         var id = new FixedString64Bytes();
         id.CopyFromTruncated(b.Id);
-        DeclareRpc(id, packed, gear);
+        DeclareRpc(id, packed, gear, truckPacked, trust);
         sentId = b.Id;
         sentLevels = packed;
+        sentTruckLevels = truckPacked;
         sentGear = gear;
+        sentTrust = trust;
         lastSentAt = Time.realtimeSinceStartup;
     }
 
     void SyncHost()
     {
         if (!Businesses.TryGet(GameSession.BusinessId, out var b) || !b.IsHostBusiness) return;
-        Put(b, PackLocal(), LocalGear());
+        Put(b, PackLocal(), LocalGear(), PackLocalTruck(), LocalTrust());
     }
 
     static byte LocalHeadlights() => (byte)Mathf.Clamp(GameSession.GetUpgradeLevel(ShopIds.TruckHeadlights), 0, 2);
-    static byte LocalGear() => (byte)((LocalHeadlights() << 1) | (GameSession.GetUpgradeLevel(ShopIds.GrabberPole) > 0 ? 1 : 0));
+    static byte LocalGear()
+    {
+        int bits = (LocalHeadlights() << 1) | (GameSession.GetUpgradeLevel(ShopIds.GrabberPole) > 0 ? 1 : 0);
+        for (int i = 0; i < permitIds.Length; i++) if (GameSession.GetUpgradeLevel(permitIds[i]) > 0) bits |= 1 << (i + 3);
+        return (byte)bits;
+    }
+
+    static uint LocalTrust()
+    {
+        uint packed = 0;
+        for (int i = 0; i < Districts.All.Count; i++)
+            packed |= (uint)Mathf.RoundToInt(Progression.Trust01(Districts.All[i]) * 31f) << (i * 5);
+        return packed;
+    }
+
+    public static bool ValidDistrictTrust(uint packed) => (packed >> 30) == 0;
+    public static float DecodeDistrictTrust(uint packed, int index) => index >= 0 && index < 6 ? ((packed >> (index * 5)) & 31u) / 31f : 0f;
+    public static int DecodePermitLevel(byte gear, string id)
+    {
+        int index = Array.IndexOf(permitIds, id);
+        return index >= 0 && (gear & (1 << (index + 3))) != 0 ? 1 : 0;
+    }
+
+    /// <summary>Permit ownership belongs to a live business, not whoever currently drives its truck.</summary>
+    public static bool HasPermitForBusiness(string businessId, DistrictDef district)
+    {
+        if (district == null || string.IsNullOrEmpty(businessId) || !Businesses.TryGet(businessId, out var business)) return false;
+        if (district.tier <= 1) return true;
+        if (businessId == GameSession.BusinessId) return Districts.IsUnlocked(district);
+        var n = Instance;
+        int i = n != null && n.IsSpawned ? n.IndexOf(businessId) : -1;
+        return i >= 0 && n.snapshots[i].ownerClientId == business.ownerClientId && DecodePermitLevel(n.snapshots[i].gearBits, district.permitId) > 0;
+    }
+
+    /// <summary>Shared town availability is the union of online businesses, using the best subscriber trust among
+    /// permit holders. Removing a business removes its contribution; it never grants another business ownership.</summary>
+    public static bool TryTownDistrictTrust(DistrictDef district, out float trust)
+    {
+        trust = 0f;
+        if (district == null) return false;
+        bool any = Districts.IsUnlocked(district);
+        int districtIndex = Districts.IndexOf(district.id);
+        var n = Instance;
+        bool networked = n != null && n.IsSpawned;
+        if (any) trust = networked ? Mathf.RoundToInt(Progression.Trust01(district) * 31f) / 31f : Progression.Trust01(district);
+        if (!networked) return any;
+        for (int i = 0; i < n.snapshots.Count; i++)
+        {
+            var entry = n.snapshots[i];
+            string id = entry.businessId.ToString();
+            if (id == GameSession.BusinessId || !Businesses.TryGet(id, out var b) || b.ownerClientId != entry.ownerClientId) continue;
+            if (district.tier > 1 && DecodePermitLevel(entry.gearBits, district.permitId) == 0) continue;
+            any = true;
+            trust = Mathf.Max(trust, DecodeDistrictTrust(entry.districtTrust, districtIndex));
+        }
+        return any;
+    }
 
     static ulong PackLocal()
     {
@@ -163,7 +246,28 @@ public sealed class BusinessUpgradeNet : NetworkBehaviour
         return ids.Length == 16 || packed >> (ids.Length * 4) == 0UL;
     }
 
-    static bool ValidDeclaration(ulong packed, byte gear) => (gear & ~7) == 0 && (gear >> 1) <= 2 && ValidPacked(packed);
+    static bool ValidDeclaration(ulong packed, byte gear) => ((gear >> 1) & 3) <= 2 && ValidPacked(packed);
+
+    static ulong PackLocalTruck()
+    {
+        ulong packed = 0;
+        for (int i = 0; i < truckIds.Length; i++)
+            packed |= (ulong)Mathf.Clamp(GameSession.GetUpgradeLevel(truckIds[i]), 0, truckMaxima[i]) << (i * 4);
+        return packed;
+    }
+
+    public static bool ValidTruckLevels(ulong packed)
+    {
+        for (int i = 0; i < truckIds.Length; i++)
+            if (((packed >> (i * 4)) & 15UL) > (ulong)truckMaxima[i]) return false;
+        return (packed >> (truckIds.Length * 4)) == 0;
+    }
+
+    public static int DecodeTruckLevel(ulong packed, string id)
+    {
+        int key = Array.IndexOf(truckIds, id);
+        return key < 0 ? 0 : Mathf.Clamp((int)((packed >> (key * 4)) & 15UL), 0, truckMaxima[key]);
+    }
 
     int IndexOf(string id)
     {
@@ -171,22 +275,22 @@ public sealed class BusinessUpgradeNet : NetworkBehaviour
         return -1;
     }
 
-    void Put(BusinessInfo b, ulong packed, byte gear)
+    void Put(BusinessInfo b, ulong packed, byte gear, ulong truckPacked, uint trust)
     {
-        var entry = new BusinessUpgradeInfo { businessId = b.id, ownerClientId = b.ownerClientId, levels = packed, gearBits = gear };
+        var entry = new BusinessUpgradeInfo { businessId = b.id, ownerClientId = b.ownerClientId, levels = packed, gearBits = gear, truckLevels = truckPacked, districtTrust = trust };
         int i = IndexOf(b.Id);
         if (i < 0) snapshots.Add(entry);
         else if (!snapshots[i].Equals(entry)) snapshots[i] = entry;
     }
 
     [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
-    void DeclareRpc(FixedString64Bytes businessId, ulong packed, byte gear, RpcParams p = default)
+    void DeclareRpc(FixedString64Bytes businessId, ulong packed, byte gear, ulong truckPacked, uint trust, RpcParams p = default)
     {
         ulong sender = p.Receive.SenderClientId;
         if (!SessionService.GuardFor(MsgUpgrades).Allow(sender, 80, Time.realtimeSinceStartupAsDouble) ||
-            !ValidDeclaration(packed, gear) || !Businesses.TryGet(businessId.ToString(), out var b) ||
+            !ValidDeclaration(packed, gear) || !ValidTruckLevels(truckPacked) || !ValidDistrictTrust(trust) || !Businesses.TryGet(businessId.ToString(), out var b) ||
             b.IsHostBusiness || b.ownerClientId != sender) return;
-        Put(b, packed, gear);
+        Put(b, packed, gear, truckPacked, trust);
     }
 
     void OnClosing(string id, ulong owner)
@@ -229,20 +333,24 @@ public sealed class BusinessUpgradeNet : NetworkBehaviour
         int i = n != null && n.IsSpawned ? n.IndexOf(id) : -1;
         if (i < 0 || n.snapshots[i].ownerClientId != owner) return 0;
         if (upgradeId == ShopIds.TruckHeadlights) return (n.snapshots[i].gearBits >> 1) & 3;
+        if (Array.IndexOf(permitIds, upgradeId) >= 0) return DecodePermitLevel(n.snapshots[i].gearBits, upgradeId);
+        if (Array.IndexOf(truckIds, upgradeId) >= 0) return DecodeTruckLevel(n.snapshots[i].truckLevels, upgradeId);
         int key = Array.IndexOf(ids, upgradeId);
         if (key < 0) return 0;
         return (int)((n.snapshots[i].levels >> (key * 4)) & 15UL);
     }
 
     /// <summary>Lights belong to the truck's business, not its driver, employer or the host's personal save.</summary>
-    public static int HeadlightLevelForTruck(TruckControllerV2 truck)
+    public static int HeadlightLevelForTruck(TruckControllerV2 truck) => LevelForTruck(truck, ShopIds.TruckHeadlights);
+
+    public static int LevelForTruck(TruckControllerV2 truck, string upgradeId)
     {
         if (truck == null) return 0;
-        if (!DepotRowWorld.Active) return LocalHeadlights();
+        if (!DepotRowWorld.Active) return GameSession.GetUpgradeLevel(upgradeId);
         var row = DepotRowNet.Instance;
         if (row == null || !truck.IsSpawned) return 0;
         int lot = row.LotOfTruck(truck.NetworkObjectId);
-        return lot >= 0 ? LevelForLot(lot, ShopIds.TruckHeadlights) : 0;
+        return lot >= 0 ? LevelForLot(lot, upgradeId) : 0;
     }
 
     /// <summary>Personal gear comes from the actor's own business save, never from their employer's account.</summary>
@@ -374,15 +482,17 @@ public sealed class BusinessUpgradeNet : NetworkBehaviour
         if (!EbaeItemValidation.IsValid(item, out _)) return;
         string json = JsonUtility.ToJson(item);
         if (json.Length > 4000 || !deliveredItems.Add(id + "/" + item.uid)) return;
+        bool part = Workshop.IsPart(item); // a kept non-valuable: delivered once like a treasure, but silent (no Rep, no facts)
         var rarity = item.Def.rarity;
         string repId = rarity == Rarity.Legendary ? RepIds.TreasureLegendary :
             rarity == Rarity.Epic ? RepIds.TreasureEpic : rarity == Rarity.Rare ? RepIds.TreasureRare : RepIds.TreasureUncommon;
-        if (owner != NetworkManager.LocalClientId)
+        if (!part && owner != NetworkManager.LocalClientId)
             using (Ledger.ToBusiness(id)) Ledger.Rep(repId, Progression.TreasureRep(rarity), SortBin.DistrictOf(item), null);
         if (owner == NetworkManager.LocalClientId)
         {
             GameSession.AddToInventory(item);
-            ProgressionEvents.RaiseTreasureKept(item, byMagnus);
+            if (part) PartKeptToast(item);
+            else ProgressionEvents.RaiseTreasureKept(item, byMagnus);
             return;
         }
         var fixedId = new FixedString64Bytes(); fixedId.CopyFromTruncated(id);
@@ -415,7 +525,14 @@ public sealed class BusinessUpgradeNet : NetworkBehaviour
         // Also protect against a repeated RPC after a reconnect, without rejecting a distinct item of the same type.
         foreach (var owned in GameSession.Inventory) if (owned != null && owned.uid == item.uid) return;
         GameSession.AddToInventory(item);
-        Progression.ApplyHostRobotTreasure(item, byMagnus);
+        if (Workshop.IsPart(item)) PartKeptToast(item);
+        else Progression.ApplyHostRobotTreasure(item, byMagnus);
+    }
+
+    static void PartKeptToast(ItemInstance item)
+    {
+        bool wanted = Workshop.IsWanted(item);
+        GameHUD.Toast(wanted ? $"Magnus kept: {item.Def.name} (WANTED PART!)" : $"Magnus kept: {item.Def.name} (part)", wanted ? ToastStyle.Good : ToastStyle.Info, wanted ? 2.4f : 1.6f);
     }
 
     [Rpc(SendTo.SpecifiedInParams)]

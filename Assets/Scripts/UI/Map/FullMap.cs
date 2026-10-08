@@ -29,6 +29,9 @@ public sealed class FullMap : UiScreen
 
     /// <summary>The interactive map (M) is open.</summary>
     public static bool IsOpenInteractive => instance != null && instance.open && !instance.peek;
+    /// <summary>The interactive map is the only screen holding the input lock: a seated driver keeps steering, throttle,
+    /// brake and horn while reading it (the camera stays free for the map's cursor).</summary>
+    public static bool DrivingAllowed => IsOpenInteractive && UiStack.LocksHeld == 1 && UiStack.Top == instance;
     /// <summary>The map is up (interactive or the Tab peek).</summary>
     public static bool IsShown => instance != null && instance.open;
     /// <summary>Holding Tab.</summary>
@@ -247,8 +250,7 @@ public sealed class FullMap : UiScreen
 
     static Vector2 DepotXZ(TownMapData d)
     {
-        if (d != null) foreach (var p in d.pois) if (p.kind == MapPoiKind.GarageDoor) return p.pos;
-        return Vector2.zero;
+        return DepotMapLocations.TryLocalPosition(d, out var position) ? position : Vector2.zero;
     }
 
     // ------------------------------------------------------------------ build
@@ -375,7 +377,7 @@ public sealed class FullMap : UiScreen
         legendLate = Line("Late", "", 22f, new Color(1f, 0.66f, 0.3f), 30f, FontStyles.Normal);
         y -= 10f;
         Line("DistrictsHead", UiText.MapDistricts, 22f, UiTheme.Gold, 32f).characterSpacing = 3f;
-        foreach (var d in Districts.All)
+        foreach (var d in Districts.ProgressionOrder)
         {
             var sw = FeelUi.Rect("Swatch", legend, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(22f, y - 8f), new Vector2(18f, 18f));
             var swImg = sw.gameObject.AddComponent<Image>();

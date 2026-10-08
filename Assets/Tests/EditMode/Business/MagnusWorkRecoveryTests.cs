@@ -211,12 +211,14 @@ public class MagnusWorkRecoveryTests
         Assert.AreEqual(expected, Runtime("MagnusSorter").GetMethod("BlocksSortStop").Invoke(null, new object[] { player, stop, 1.1f }));
     }
 
-    [TestCase(false, 6f, 22f, "rip a bag onto the table", "06:00–22:00")]
-    [TestCase(true, 0f, 24f, "bags on the tipping floor", "24h")]
-    public void WorkHintExplainsPreparationAndHoursWithoutGrantingAnotherUpgrade(bool canRip, float start, float end, string work, string hours)
+    [TestCase(false, 6f, 22f, "not HEAVY ones", "06:00–22:00")]
+    [TestCase(true, 0f, 24f, "any bag", "24h")]
+    public void WorkHintExplainsPreparationAndHoursWithoutGrantingAnotherUpgrade(bool heavyToo, float start, float end, string work, string hours)
     {
-        string hint = (string)Runtime("MagnusSorter").GetMethod("ReadyHint").Invoke(null, new object[] { canRip, start, end });
+        string hint = (string)Runtime("MagnusSorter").GetMethod("ReadyHint").Invoke(null, new object[] { heavyToo, start, end });
         StringAssert.Contains(work, hint);
+        StringAssert.Contains("by the table", hint, "from his first step he rips bags within reach; nobody has to rip them for him");
+        StringAssert.DoesNotContain("tipping floor", hint, "he can never take from the dump pile");
         StringAssert.Contains("step away", hint);
         StringAssert.Contains(hours, hint);
     }

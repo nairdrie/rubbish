@@ -4,8 +4,8 @@ using UnityEngine;
 /// <summary>
 /// The read-only keybinds cheat sheet (Docs/UIPass.md §6.3, D9). Keys are hard-coded <c>KeyCode</c>s in about 15 files today,
 /// so this table holds the code's defaults; <see cref="Defaults"/> lists the serialized values an acceptance eval checks
-/// against (Truck V2's hornKey, Player's dropKey/throwMouseButton, the side loader's armKey, the sort station's
-/// nextBagKey/exitKey, IInteractable's keys). Rebinding needs every poll moved to Input System actions first (a follow-up).
+/// against (Truck V2's hornKey, Player's dropKey/throwMouseButton, the side loader's armKey, the truck tipper's key, the
+/// sort station's exitKey, IInteractable's keys). Rebinding needs every poll moved to Input System actions first (a follow-up).
 /// </summary>
 public static class Keybinds
 {
@@ -36,7 +36,8 @@ public static class Keybinds
         public const KeyCode Horn = KeyCode.H;
         public const KeyCode Arm = KeyCode.X;
         public const KeyCode Recover = KeyCode.R;
-        public const KeyCode NextBag = KeyCode.R, StationExit = KeyCode.Q;
+        public const KeyCode TipIt = KeyCode.G;
+        public const KeyCode StationExit = KeyCode.Q;
     }
 
     static Group[] groups;
@@ -61,7 +62,9 @@ public static class Keybinds
             new Bind("B", "Drop what you're holding"),
             new Bind("Hold RT", "Wind up and throw"),
             new Bind("RB", "Punch / item swing", "combo knocks down"),
-            new Bind("D-pad ← / →", "Grabber pole / trap", "if owned"),
+            new Bind("D-pad ← / →", "Grabby Hand / trap", "if owned"),
+            new Bind("LB", "Rocket boost", "Rocket Blades Lv 2"),
+            new Bind("Hold Y", "Crush the bags on your back", "Compactor Backpack Lv 2"),
             new Bind("D-pad ↓ / ↑", "Juice / bag cannon", "if owned"),
             new Bind("R3", "Flop / get up", "allows pickup"),
             new Bind("A", "Mash to wriggle free", "while carried"),
@@ -74,13 +77,12 @@ public static class Keybinds
             new Bind("Y", "HONK"),
             new Bind("LB", "Side-loader arm", "if fitted"),
             new Bind("Hold D-pad ↑", "Tow or unflip"),
+            new Bind("Hold B", "TIP IT: dump the load behind the truck", "stopped"),
             new Bind("X", "Get out")),
         new Group("Sorting table",
             new Bind("Right stick", "Aim at trash"),
             new Bind("RT", "Grab / slam open / sort"),
-            new Bind("Y", "BUILD MATERIALS: save held piece", "revealed recyclable only"),
             new Bind("RB", "Throw the selected piece"),
-            new Bind("X", "Next bag"),
             new Bind("B", "Step away")),
         new Group("Riding / menus / chess",
             new Bind("Left stick", "Lean into corners"),
@@ -114,9 +116,15 @@ public static class Keybinds
             new Bind("Space", "Mash to wriggle free", "while carried"),
             new Bind(Cap(Defaults.Chug), "Chug Garbage Juice", "if you have it"),
             new Bind(Cap(Defaults.Trap), "Set a raccoon trap", "if you have one"),
-            new Bind(Cap(Defaults.Pole), "Use the grabber pole", "if you have one"),
+            new Bind("Y", "Feral pounce", "Fully Feral, while rabid"),
+            new Bind("K K", "Use a stored Rabies Shot", "Embrace It: it no longer fires by itself"),
+            new Bind(Cap(Defaults.Pole), "Use the Grabby Hand", "if you have one"),
+            new Bind("Q", "Rocket boost", "Rocket Blades Lv 2"),
+            new Bind("C", "Bag onto your back / hold to crush", "Compactor Backpack"),
+            new Bind("B", "Eject the whole pack", "Compactor Backpack Lv 3"),
             new Bind("Space", "Shake off a raccoon (mash!)", "when one's on your face"),
-            new Bind("Ctrl", "Stomp", "Stompy Boots Lv 2")),
+            new Bind("Ctrl", "Stomp", "Stompy Boots Lv 2"),
+            new Bind("N", "Call It (holding a bag)", "Scavenger capstone")),
         new Group("Truck",
             new Bind("W/S", "Drive and reverse"),
             new Bind("A/D", "Steer"),
@@ -124,12 +132,11 @@ public static class Keybinds
             new Bind("Space", "Drift"),
             new Bind(Cap(Defaults.Arm), "Side-loader arm", "if fitted"),
             new Bind("Hold " + Cap(Defaults.Recover), "Tow or unflip"),
+            new Bind("Hold " + Cap(Defaults.TipIt), "TIP IT: dump the load behind the truck", "stopped"),
             new Bind(Cap(Defaults.Interact), "Get out")),
         new Group("Sort station",
             new Bind(Cap(Defaults.Interact) + "/LMB", "Grab or slam it open"),
-            new Bind("F", "BUILD MATERIALS: save held piece", "revealed recyclable only"),
             new Bind("RMB", "Chuck it"),
-            new Bind(Cap(Defaults.NextBag), "Next bag"),
             new Bind(Cap(Defaults.StationExit) + "/Esc", "Step away")),
         new Group("Anywhere",
             new Bind("Esc", "Menu / back"),

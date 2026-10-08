@@ -33,6 +33,8 @@ public enum LifeKind : byte
     /// <summary>A kid in a fenced yard or the playground (§3.1, §12.K): a hash stream for looks and the daily schedule
     /// only. Kids are presentation: never an <see cref="ILifeBody"/>, never a <see cref="LifeId"/> in LifeBodies.</summary>
     Kid = 6,
+    /// <summary>Guarded-crossing cast: guard plus children, with rule-based cartoon knockdowns.</summary>
+    Crossing = 7,
 }
 
 /// <summary>
@@ -156,8 +158,8 @@ public static class LifeHash
 /// <summary>Small id helpers shared by every package (district bytes, GameSession keys, asset keys, Sfx ids).</summary>
 public static class WorldLifeIds
 {
-    /// <summary>District byte used in the street graph, knockables and facts: tier − 1 (0 Mildly Pleasant .. 3 Bluffs).</summary>
-    public static byte DistrictIndex(DistrictDef d) => (byte)Mathf.Clamp((d ?? Districts.Starter).tier - 1, 0, 3);
+    /// <summary>Append-only district byte used in graph, facts and saves (independent of wealth/progression).</summary>
+    public static byte DistrictIndex(DistrictDef d) => (byte)Districts.IndexOf((d ?? Districts.Starter).id);
     public static byte DistrictIndex(string districtId) => DistrictIndex(Districts.Get(districtId));
     public static byte DistrictIndexForStop(string stopId) => DistrictIndex(Districts.ForStopId(stopId));
     /// <summary>The district for a district byte (Starter when out of range).</summary>
@@ -168,14 +170,8 @@ public static class WorldLifeIds
     }
     public static string DistrictId(byte index) => District(index).id;
 
-    /// <summary>Bit per district byte: is it unlocked for this company right now (gate edges, car trips)?</summary>
-    public static int UnlockedDistrictMask()
-    {
-        int mask = 0;
-        var all = Districts.All;
-        for (int i = 0; i < all.Count && i < 31; i++) if (Districts.IsUnlocked(all[i])) mask |= 1 << i;
-        return mask;
-    }
+    /// <summary>Shared town mask from online permit holders; identical schedule regions for host and guests.</summary>
+    public static int UnlockedDistrictMask() => DistrictAccess.TownMask();
 
     // ---- GameSession keys (rule 9: company-scoped counters / stamps until M1's stores) ----
 

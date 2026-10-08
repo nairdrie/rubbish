@@ -14,7 +14,7 @@ public sealed class ProgressionRunner : MonoBehaviour
 
     static ProgressionRunner instance;
     readonly ProgressionHud hud = new ProgressionHud();
-    float fallbackAt = -1f, nextGnomeTick, nextDayCheck;
+    float fallbackAt = -1f, nextGnomeTick, nextDayCheck, nextSeveranceCheck;
 
     public static ProgressionRunner Instance => instance;
     public ProgressionHud Hud => hud;
@@ -121,6 +121,13 @@ public sealed class ProgressionRunner : MonoBehaviour
                 }
                 catch (Exception e) { Debug.LogException(e); }
             }
+        }
+
+        // One-time note for a business that owned Kevin's Crew (refunded while its save loaded): any machine, own business.
+        if (Progression.SessionLive && now >= nextSeveranceCheck)
+        {
+            nextSeveranceCheck = now + 1.5f;
+            try { KevinSeverance.TryTell(); } catch (Exception e) { Debug.LogException(e); }
         }
 
         if (host && now >= nextGnomeTick)

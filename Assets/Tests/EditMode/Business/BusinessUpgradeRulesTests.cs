@@ -28,7 +28,8 @@ public class BusinessUpgradeRulesTests
         Assert.IsTrue(Valid(0UL));
         Assert.IsTrue(Valid(4UL << (6 * 4)));  // Magnus brain L4
         Assert.IsTrue(Valid(1UL << (15 * 4))); // Disco Ball cosmetic
-        Assert.IsFalse(Valid(3UL));             // Auto Tipper maximum is L2
+        Assert.IsTrue(Valid(1UL));              // Auto Tipper L1
+        Assert.IsFalse(Valid(2UL));             // Auto Tipper is one level now (its old L2 is migrated on load)
         Assert.IsFalse(Valid(2UL << (7 * 4)));  // Rail Motor maximum is L1
         Assert.IsFalse(Valid(2UL << (15 * 4))); // Final nibble must be checked too
     }

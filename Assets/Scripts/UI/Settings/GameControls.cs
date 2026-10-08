@@ -23,9 +23,10 @@ public static class GameControls
     {
         Interact, Alternative, Drop, Throw, Shove, Jump, Flop,
         Pole, Trap, Chug, Stomp, Cannon,
-        Horn, Arm, Recover, Drift,
-        SortPrimary, SortSecondary, NextBag, StationExit,
+        Horn, Arm, Recover, Drift, TipIt,
+        SortPrimary, SortSecondary, StationExit,
         Snag, SafetyBar, Cruise, Map, Back, Pause, PreviousTab, NextTab,
+        Boost, Crush,
     }
 
     static ButtonControl Button(Action action)
@@ -36,7 +37,7 @@ public static class GameControls
         {
             Action.Interact => p.buttonWest,       // X / Square
             Action.Alternative => p.buttonNorth,  // Y / Triangle
-            Action.Drop or Action.StationExit or Action.Back => p.buttonEast, // B / Circle
+            Action.Drop or Action.StationExit or Action.Back or Action.TipIt => p.buttonEast, // B / Circle (TIP IT: HOLD B while driving)
             Action.Throw or Action.SortPrimary or Action.Snag => p.rightTrigger,
             Action.Cannon => p.dpad.up,
             Action.Shove or Action.SortSecondary => p.rightShoulder,
@@ -49,12 +50,13 @@ public static class GameControls
             Action.Horn or Action.SafetyBar => p.buttonNorth,
             Action.Arm => p.leftShoulder,
             Action.Recover => p.dpad.up,
-            Action.NextBag => p.buttonWest,
             Action.Cruise => p.leftShoulder,
             Action.Map => p.selectButton,
             Action.Pause => p.startButton,
             Action.PreviousTab => p.leftShoulder,
             Action.NextTab => p.rightShoulder,
+            Action.Boost => p.leftShoulder,   // Rocket Blades (on foot LB is otherwise free)
+            Action.Crush => p.buttonNorth,    // Compactor Backpack: HOLD Y
             _ => null,
         };
     }

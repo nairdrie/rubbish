@@ -166,7 +166,7 @@ public static partial class GameSession
         SaveSoon();
     }
 
-    // ---------- lifetime stats (fun numbers for the HUD / ebae profile) ----------
+    // ---------- lifetime stats (fun numbers for the HUD / ebag profile) ----------
     public static int TotalBagsCollected;
     public static int TotalItemsSorted;
     public static float TotalKgRecycled;
@@ -248,7 +248,8 @@ public static partial class GameSession
         SaveSoon();
     }
 
-    /// <summary>Kevin's Crew bags waiting for the tipping floor (oldest first).</summary>
+    /// <summary>Bags a background crew collected for this business, waiting for the tipping floor (oldest first): the
+    /// raccoon crew's hauls, and whatever Kevin's Crew had left in a save from before he moved on.</summary>
     public static readonly List<BagContents> DepotDeliveries = new List<BagContents>();
 
     public static void AddDepotDelivery(BagContents bag)
@@ -364,7 +365,8 @@ public static partial class GameSession
     {
         if (item == null) return;
         Inventory.Add(item);
-        TotalTreasuresFound++;
+        // Only valuables are treasure finds: a kept part must not end Rookie Luck or pad the lifetime treasure count.
+        if (item.Def == null || item.Def.category == ItemCategory.Valuable) TotalTreasuresFound++;
         NotifyChanged();
         SaveSoon();
     }
@@ -480,7 +482,7 @@ public static partial class GameSession
     /// <summary>The host's time of day from the save (-1 = none). GameClock restores it when a hosted session starts.</summary>
     public static float SavedClockHours { get; private set; } = -1f;
 
-    const int CurrentSaveVersion = 3;
+    const int CurrentSaveVersion = 6;
 
     /// <summary>The local business's id (made once, saved with it) and name ("Rubbish Co." by default).</summary>
     public static string BusinessId { get; private set; }
@@ -490,13 +492,13 @@ public static partial class GameSession
     static bool loaded;
 
     /// <summary>
-    /// Save both legacy files (hotfix L0: <c>LegacySave.WriteBoth</c>, under the same gen as ebae's). At most one write per
+    /// Save both legacy files (hotfix L0: <c>LegacySave.WriteBoth</c>, under the same gen as ebag's). At most one write per
     /// 2 s (later calls are flushed when the window ends, and always on quit, pause and scene change). Refused while
     /// <see cref="SaveGuard"/> is latched or the save didn't load cleanly, and never from edit mode.
     /// </summary>
     public static void Save() => LegacySave.WriteBoth(false);
 
-    /// <summary>This session's save as JSON; LegacySave writes it beside ebae's half under the same <paramref name="gen"/>.</summary>
+    /// <summary>This session's save as JSON; LegacySave writes it beside ebag's half under the same <paramref name="gen"/>.</summary>
     internal static string BuildSaveJson(long gen) => BuildSaveJson(gen, Day);
 
     /// <summary>As <see cref="BuildSaveJson(long)"/> with the day number given: a guest handing its business back writes its
@@ -566,6 +568,14 @@ public static partial class GameSession
         upgradeLevels.Clear();
         if (d.upgradeIds != null && d.upgradeLevels != null)
             for (int i = 0; i < d.upgradeIds.Count && i < d.upgradeLevels.Count; i++) upgradeLevels[d.upgradeIds[i]] = d.upgradeLevels[i];
+        // Before the vehicle progression every business already owned the full-size truck.
+        // Only new businesses start with the mini; loading an old save must never confiscate a truck or its mods.
+        if (d.saveVersion < 4) upgradeLevels[ShopIds.TruckModel] = TruckProgression.RearLoader;
+        Districts.MigrateLegacyPermits(upgradeLevels, d.saveVersion);
+        // Auto-Tipper is one level now (tipping moved onto the truck): an owned level 2 becomes level 1 and its price comes
+        // back. Idempotent without a version gate: once migrated, the save says level 1.
+        cashCents += UpgradeMigrations.MigrateAutoTipper(upgradeLevels);
+        TruckCapacityKg = TruckProgression.CapacityKg(GetUpgradeLevel(ShopIds.TruckModel), GetUpgradeLevel(ShopIds.TruckCapacity));
         consumables.Clear();
         if (d.consumableIds != null && d.consumableCounts != null)
             for (int i = 0; i < d.consumableIds.Count && i < d.consumableCounts.Count; i++) consumables[d.consumableIds[i]] = d.consumableCounts[i];
@@ -583,6 +593,11 @@ public static partial class GameSession
         if (d.counterIds != null && d.counterValues != null)
             for (int i = 0; i < d.counterIds.Count && i < d.counterValues.Count; i++)
                 if (!string.IsNullOrEmpty(d.counterIds[i])) counters[d.counterIds[i]] = d.counterValues[i];
+        if (d.saveVersion < 4) counters[StarterCollectionContract.ProgressKey] = StarterCollectionContract.TargetBags;
+        // v6: Kevin's Crew was removed. A save that owned him gets its purchase price back here, as part of the balance it
+        // loads with: exactly once (the level is cleared and the version moves on), with no Ledger posting (a refund is not
+        // income: no payroll share, no day stats, no Rep) and no event. A brand-new business never passes through here.
+        cashCents += KevinSeverance.Migrate(upgradeLevels, counters, d.saveVersion);
         stamps.Clear();
         if (d.stampIds != null && d.stampValues != null)
             for (int i = 0; i < d.stampIds.Count && i < d.stampValues.Count; i++)
@@ -590,7 +605,9 @@ public static partial class GameSession
         DepotDeliveries.Clear();
         if (d.depotDeliveries != null)
             foreach (var b in d.depotDeliveries) if (b != null) DepotDeliveries.Add(b);
-        LoadWorkshop(d.workshop);
+        // The Workshop's retired material bank pays out here, once, as part of the balance the save loads with (bin rates;
+        // WorkshopBankRefund). Idempotent without a version gate: a converted save has no bank left to convert.
+        cashCents += LoadWorkshop(d.workshop);
         NotifyChanged();
     }
 

@@ -13,6 +13,8 @@ public enum JoinReject : byte
     BadRequest,
     HostLeaving,
     SoloOnly,
+    TownMapMismatch,
+    TownNotPublished,
 }
 
 /// <summary>Player-facing text for each <see cref="JoinReject"/> (short, friendly, no codes).</summary>
@@ -32,6 +34,8 @@ public static class JoinRejectText
         JoinReject.BadRequest => "The host couldn't read your join request. Update your game.",
         JoinReject.HostLeaving => "The host is closing the shift.",
         JoinReject.SoloOnly => "That game is solo only.",
+        JoinReject.TownMapMismatch => "Your town map differs from the host's. Use the same published town build to play together.",
+        JoinReject.TownNotPublished => "This town has unpublished map data. Save and bake the town, then use the same published build to play together.",
         _ => "Couldn't join.",
     };
 }

@@ -2,13 +2,16 @@ using System.Collections;
 using UnityEngine;
 
 /// <summary>
-/// Kevin's Crew deliveries (Docs/Progression.md §6.5): bags Kevin collected wait in GameSession.DepotDeliveries and land
-/// on the tipping floor when you come into the garage, and at 18:00 while you're here. The physical pile is capped at
-/// <see cref="pileCap"/> bags; the rest stay in the list for the next drop. Host decides; the bags tumble in through a
-/// chute high on the wall over the pile.
+/// Crew deliveries (Docs/Progression.md §6.9.3): bags the business's raccoon crew collected wait in
+/// GameSession.DepotDeliveries and land on the tipping floor right after a sweep, when you come into the garage, and at
+/// 18:00 while you're here. The physical pile is capped at <see cref="pileCap"/> bags; the rest stay in the list for the
+/// next drop. Host decides; the bags tumble in through a chute high on the wall over the pile.
 /// </summary>
 public class DepotDeliveryDropper : MonoBehaviour
 {
+    /// <summary>The board over the chute (Setup_GarageUpgrades writes it; see <see cref="RelabelAuthoredSign"/>).</summary>
+    public const string SignText = "RACCOON CREW DELIVERIES\n(they want kibble)";
+
     public GarageRig rig;
     [Tooltip("Where delivered bags drop from (high over the tipping floor).")]
     public Transform chute;
@@ -26,6 +29,16 @@ public class DepotDeliveryDropper : MonoBehaviour
     void Awake()
     {
         if (rig == null) rig = GetComponentInParent<GarageRig>();
+        RelabelAuthoredSign();
+    }
+
+    /// <summary>The ShopScene and DepotRow copies were authored when this chute belonged to another crew and still carry
+    /// that board. Show today's text without re-authoring them (play mode only: nothing is written back to a scene).</summary>
+    void RelabelAuthoredSign()
+    {
+        var board = transform.Find("Visual/Sign/Text");
+        var label = board != null ? board.GetComponent<TMPro.TMP_Text>() : null;
+        if (label != null && label.text != SignText) label.text = SignText;
     }
 
     void OnEnable() => GameClock.HourChanged += OnHour;
@@ -34,12 +47,12 @@ public class DepotDeliveryDropper : MonoBehaviour
     IEnumerator Start()
     {
         yield return new WaitForSeconds(entryDelay);
-        DropPending("Kevin's Crew dropped off");
+        DropPending(RaccoonCrew.DeliveryWho + " dropped off");
     }
 
     void OnHour(int hour)
     {
-        if (hour == dropHour) DropPending("18:00 delivery! Kevin's Crew dropped off");
+        if (hour == dropHour) DropPending("18:00 delivery! " + RaccoonCrew.DeliveryWho + " dropped off");
     }
 
     /// <summary>Drop waiting deliveries onto the tipping floor (up to the pile cap). Returns how many will drop.</summary>
@@ -50,7 +63,7 @@ public class DepotDeliveryDropper : MonoBehaviour
         int n = Mathf.Min(room, GameSession.DepotDeliveries.Count);
         if (n <= 0)
         {
-            GameHUD.Toast($"Kevin's bags are waiting: the tipping floor is full ({pileCap} bags)!", ToastStyle.Bad, 2.5f);
+            GameHUD.Toast($"Crew deliveries are waiting: the tipping floor is full ({pileCap} bags)!", ToastStyle.Bad, 2.5f);
             return 0;
         }
         StartCoroutine(DropRoutine(n, what));
@@ -60,15 +73,16 @@ public class DepotDeliveryDropper : MonoBehaviour
     IEnumerator DropRoutine(int n, string what)
     {
         dropping = true;
-        var un = rig != null ? rig.unloader : null;
+        var un = rig != null ? rig.tippingFloor : null;
         Vector3 center = un != null ? un.pileCenter : transform.position;
         Vector2 size = un != null ? un.pileSize : new Vector2(1.5f, 2f);
         Vector3 from = chute != null ? chute.position : center + Vector3.up * 3.5f;
         Sfx.Play("horn", from, 0.5f, 1.5f);
         Sfx.Play("beep", from, 0.7f, 0.9f);
         int left = GameSession.DepotDeliveries.Count - n;
-        GameHUD.Toast(left > 0 ? $"{what} {n} {SortingKit.Plural(n, "bag", "bags")} ({left} still waiting). He says hi."
-            : $"{what} {n} {SortingKit.Plural(n, "bag", "bags")}. He says hi.", ToastStyle.Good, 3f);
+        string tail = RaccoonCrew.DeliveryTail;
+        GameHUD.Toast(left > 0 ? $"{what} {n} {SortingKit.Plural(n, "bag", "bags")} ({left} still waiting). {tail}"
+            : $"{what} {n} {SortingKit.Plural(n, "bag", "bags")}. {tail}", ToastStyle.Good, 3f);
         for (int i = 0; i < n; i++)
         {
             var contents = GameSession.TakeDepotDelivery();

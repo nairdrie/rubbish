@@ -484,6 +484,19 @@ public static partial class UiKit
         }
     }
 
+    /// <summary>Scroll a vertical list just far enough that <paramref name="row"/> is inside the viewport (keyboard / pad
+    /// focus walking a long list).</summary>
+    public static void EnsureVisible(ScrollRect scroll, RectTransform row)
+    {
+        if (scroll == null || row == null) return;
+        Bounds bounds = RectTransformUtility.CalculateRelativeRectTransformBounds(scroll.viewport, row);
+        Rect view = scroll.viewport.rect;
+        float move = bounds.min.y < view.yMin ? view.yMin - bounds.min.y : bounds.max.y > view.yMax ? view.yMax - bounds.max.y : 0f;
+        if (Mathf.Abs(move) < 0.5f) return;
+        scroll.StopMovement();
+        scroll.content.anchoredPosition += Vector2.up * move;
+    }
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics() => plumDepth = 0;
 }

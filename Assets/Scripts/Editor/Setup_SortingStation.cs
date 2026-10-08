@@ -13,10 +13,13 @@ using UnityEngine.SceneManagement;
 ///   - sorting table (top ≈ 0.95 m, lips/rails, receiver trigger) in the north-west area
 ///   - a row of six receptacles right behind it: HAZARD barrel, METAL / PLASTIC / GLASS / PAPER bins, KEEP crate
 ///   - the compactor (hopper, press, SMASH + CRUSH ALL buttons, bale corner) at the table's west end
-///   - the TIP IT! lever + painted hazard stripes around the tipping floor behind the truck
+///   - the tipping floor behind the truck: a TippingFloor (the landing zone for a load tipped from the truck's own
+///     TIP IT; there is no floor lever any more) + painted hazard stripes around it
 ///   - the first-person SortStation: stand point in front of the table, "SortCam" virtual camera (disabled until
 ///     you step up) and the "Step up to the sorting table" entry zones (along the table + compactor front, and
 ///     round the table's east end by the KEEP crate)
+///   - the second sorting position ("SortStationSeat2", seat 1): its own stand point and camera, 1.25 m to the left
+///     of the first (off Magnus's track); it only opens with the Double-Wide table (sorting_table L2) and shares the first one's entry zones
 /// Materials go to Assets/Materials/Generated/Sorting/; runtime materials are registered in RubbishAssets.
 /// </summary>
 public static class Setup_SortingStation
@@ -39,9 +42,11 @@ public static class Setup_SortingStation
     const float BinWidth = 0.48f, BinDepth = 0.6f, BinHeight = 1.1f;
     static readonly Vector3 CompactorPos = new Vector3(-5.5f, 0f, 2.5f);     // faces south (rot Y 180)
     static readonly Vector3 BaleCorner = new Vector3(-5.5f, 0f, 3.95f);
-    static readonly Vector3 LeverPos = new Vector3(4.45f, 0f, -1.56f);
     // First-person station: feet in front of the table middle (table front edge z = 2.1), facing the bins (+Z).
     static readonly Vector3 StandPos = new Vector3(-3.4f, 0f, 1.1f);
+    // The second sorting position (sorting_table L2): at the table's left end, by the compactor. Magnus's track ends at
+    // the Sort Stop's buffer (x -4.02), so this spot is off the rails and he never drives through whoever stands here.
+    public static readonly Vector3 Stand2Pos = new Vector3(-4.65f, 0f, 1.1f);
     // "Step up" zone (world XZ): along the table front + the compactor front, clear of the garage door.
     const float EntryMinX = -6.4f, EntryMaxX = -1.0f, EntryMinZ = 0.95f, EntryMaxZ = 2.45f;
     // Second "Step up" zone round the table's east end, beside the KEEP crate (third-person tossing into the station is
@@ -89,7 +94,7 @@ public static class Setup_SortingStation
             BuildTable(root.transform, m, floor);
             BuildBins(root.transform, m, floor);
             BuildCompactor(root.transform, m, floor, tipFloor);
-            BuildLever(root.transform, m, tipFloor);
+            BuildTippingFloor(root.transform, tipFloor);
             BuildStripes(root.transform, m, tipFloor);
             BuildSortStation(root.transform, floor);
 
@@ -399,51 +404,17 @@ public static class Setup_SortingStation
     }
 
     // =====================================================================================================
-    // TIP IT lever
+    // Tipping floor (no lever: TIP IT is on the truck)
     // =====================================================================================================
 
-    static void BuildLever(Transform root, Mats m, float floor)
+    static void BuildTippingFloor(Transform root, float floor)
     {
-        // Local +Z faces west (toward the truck's rear and the walkway).
-        var t = Node(root, "TipLever", new Vector3(LeverPos.x, floor, LeverPos.z), Quaternion.Euler(0f, 270f, 0f));
-        t.gameObject.layer = InteractableLayer;
-        var un = t.gameObject.AddComponent<TruckUnloader>();
-        // Landing zone: inset from the painted edges, and kept clear of the lever in the north-west corner.
-        un.pileCenter = new Vector3(5.75f, floor, -3.2f);
-        un.pileSize = new Vector2(1.5f, 2.2f);
-
-        var vis = Node(t, "Visual", Vector3.zero, Quaternion.identity);
-        Box(vis, "Base", new Vector3(0f, 0.04f, 0f), new Vector3(0.46f, 0.08f, 0.46f), m.Yellow);
-        for (int i = 0; i < 3; i++)
-            Box(vis, "BaseStripe", new Vector3(-0.15f + i * 0.15f, 0.081f, 0f), new Vector3(0.06f, 0.002f, 0.46f), m.Dark, Quaternion.Euler(0f, 35f, 0f));
-        Box(vis, "Post", new Vector3(0f, 0.86f, 0f), new Vector3(0.14f, 1.6f, 0.14f), m.Frame);
-        Box(vis, "PivotBlock", new Vector3(0.1f, 0.85f, 0f), new Vector3(0.08f, 0.14f, 0.14f), m.Dark);
-        var pivot = Node(t, "LeverPivot", new Vector3(0.16f, 0.85f, 0f), Quaternion.identity);
-        Box(pivot, "Arm", new Vector3(0f, 0.28f, 0f), new Vector3(0.045f, 0.56f, 0.045f), m.Steel);
-        Sphere(pivot, "Knob", new Vector3(0f, 0.6f, 0f), 0.13f, m.Red);
-        un.lever = pivot;
-        un.leverRestAngle = -35f;
-        un.leverPulledAngle = 50f;
-
-        Box(vis, "SignBoard", new Vector3(0f, 1.8f, 0f), new Vector3(0.72f, 0.3f, 0.04f), m.Yellow);
-        Text(vis, "SignFront", "TIP IT!", new Vector3(0f, 1.8f, 0.022f), Quaternion.Euler(0f, 180f, 0f), new Vector2(0.66f, 0.24f), new Color(0.08f, 0.08f, 0.08f));
-        Text(vis, "SignBack", "TIP IT!", new Vector3(0f, 1.8f, -0.022f), Quaternion.identity, new Vector2(0.66f, 0.24f), new Color(0.08f, 0.08f, 0.08f));
-        Box(vis, "StatusPanel", new Vector3(0f, 1.25f, 0.075f), new Vector3(0.3f, 0.12f, 0.01f), m.Screen);
-        un.statusText = Text(vis, "Status", "NO TRUCK", new Vector3(0f, 1.25f, 0.082f), Quaternion.Euler(0f, 180f, 0f), new Vector2(0.27f, 0.09f), new Color(0.4f, 1f, 0.45f));
-
-        var col = t.gameObject.AddComponent<BoxCollider>();
-        col.center = new Vector3(0.05f, 0.95f, 0f);
-        col.size = new Vector3(0.55f, 1.9f, 0.5f);
-
-        var zoneGo = Node(t, "Zone", Vector3.zero, Quaternion.identity);
-        var proxy = zoneGo.gameObject.AddComponent<TruckUnloaderZoneTarget>();
-        proxy.unloader = un;
-        var zone = zoneGo.gameObject.AddComponent<InteractionZone>();
-        zone.center = new Vector3(0f, 1f, 0.3f);
-        zone.size = new Vector3(2.6f, 2.4f, 2.8f);
-        zone.mode = ZoneMode.OnFoot;
-        zone.score = 1.1f;
-        zone.targetOverride = proxy;
+        // Landing zone: inset from the painted edges. The truck's TruckTipper sends a load tipped inside the shop here.
+        var center = new Vector3(5.75f, floor, -3.2f);
+        var t = Node(root, "TippingFloor", center, Quaternion.identity);
+        var tf = t.gameObject.AddComponent<TippingFloor>();
+        tf.pileCenter = center;
+        tf.pileSize = new Vector2(1.5f, 2.2f);
     }
 
     // =====================================================================================================
@@ -493,6 +464,29 @@ public static class Setup_SortingStation
         east.mode = ZoneMode.OnFoot;
         east.score = 4f;
         east.targetOverride = eastEntry;
+
+        // The second sorting position: same table, bins and compactor, its own feet and eyes. No entry zones of its own
+        // (position 1's zones hand out both). It reaches a little further and turns further right, because the KEEP
+        // crate and the queue rack are further away from the table's left end.
+        var t2 = Node(root, "SortStationSeat2", new Vector3(Stand2Pos.x, floor, Stand2Pos.z), Quaternion.identity);
+        var st2 = t2.gameObject.AddComponent<SortStation>();
+        st2.seat = 1;
+        st2.table = st.table;
+        st2.compactor = st.compactor;
+        st2.bins = st.bins;
+        st2.reach = 4.4f;
+        st2.yawMin = -62f;
+        st2.yawMax = 80f;
+        st2.standPoint = Node(t2, "StandPoint", Vector3.zero, Quaternion.identity);
+        var cam2T = Node(t2, "SortCam", new Vector3(0f, st2.eyeHeight, st2.eyeForward), Quaternion.Euler(28f, 0f, 0f));
+        var vcam2 = cam2T.gameObject.AddComponent<CinemachineVirtualCamera>();
+        vcam2.Priority = 0;
+        var lens2 = vcam2.m_Lens;
+        lens2.FieldOfView = st2.fieldOfView;
+        lens2.NearClipPlane = st2.nearClip;
+        vcam2.m_Lens = lens2;
+        vcam2.enabled = false;
+        st2.sortCam = vcam2;
     }
 
     // =====================================================================================================

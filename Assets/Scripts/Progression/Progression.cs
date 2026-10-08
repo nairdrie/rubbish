@@ -255,6 +255,16 @@ public static partial class Progression
         return index < Subscribers(d);
     }
 
+    /// <summary>Host curb population uses all online permit holders, independent of which business hosts the town.</summary>
+    public static bool IsTownSubscribed(string stopId)
+    {
+        if (string.IsNullOrEmpty(stopId)) return false;
+        var district = Districts.ForStopId(stopId);
+        if (!DistrictAccess.OpenInTown(district)) return false;
+        EnsureSubscriberOrder();
+        return !subOrder.TryGetValue(stopId, out int index) || index < DistrictAccess.TownSubscribers(district);
+    }
+
     // stopId -> position within its district by StableHash; districtId -> registered house count. Rebuilt at most once
     // per frame, or when the house registry is replaced.
     static readonly Dictionary<string, int> subOrder = new Dictionary<string, int>(StringComparer.Ordinal);

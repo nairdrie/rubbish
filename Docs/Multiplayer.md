@@ -168,7 +168,7 @@ ACCOUNT       = your Steam account (PlayerKey steam:<id64>; dev:<name> in develo
  ├─ CREW CARD   1 per account (cloud, Protected + local copy): Pocket, cosmetics, titles, stamps, lifetime stats,
  │              Career level (cosmetic), block list. Settings stay on the machine (Steam Auto-Cloud).
  ├─ COMPANIES   3 slots: the "saves" you pick. The shop: name, colour, logo, cash (cents), rank, permits, upgrades,
- │              inventory, ebae listings, pile, truck, Magnus, members + roles, Neighbor Rating, ledger tail.
+ │              inventory, ebag listings, pile, truck, Magnus, members + roles, Neighbor Rating, ledger tail.
  │              Written only by its OWNER's game, through our Cloud Code. Goes into any Town you host or (M5/M7) visit.
  │   └─ MEMBER    1–4 per company; role Founder / Member / Helper
  └─ TOWNS       up to 5: the worlds you host. Map state, clock, curb records, houses, rules preset, ban list,
@@ -242,7 +242,7 @@ company colours".
 ### 2.5 Joining a game in progress
 
 - **Download:** about 20–40 KB for a Crew Town, 50–80 KB for a Rival Town, done in under a second. It covers world records, company
-  states, clock offset, the curb, pile and cargo lists, ebae listings, seats, at most 200–300 items in motion or held, and board state.
+  states, clock offset, the curb, pile and cargo lists, ebag listings, seats, at most 200–300 items in motion or held, and board state.
   Bag contents cost nothing: guests don't get them until a bag is opened (§6.3).
 - **On arrival:** you spawn at your company's time clock, and everyone sees "BEEP: Ozzie clocked in 2:14 PM (LATE)". If the truck is
   out, you get a HUD arrow to it and a **"Taxi!"** whistle that pings the driver.
@@ -275,7 +275,7 @@ gets a copy every 5 minutes while something changed (`Accounts.md` §5).
 
 ### 3.1 Companies own shops, players join companies, companies travel with their founders
 
-A **company** owns a depot, a truck, a wallet, a Magnus, a laptop (Scrapazon and ebae), a Business Rank, district permits and a
+A **company** owns a depot, a truck, a wallet, a Magnus, a laptop (Scrapazon and ebag), a Business Rank, district permits and a
 Neighbor Rating. Players join companies.
 
 | Situation | How it works |
@@ -398,7 +398,7 @@ Magnus waving in the window.
 **Spending rules:**
 - **Daily allowance per member:** 10% of company cash at dawn (at least $150). Anything beyond it prints a **Purchase Order**
   that another online member or the founder must **co-sign within 30 s**. The founder never needs a co-signer.
-- ebae listings below 50% of the estimate, and pawning anything worth over $200, also need a co-signer. Nobody pawns the wedding
+- ebag listings below 50% of the estimate, and pawning anything worth over $200, also need a co-signer. Nobody pawns the wedding
   ring out of spite.
 - Every purchase is announced: "Dot bought X-Ray Eyes for Magnus −$1,200". Good fuel for blame.
 - **Open Towns:** any two members can demote a third to Helper.
@@ -469,7 +469,7 @@ future preset permission layer described in this table is not yet wired into tho
 | Street | **Runner** | grab bags beyond step reach, PASS them up the line | the relay chain (§4.5) |
 | Depot | **Sorters** (2 stations) | rip bags, sort into bins, find the loot | Magnus steps back when humans are at the table (below) |
 | Depot | **Floor** | compactor, hazard barrel, KEEP crate, TIP IT, fetching bags from the pile to the table | hazards in the compactor are fined against whoever slammed it |
-| Depot | **Laptop** | list finds on ebae, answer offers, buy from Scrapazon, file co-signs | offers ping everyone; the laptop person haggles |
+| Depot | **Laptop** | list finds on ebag, answer offers, buy from Scrapazon, file co-signs | offers ping everyone; the laptop person haggles |
 
 - **Magnus with humans:** when 2 or more people are sorting, Magnus takes only the junk and the leftovers. Valuables and hazards go to
   the humans first; he waits 10 s, then handles them. When fewer than 2 are sorting, he works at full strength as he does today.
@@ -741,7 +741,7 @@ Turf lasts **one session**, and nobody can lose turf while offline:
   street spills). The midnight Clean Streets bonus pays each company according to the town meter minus its own tab, so one
   griefer can't shrink everyone's bonus.
 - **Pile Goblin evictions:** everyone within 20 m who cleared at least one bag gets the full bonus (Guild Wars 2 style).
-- **The Goblin Crown:** the evicted goblin drops one Crown, worth $150 on ebae or +50 Rep on your trophy shelf. Its holder is 20% slower,
+- **The Goblin Crown:** the evicted goblin drops one Crown, worth $150 on ebag or +50 Rep on your trophy shelf. Its holder is 20% slower,
   outlined, pinged on the map, and loses Safety Vest protection. **Anyone can knock it loose, but not from the same holder more than
   once every 10 s.** You bank it by carrying it into your own bay. The goblin fight is co-op; the crown run is every company for itself.
 
@@ -749,7 +749,7 @@ Turf lasts **one session**, and nobody can lose turf while offline:
 
 | Bucket | Stored in | Earned by | Spent on |
 |---|---|---|---|
-| **Company Cash** | the company record (owner's account), in integer cents | 100% of pickup pay, recycling, compactor scrap, ebae sales, the Clean Streets bonus; from M5, a visiting owner's **Moonlighting** wages (capped, `Accounts.md` §7.3) | truck, depot, Magnus, permits, Kevin's wages, fines |
+| **Company Cash** | the company record (owner's account), in integer cents | 100% of pickup pay, recycling, compactor scrap, ebag sales, the Clean Streets bonus; from M5, a visiting owner's **Moonlighting** wages (capped, `Accounts.md` §7.3) | truck, depot, Magnus, permits, hutch kibble, fines |
 | **Pocket** (personal) | your Crew Card (account-wide) | **wages created on top** (below) when you join as "Just me"; finder's fees; Sticky Fingers sales | rabies shots, repellent, headlamp, Raccoon Crate, emotes, outfits. **It can never be moved into company cash**, so an edited Crew Card can't buy a Town anything. |
 | **Crew Card record** | your Crew Card | nothing; it's a record | cosmetics, titles, stamps, lifetime stats, Career level |
 
@@ -759,7 +759,7 @@ Turf lasts **one session**, and nobody can lose turf while offline:
 |---|---|
 | Pickup pay for a bag | **8%** to whoever lifted it from the curb · **4%** to whoever put it in the hopper · **3%** to the driver of the truck it rode home in |
 | Sort pay (bins, compactor) | **15%** to the sorter |
-| ebae sale of a find | **10% finder's fee** to whoever lifted that bag from the curb ("Picked up by Dot"). The sorter who opened it gets a "Revealed by" Trash-dex stamp. |
+| ebag sale of a find | **10% finder's fee** to whoever lifted that bag from the curb ("Picked up by Dot"). The sorter who opened it gets a "Revealed by" Trash-dex stamp. |
 
 - One person doing several steps gets several shares. Anyone idle for 90 s or more earns no wages.
 
@@ -779,7 +779,7 @@ Turf lasts **one session**, and nobody can lose turf while offline:
 **Everything else:**
 - **Finds:** bag contents are rolled by the host (§6.3), so nobody gets a personal roll. Every screen in the depot shows
   "DOT PICKED UP: Grandma's Dentures (Epic)!"
-- **Sticky Fingers** (Crew preset): once per shift, whoever reveals a find can pocket it as a personal ebae listing. It **always**
+- **Sticky Fingers** (Crew preset): once per shift, whoever reveals a find can pocket it as a personal ebag listing. It **always**
   appears on the printed Load Receipt under UNACCOUNTED ITEMS. Betrayal is allowed; secrecy isn't.
 - **Load Receipt:** a paper prop printed at every TIP IT, showing bags per player, relays, poaches and rescues, rips (with who paid),
   falls off the truck, bonks, packs, unaccounted items and wages.
@@ -808,7 +808,9 @@ lives in the company record.
   on their own screen.
 - **Station rotation:** a station hands over automatically after 8 bags if someone is waiting, or after 30 s of no activity.
 - **"Next bag!" (R)** asks the host, which serves a specific pile record to that station and **sends its contents** at that moment. Two
-  sorters can never pull the same bag.
+  sorters can never pull the same bag. *(Superseded 2026-10-08: the "next bag" key was removed. Sorters carry bags to the table,
+  or grab them from the Bag Belt's queue rack; every grab is the ordinary host-confirmed pickup, so two sorters still can't
+  take the same bag. With `sorting_table` L2 a table has two sorting positions: `Progression.md` §6.2.)*
 - **Table items belong to the sorter** (at most 40, as today), so sorting has no lag and friends can watch.
 - **Bins and compactor:** the sorter's machine detects the drop, and the host checks the item came from a bag opened at that station by
   that player, then pays.
@@ -817,7 +819,7 @@ lives in the company record.
 - **Blame on the receipt:** "Contaminated by Ozzie", or a hazard in the compactor ($10 fine) logged against whoever slammed it.
 - **HitStop and slow-mo become local camera effects.** Today `Juice.HitStop` changes the global `Time.timeScale` from ~10 call sites,
   and on a host that would freeze physics for everyone.
-- **Laptop:** the UI stays per player; every button sends a request to the host. ebae offers are simulated only on the host, and
+- **Laptop:** the UI stays per player; every button sends a request to the host. ebag offers are simulated only on the host, and
   listings sync as a list. If two players buy the last upgrade at the same moment, exactly one succeeds.
 
 ### 4.10 Night shift together
@@ -927,7 +929,7 @@ We deliberately don't add artificial delay to the host's inputs.
 | Sort stations, table items | `StationSeat` values; items owned by the sorter | H seats + queue; sorter owns items | NetworkVariables; items synced only while moving | `Claim`, `Next` | occupancy, rotation | ≤40 items |
 | Bins, compactor, hazard barrel | `CompanyState` ledger | sorter detects, H confirms and pays | `WorldFx` event | `Sorted(uid, bin)` | the item came from a bag this player opened at this station | event |
 | Company wallet, upgrades, permits, inventory | `CompanyState` (copied into the `GameSession` facade) | H | NetworkVariables and lists | `Buy`, `CoSign`, `SetRule` | funds, allowance, co-sign window, rank, founder rules | ~0 |
-| Scrapazon, ebae | `CompanyState` / Pocket | H (offers simulated on host) | ledger + NetworkList | `Buy`, `List`, `Accept`, `Decline` | funds, ownership, price band, co-sign | small |
+| Scrapazon, ebag | `CompanyState` / Pocket | H (offers simulated on host) | ledger + NetworkList | `Buy`, `List`, `Accept`, `Decline` | funds, ownership, price band, co-sign | small |
 | Pocket, wages, finder's fees | Crew Card (owner's account) | H decides the amount; the owner's Guard checks and records it | `ProfileDelta` batches every 10 s | ack by sequence | idle check | ~0 |
 | Host company mirror to guests (M1) | `CompanyState` | H | `CashCents` variable + one gzipped DTO snapshot as a named message, debounced 1 s, ≤16 KB, host-private contents stripped; guests read it through `BoundedGzip` and accept it only from the server | — | — | tiny |
 | Company deltas to owner (M5 Moonlighting, M7 brought companies) | the company record in the owner's account | H produces ledger deltas; the owner's Guard applies them | `CompanyDelta` batches, ~0.1–1 KB per 10 s, at once for purchases and sales ≥ $500 | ack by sequence | — | tiny |
@@ -1003,7 +1005,7 @@ Half precision and compressed rotations are turned on in M0. `Player.prefab` and
   LivingWorld's "fresh server = 7 AM" applies to **new** Towns only), world (curb records + host-private contents, cleanliness,
   houses, ContentRng state), `plots[4].lastSeen`, `companyPoses`, `players{PlayerKey → last company, slot, rabiesAt, lastSeen}`.
 - **Company:** id, name, colour, logo, founder, members + roles, cash in **cents**, rank, Clean Days, permits, upgrades,
-  consumables, inventory, ebae listings, pile, truck + cargo, Magnus, Neighbor Rating, timers as **remaining in-game hours**, a
+  consumables, inventory, ebag listings, pile, truck + cargo, Magnus, Neighbor Rating, timers as **remaining in-game hours**, a
   ledger tail. Portable between Towns by design.
 - **Crew Card:** Pocket (cents), cosmetics + loadout, titles, Career level, Trash-dex, trophies, lifetime stats, block list.
 - **Sizes:** Town 10–60 KB, company 10–30 KB gzipped. Format: Newtonsoft DTOs in a pure `Rubbish.SaveModel` assembly that also
@@ -1420,7 +1422,7 @@ public static class NetAudit { public static int GuestWritesDropped { get; } pub
 ```
 
 **C2: M1 contract (lead; after Progression A confirms it's finished with `GameSession.cs`, `EbaeMarket.cs` and `Ledger.cs`).**
-The lead writes **all** of `GameSession.Net.cs` and the ebae capture itself (red-team R7, R8); wave-3 builders only call them.
+The lead writes **all** of `GameSession.Net.cs` and the ebag capture itself (red-team R7, R8); wave-3 builders only call them.
 
 ```csharp
 // Core/GameSession.cs: three edits
@@ -1533,7 +1535,7 @@ other.
 |---|---|---|---|---|
 | **B6 World state + clock** | `Net/State/WorldState.cs` (impl), `CurbBagNet.cs`, `HouseIds.cs`, `WorldHashWorld.cs` | `Core/GameClock.cs` (C2's additive API; `ElapsedSeconds` adds the replicated offset; the ticker's `baseDay` comes from `WorldState` while listening) | Host: diff `GameSession.CurbBags` on `CurbTrashChanged` into `Curbs`; fill `HouseIds` once; `StateVersion++` per change. Guests: `Curbs.OnListChanged` → `NetMirror.SetCurbs` with placeholder `BagContents{bagId, foundAt, sackVariant, mass, no items}` so `PickupStop.cs:222` materialises them. Clock offset replicated (debug skips included); day replicated; rules default `CrewDefault`. | UT `CurbBagNet` round trip and `BagIdFor`. BOTS 3 × 10 min: guests' curb ids and slots equal the host's at every matched `StateVersion`; \|guest hours − host hours\| < 0.01; `GameClock.DebugSkipHours(3)` on the host shows on guests within 1 s; same day |
 | **B7 Company state, ledger mirror, WorldFx, message guards** | `Net/State/CompanyState.cs`, `CompanyLedger.cs`, `LedgerActor.cs`, `CompanySnapshot.cs`; `Net/Fx/WorldFx.cs`, `WorldFxNet.cs`, `FxIds.cs`; `Net/Session/MessageGuards.cs` | none | Host: `Ledger.Posted` → ledger line (actor slot) + `CashCents` + `WorldFx.Cash`; `Changed`/`UpgradeChanged`/`RepChanged` → snapshot (debounced 1 s) via `rb.company` + a targeted send on connect (the ChessController late-join pattern). Guests: `NetMirror.SetCashCents`, `RaiseCashFx`, `ApplyCompanySnapshot` through `BoundedGzip` + schema/size caps, only from the server. Every named message and RPC registered through `MessageGuards` (`NetGuard`). Ledger tail (500) saved in the company. | BOTS 3 × 10 min, host `laptop` brain: `CompanyLedger.Balances` holds on every process (in cents); guest cash == host cash at matched versions; floaters fire on guests; snapshot ≤ 16 KB; no depot-delivery items in the network JSON; **guest `Ledger.Posted` count == 0**. `grief` brain on a guest calls `GameSession.AddCash(999)`: dropped, `GuestWritesDropped == calls`, host unchanged. A modded host bot sends a 16 KB gzip that inflates to 1 GB and a 1M-entry inventory: the guest rejects both without running out of memory and logs it. |
-| **B8 Save model, stores, slots, import** | `SaveModel/Migrations/*.cs` (v1 → v2 → v3, pure `JObject` steps), `SaveModel/Legacy/*.cs` (legacy JSON → DTO); `Save/DtoMapping.cs` (runtime ⇄ DTO), `Save/TownStore.cs`, `CompanyStore.cs`, `ProfileStore.cs`, `SaveSlots.cs`, `LegacyImport.cs`, `Autosave.cs`; `Tools/bots/eval/make_maximal_fixture.cs`; fixtures `Assets/Tests/EditMode/Fixtures/save_v1.json`, `save_v2.json`, `ebae_v1.json` (copies of Nick's files), `maximal_*.json`; tests `Assets/Tests/EditMode/Save/Migrations/**` | none (C2 already routes `GameSession` Save/Load through `SaveSlots`) | Stores per `Accounts.md` §4–§5 (cents; timers as remaining hours; ebae folded into the company). Import → company 1 "Rubbish Co." + Town 1 "Maple Hollow" + Crew Card, guid from the legacy pair's sha256, legacy files never touched. Company saved ≤ every 2 s while dirty; Town every 60 s, at day rollover and on quit (`TryWriteNow`). Lock taken on Activate, released on leave or quit. | UT: v1, v2 and maximal fixtures import to exact expected output; unknown fields round-trip; a mixed-generation legacy pair recovers to a matching pair. Activate Town B × company A, play, leave, then Town A × company A: the company arrives identical **including a gnome timer** (Towns at different `TotalHours`); untouched records byte-identical (sha256). A second process hosting company A sees "on the road in Maple Hollow"; after killing the first process, the lock is free at once. A scripted bug zeroes cash; restoring the session-start generation brings it back. Kill-host test (§8.7.7 M1-3). |
+| **B8 Save model, stores, slots, import** | `SaveModel/Migrations/*.cs` (v1 → v2 → v3, pure `JObject` steps), `SaveModel/Legacy/*.cs` (legacy JSON → DTO); `Save/DtoMapping.cs` (runtime ⇄ DTO), `Save/TownStore.cs`, `CompanyStore.cs`, `ProfileStore.cs`, `SaveSlots.cs`, `LegacyImport.cs`, `Autosave.cs`; `Tools/bots/eval/make_maximal_fixture.cs`; fixtures `Assets/Tests/EditMode/Fixtures/save_v1.json`, `save_v2.json`, `ebae_v1.json` (copies of Nick's files), `maximal_*.json`; tests `Assets/Tests/EditMode/Save/Migrations/**` | none (C2 already routes `GameSession` Save/Load through `SaveSlots`) | Stores per `Accounts.md` §4–§5 (cents; timers as remaining hours; ebag folded into the company). Import → company 1 "Rubbish Co." + Town 1 "Maple Hollow" + Crew Card, guid from the legacy pair's sha256, legacy files never touched. Company saved ≤ every 2 s while dirty; Town every 60 s, at day rollover and on quit (`TryWriteNow`). Lock taken on Activate, released on leave or quit. | UT: v1, v2 and maximal fixtures import to exact expected output; unknown fields round-trip; a mixed-generation legacy pair recovers to a matching pair. Activate Town B × company A, play, leave, then Town A × company A: the company arrives identical **including a gnome timer** (Towns at different `TotalHours`); untouched records byte-identical (sha256). A second process hosting company A sees "on the road in Maple Hollow"; after killing the first process, the lock is free at once. A scripted bug zeroes cash; restoring the session-start generation brings it back. Kill-host test (§8.7.7 M1-3). |
 | **B9 Rituals, flow, guest gate** | `Flow/CrewRitual.cs`, `Net/CoopGate.cs` | `GarageDoorController.cs` (`OnInteract` → `CrewRitual.RequestStart`), `SceneController.cs` (ritual-driven transitions; HITCHHIKER arrivals; watchdog kept), `SceneTransitionData.cs` (hitchhiker list), `PlayerSpawner.cs` (stragglers at the hopper pose with a local tumble; "BEEP: X clocked in" on late join), `TruckRequester.cs` (only if needed), `PlayerController.cs` (`GatherOptions` filters through `CoopGate`) | Ready = seated, or inside the door's `InteractionZone` / within 6 m. All ready → go now; more than half → 10 s countdown. Honk while gathering = Call (polls the horn key; no `TruckControllerV2` edit). Anyone may start; the host executes. Driving through the door is host-only in M1. `CoopGate` hides `Carryable`, `SortStationEntry` and pile interactions on guests ("co-op grabbing lands next update"). | BOTS 3, `ritual` brain: 3 ROLL OUT / CLOCK OUT round trips; every client ends in the target scene within arrival timeout + 2 s; a straggler logs `hitchhiker`; the half-ready countdown fires at 10 s ± 0.5; a guest-started gather works. MPPM2: the guest sees "ROLL OUT 2/2" and never "Only the host" |
 | **B10 Steam lobby, presence, auth at the door** | `Net/Steam/SteamLobby.cs`, `SteamPresence.cs`, `SteamJoinRouter.cs`, **`SteamAuthVerifier.cs`**; `Net/Core/Steam/LobbyInfo.cs`, `ConnectArgs.cs` (pure: parse `+connect_lobby <id>`, encode/decode `rb_*` keys) | `Net/Session/NetSession.cs` (a Friends host also creates the lobby; join by lobby id reads `rb_net`/`rb_relay` and picks an adapter; registers the verifier) | Friends-only lobby, cap = Crew Town cap; keys `rb_game=rubbish`, `rb_proto`, `rb_content`, `rb_net`, `rb_relay`, `rb_town`, `rb_session`; always filter by `rb_game` (480 shares lobby space). Rich presence `connect`; overlay invite; handles `GameLobbyJoinRequested_t`, `GameRichPresenceJoinRequested_t` and the cold-start command line. **Auth:** the guest's ticket comes from `GetAuthSessionTicket` bound to the host's `SteamNetworkingIdentity`; the host runs `BeginAuthSession` inside approval (`Pending`, 5 s timeout → `AuthTimeout`), requires lobby membership, `EndAuthSession` on leave; display names from Steam; release builds reject `dev:` keys (`DevKeyNotAllowed`). | UT `ConnectArgs`, `LobbyInfo`. EV on 480 (one machine, Steam running): create a lobby, read back the `rb_*` keys, set presence, leave. UT/EV with a fake verifier: a ticket bound to another host fails; a `dev:` key fails under the release-auth switch; a missing verifier answer times out at 5 s. Two-machine invite and Join Game: the checklist (§8.7.7). |
 
@@ -1549,7 +1551,7 @@ checks (the files below are theirs while in flight).
 | ID | Creates | Edits | What | Gate |
 |---|---|---|---|---|
 | **B11 ContentRng + curb persistence** | `Net/Content/ContentRng.cs`, `Net/Core/Content/Pcg32.cs`; tests | `Trash/CurbTrashSpawner.cs` (`bagId = ContentRng.NewBagId(stopId)`; seed `ContentRng.BagSeed(bagId)`; the `RollBag` overload Progression D shipped; then `ContentRng.StampItemIds(bag, GameSession.Day)`; put-out rolls through `RngStream.CurbPutOut`; `BeginSession` no longer clears curbs when the Town has a saved clock), `Critters/Raccoon.cs` (spill decision `:291-298` through `ContentRng.Chance`, authority only) | The Town stores the `ContentRng` state. `ItemCatalog` untouched. | UT: the same Town seed and call sequence give identical bag manifests; uids are `{bagId}#{i}`; no `NewUid`/`Guid` in content paths (lint). BOTS 3 × 30 min: hash compares hold. Host restart: curbs return with the same ids, ages continuous, `putOutAtHours` monotonic |
-| **B12 Laptop requests** | `Net/Requests/ShopRequests.cs`, `EbaeRequests.cs` | `Shop/ScrapazonApp.cs` (`:689` guest → `ShopRequests.Buy(id)`; result to the requester), `EbaeUI.cs` (`:668, 689, 811, 831, 843, 854` guest → requests), `LaptopController.cs` (only if needed) | The host runs `ScrapazonStore.TryBuy` under `LedgerActor.As(sender)`; `WorldFx` announces "Dot bought X −$1,200"; 2 requests/s per client via `NetGuard`; ebae accept / decline / list / pawn are requests. (Capture/restore moved to C2.) | BOTS: a guest `laptop` brain buys 5 upgrades; levels mirror everywhere; ledger balances. Two guests buy the last level in the same tick: exactly one `Ok`. A guest's ebae accept applies once. MPPM2: a guest Scrapazon purchase toasts on both |
+| **B12 Laptop requests** | `Net/Requests/ShopRequests.cs`, `EbaeRequests.cs` | `Shop/ScrapazonApp.cs` (`:689` guest → `ShopRequests.Buy(id)`; result to the requester), `EbaeUI.cs` (`:668, 689, 811, 831, 843, 854` guest → requests), `LaptopController.cs` (only if needed) | The host runs `ScrapazonStore.TryBuy` under `LedgerActor.As(sender)`; `WorldFx` announces "Dot bought X −$1,200"; 2 requests/s per client via `NetGuard`; ebag accept / decline / list / pawn are requests. (Capture/restore moved to C2.) | BOTS: a guest `laptop` brain buys 5 upgrades; levels mirror everywhere; ledger balances. Two guests buy the last level in the same tick: exactly one `Ok`. A guest's ebag accept applies once. MPPM2: a guest Scrapazon purchase toasts on both |
 | **B13 Steam relay transport (spike, 3–5 days)** | `Net/Steam/Transport/SteamSocketsTransport.cs` (copied from the community repo, MIT header kept), `SteamSdrAdapter.cs`; `Net/Core/Transport/SeqWindow.cs`, `BufferPool.cs`; tests | `Net/Session/NetSession.cs` (adapter registration only) | Fixes the 7 defects (§1.3): `CloseConnection` on peer close; pooled buffers + 64-message batch receive; 16-bit sequence for `UnreliableSequenced`; accept lobby members only; the `Initialize` instance, not the singleton; Steam fake lag/loss options; drop the `NetcodeInterop` reference. (Auth moved to B10.) | UT `SeqWindow` (wraparound, stale drop) and `BufferPool` (no per-message allocation, via `GC.GetAllocatedBytesForCurrentThread`). One machine on 480: `CreateSocketPair` loopback carries 10k messages with 0 loss, in order for sequenced, handles closed after disconnect. Two devices: the checklist's 30-minute soak |
 
 **Wave 5: M1 integration (lead).** Checkpoint; the **M1 gate** (§8.7.7); re-baseline the lint; doc edits (LivingWorld.md,
@@ -1599,7 +1601,7 @@ Nick's Steamworks + Unity dashboard steps ────────────�
 1. MPPM2: host and guest connect through the menu / autostart path; both move; one keyboard-paired `PlayerInput` per process.
 2. BOTS 3 × 10 min idle/walk on Crew Bad Wi-Fi: 0 errors or exceptions in every log.
 3. `--rejoin bot2@120`: same slot and Dumpling variant after rejoining.
-4. **Guest data unchanged.** The guest bot's data root is pre-seeded with the v2 and ebae fixtures; sha256 identical after each of:
+4. **Guest data unchanged.** The guest bot's data root is pre-seeded with the v2 and ebag fixtures; sha256 identical after each of:
    a normal leave; the host killed + the guest left running 60 s; `Application.Quit` on the guest while connected. And after
    "leave → Play solo → earn $10 → quit", the files equal the originals plus that $10 only. No file changes under Nick's real
    folder during any bot run.
@@ -1661,7 +1663,7 @@ Nick's Steamworks + Unity dashboard steps ────────────�
 | `TrickShot` records in their own JSON file | Yeet | breaks rule 9 and would be invisible to slots and accounts |
 | Receipt triggered "while in ShopScene" | Yeet | rule 6 |
 | `GameSession.cs`, `EbaeMarket.cs`, `Ledger.cs` | Progression A | L0 edits only the persistence regions after A hands them over; C2 after A confirms they're final; re-read before editing |
-| Host-only systems (Kevin, auto-tipper, belt feeder, Magnus sorter, midnight, arm targeting) run on guests | Progression B–D | rule 15 |
+| Host-only systems (raccoon crews, auto-tipper, belt feeder, Magnus sorter, midnight, arm targeting) run on guests | Progression B–D | rule 15 |
 | `Trash/**`, `Items/**` | Progression D, Yeet | all M1 edits there (B11) wait for W4; `ContentRng` never edits `ItemCatalog` |
 | `ScrapazonStore/App`, `EbaeMarket` | Progression A | B12 waits for W4 and calls A's `TryBuy` (with its `Locked` results) on the host |
 | `TruckControllerV2.cs` | Progression B | M0/M1 don't edit it (`TruckNetFeel` is a new component; the horn is polled). For M3: check B's stock brake against the ~1 g braking prerequisite. |
@@ -1677,7 +1679,7 @@ Nick's Steamworks + Unity dashboard steps ────────────�
    moves them to `ProfileStore.SetSection("trickshot", …)`).
 3. **Yeet:** trigger the receipt from a depot zone flag or the TIP IT event, not a scene-name check (or justify with
    `coop:allow(scene)` until M7).
-4. **Progression A–D:** host-only systems (Kevin, auto-tipper, belt feeder, Magnus picks, midnight, arm targeting) decide only when
+4. **Progression A–D:** host-only systems (raccoon crews, auto-tipper, belt feeder, Magnus picks, midnight, arm targeting) decide only when
    `!GameSession.IsGuest`. And **A:** please hand the persistence regions of `GameSession.cs` (:387-575) and `EbaeMarket.cs`
    (:550-652) to the lead as early as you can for hotfix L0, and tell the lead when `GameSession.cs`, `EbaeMarket.cs` and `Ledger.cs`
    are final (that starts C2).
@@ -1710,7 +1712,7 @@ prep: `Docs/WindowsBuild.md`, `RubbishBuild.BuildWindowsPlaytest`, the `Windows 
 | 1 | PASS | MPPM2 (Player 2 switched on from an eval): main hosted LocalDirect, the clone joined by itself; roster `dev:editor` slot 0, `dev:mppm` slot 1; exactly one keyboard-paired `PlayerInput` per process; slot == Dumpling variant on both; the guest walked 15+ m (AutoWalk), the host walked 5.6 m and the guest saw it; hash probes 10/10; 0 errors on both; the clone's own save untouched after quitting while connected. |
 | 2 | PASS | `run_bots -n 3 -m 10 -p crew_bad_wifi` with **no** error allow-list (after the W2 cloth fix below): 0 errors, 0 exceptions, 476 hash compares (238 objects + 238 roster), 0 mismatches, every bot exit 0 after ~600 s, guests walked ~790 m each. (The first run, before the fix, had only the 6 allow-listed cloth errors.) |
 | 3 | PASS | `--rejoin bot-2@120` (twice): bot-2 left slot 1 (client 2) and came back as client 3 in slot 1, so the same Dumpling (RosterView variant = slot); audit PASS with 0 errors and 188 matched hash compares. |
-| 4 | PASS | Guests seeded with a settled v2 + ebae pair: sha256 identical after Application.Quit while connected (SIGTERM, "quit refused: saving is paused"), a normal leave + quit, and the host SIGKILLed at 60 s with guests running 120 s more. Editor as a guest of a bot host: files unchanged through join, a dropped `AddCash(999)`, and leave; then Play Solo + `Ledger.Credit(10)` + quit changed only `cash` +10, `totalCashEarned` +10, the `st0_credits` stat and `gen`. Nick's real folder unchanged in every run. |
+| 4 | PASS | Guests seeded with a settled v2 + ebag pair: sha256 identical after Application.Quit while connected (SIGTERM, "quit refused: saving is paused"), a normal leave + quit, and the host SIGKILLed at 60 s with guests running 120 s more. Editor as a guest of a bot host: files unchanged through join, a dropped `AddCash(999)`, and leave; then Play Solo + `Ledger.Credit(10)` + quit changed only `cash` +10, `totalCashEarned` +10, the `st0_credits` stat and `gen`. Nick's real folder unchanged in every run. |
 | 5 | PASS | L0 gate (a)+(b) harness on the integrated code: 567/567 checks (42 truncations × with/without a generation, the mixed-gen pair, the latch, plus 5 new W2 checks). Live: a truncated `rubbish_save.json` recovered from `latest.1` with the toast and a `.corrupt-*` copy; quit rewrote both files whole at the next gen. |
 | 6 | PASS | `-p none`: proto 999 → "Update your game: you and the host are on different versions."; 5 bots with `--guest-stagger 4` → bot-5 refused with "Crew is full (4/4)." (`CompanyFull`). `TownFull` stays covered by B1's unit tests. |
 | 7 | PASS | `host.cs` + `host2.cs`: StartHost=True into ShopScene, adopted as a LocalDirect session, roster `dev:editor@0 host`, player spawned, 0 errors. |
@@ -1724,7 +1726,7 @@ saved and reloaded in the next session; 0 errors, 0 warnings.
 
 **Changed at W2 (integration fixes):**
 - `Save/LegacySave.cs`: a quit/pause/scene-change flush with nothing dirty and a state equal to what the main files hold
-  (gen ignored, ebae offer timers ignored) no longer rewrites them under a new gen. That made gate 4 possible and stops an
+  (gen ignored, ebag offer timers ignored) no longer rewrites them under a new gen. That made gate 4 possible and stops an
   idle quit from churning Nick's backups. A recovered or missing file is still rewritten at the next flush.
 - `Editor/RubbishBuild.Windows.cs`: the Windows playtest build runs `Setup_Coop` first (no changes when up to date), so a
   friends' build never ships a stale NetSession prefab (B2's suggestion).
@@ -1769,7 +1771,7 @@ saved and reloaded in the next session; 0 errors, 0 warnings.
 - `SteamAuthVerifier` + `PendingAuthTable.TryTakeOver`: the same SteamID joining again while its old, approved connection is
   still open now ends the old auth session and checks the new one (B1's newest-connection-wins), in Enforce mode too. Two
   joins at the door at once are still refused.
-- `Editor/Setup_Ebae.cs` "Wipe ebae Save" only works in play mode (through `EbaeMarket.ResetAll(true)`, backups kept); in
+- `Editor/Setup_Ebae.cs` "Wipe ebag Save" only works in play mode (through `EbaeMarket.ResetAll(true)`, backups kept); in
   edit mode it explains instead of deleting the file.
 - `WindowsBuild.md` §1.0 check-in list: `Assets/Models/Office.fbx.meta` (W2's cloth fix), not `office.obj.meta`.
 - Verified on the final tree: dry compiles clean for the Editor and for the Windows playtest player (`UNITY_STANDALONE_WIN`,
@@ -1832,8 +1834,8 @@ These cost nothing today and save weeks of rework later. They apply to every age
     `Time.timeScale`, `PlayerController.Local`, file writes, `NetworkManager.Singleton` inside `Net/**`, `Steamworks` outside
     `Net/Steam/**`, and logged tickets or tokens. Fix every new hit or mark it `// coop:allow(<rule>) <reason>` and list it in your
     report. Only the lead re-baselines (§8.7.8).
-15. **Host-only systems decide only on the host.** Anything that spawns, rolls, pays or ticks the world (the spawner, Kevin, the
-    auto-tipper, the belt feeder, Magnus picks, midnight, ebae offers, TrickShot pay) runs only when `!GameSession.IsGuest`. On a
+15. **Host-only systems decide only on the host.** Anything that spawns, rolls, pays or ticks the world (the spawner, raccoon crews, the
+    auto-tipper, the belt feeder, Magnus picks, midnight, ebag offers, TrickShot pay) runs only when `!GameSession.IsGuest`. On a
     guest the mirror would drop its writes anyway, but anything it spawned locally would be a duplicate.
 16. **Guests never mutate `GameSession`.** A guest sends a request (an RPC through `NetGuard`), and the host applies it. Guest-side
     mutators are dropped and counted (`NetAudit.GuestWritesDropped`).
@@ -1954,7 +1956,7 @@ salary. we can fire them. no need for a passenger seat on the truck, but employe
 employees get to help sort unload and smash within your shop. if youre not an emloyeed you can always hitch a ride on the back
 (employee or not), and you can enter other shops, but not interact with trash inside. bags and trash are global. but depending on
 the amount of people online, scale the rate at which trash is produced by the city. other people in the session can interact with
-your listings on ebae (i can sell and trade valuables with people in the session. under the same accept offer and make offer rules
+your listings on ebag (i can sell and trade valuables with people in the session. under the same accept offer and make offer rules
 as NPCs)." … "and let people free roam between scenes."
 
 ### 13.1 The model in one paragraph
@@ -1964,7 +1966,7 @@ one). Businesses sit **next door to each other on Depot Row**, one lot each, in 
 up any bag, and the business whose truck or hopper receives it gets paid. Players can **hire** each other; an employee works for the
 employer's business (drives its truck, unloads, sorts, smashes) for an hourly wage. Everyone can roam anywhere, visit any shop and hitch
 a ride on the back of any truck; only the owner and their employees can touch the trash and machines inside a shop. Valuables can be
-sold and traded between players on ebae.
+sold and traded between players on ebag.
 
 This replaces "4 players in one company" (Crew) as the default. Joining a friend no longer means working in their company; it means
 opening your own shop next door, and *choosing* to work for someone if you want to.
@@ -1972,7 +1974,7 @@ opening your own shop next door, and *choosing* to work for someone if you want 
 **Business-save parity (current):** Main menu → **Choose business** lists the original save and every additional business,
 including those created while joining a friend. Any can Continue/Play Solo, Host with Friends, or be chosen by the guest picker.
 The selected solo/host business is remembered across restarts; joining may bring a different business and leaving restores the
-previous solo/host selection. Cash, upgrades, inventory, ebae and progression stay in that business's existing file. Session jobs
+previous solo/host selection. Cash, upgrades, inventory, ebag and progression stay in that business's existing file. Session jobs
 and another host's world are not imported. New menu-created businesses get a new slot; nothing resets the original business.
 
 Storage remains backward compatible: the original `rubbish_save.json`/`ebae_save.json` pair stays in place; additional slots remain
@@ -1994,7 +1996,9 @@ is paginated rather than silently omitting businesses after the fifth. No destru
   from Steam.
 - **When an owner leaves:** their business leaves with them (it lives in their save). Their lot shows shutters and a "BACK SOON" sign;
   their truck parks inside. Employees are taken off shift and paid up to the minute.
-- **Solo is unchanged:** one lot, your shop, same as today.
+- **Solo:** one shop, yours, on lot 1 of the same Depot Row. `DepotRow.unity` is loaded next to the town for its street side
+  only: lot 1 shows the shop with your name, business name and colour; lots 2–4 are shuttered FOR LEASE units
+  (`DepotFlowRules.LookFor`; set `LegacyVacantUnits` false for bare pads with only the lease board). Nothing plops in solo.
 
 ### 13.3 Colours and trucks
 
@@ -2007,7 +2011,27 @@ so every player has a business and a colour (§13.10).
 - **One world, no scene swaps in co-op:** Neighborhood and Depot Row stay loaded together; every shop interior is a pocket in the same
   additive scene. A garage door is a short fade-and-teleport (on foot) or a drive-through (in a truck) for **only the player using
   it**. Everyone goes wherever they like, whenever they like.
-- Solo keeps today's scene flow until the one-world version is proven, then switches too.
+- Solo keeps today's scene flow (garage = `ShopScene`, town = its own scene) until the one-world version is proven, then
+  switches too. Since the coastal map has no separate depot building, solo uses Depot Row's lot 1 for it (8 Oct 2026):
+  - **Which flow:** `DepotFlowRules.FlowFor(offline, forceLegacy)`. Play Solo (and the `-depotrow-off` dev hatch) = legacy
+    scenes; any other host = one world. `DepotRowWorld.HostWantsOneWorld` / `HostFlowDecided` hold the answer for the session.
+  - **The street in solo:** whenever the town is loaded in the legacy flow the host loads `DepotRow` additively through NGO
+    (`DepotRowNet.ServerEnsureLegacyStreet`); the next Single load back into the garage unloads it. `SceneController` keeps
+    the screen black until it is up. `DepotRowScene` calls `DepotLot.PresentLegacy` instead of `Present`: no pocket interior,
+    pocket floor, indoor lighting, lot claims, business trucks or tints run in solo.
+  - **One way in and out, in both flows: the shop's own roller door.** One world: fade-and-teleport into the pocket interior.
+    Solo: lot 1's street door (`GarageDoorController.IsLegacyShopDoor`) swaps to `ShopScene` (`SpawnPoint_FromNeighborhood` /
+    `_Truck`; the truck and its cargo come along exactly as before), and ShopScene's door brings you back. The other
+    lots' doors are off in solo.
+  - **Arrival poses** out of the solo garage come from the layout, not from scene markers (`DepotFlowRules.TryArrivalPose`):
+    `DepotRowLayout.StreetOnFoot(0)` beside the door on foot, `StreetTruck(0)` on the apron when driving; both face the road and
+    are the same poses the one world's door uses. The hospital and its free tow still wake you in the garage.
+  - **Lot features in solo (8 Oct 2026: the garage annex is gone):** indoor decor stands in ShopScene's garage
+    (`WorkshopWorld.EnsureLegacy`); the street pieces (sign, doorbell, bag hoop, spring launcher, the Monument) and the Critter
+    Hutch stand on the legacy depot's lot in town (`WorkshopWorld.EnsureLegacyStreet`, `Progression.md` §6.9.5). The Hauler's
+    walk-up hatch is one-world only. The Scavenger's fence spot and the map's depot marker are pure layout and identical in
+    both flows.
+  - Tests: `Assets/Tests/EditMode/Business/DepotFlowRulesTests.cs`.
 - Cost: this is the big refactor (about 20 single-shop/single-truck assumptions: `SortStation.Current`, `TrashRoute.Current`,
   `FlowUtil.FindTruck`, `TruckUnloader`, `Compactor`, `CritterWorld.Truck`, scene-name checks; list in §8.2 M7).
 
@@ -2020,7 +2044,7 @@ so every player has a business and a colour (§13.10).
 | Unload (tip) this business's truck | ✓ | ✓ | ✗ |
 | Drive this business's truck | ✓ | ✓ (on shift) | ✗ |
 | Hitch a ride on the back of this truck | ✓ | ✓ | ✓ |
-| Laptop: upgrades, Scrapazon, ebae selling, payroll, rename | ✓ | ✗ | ✗ |
+| Laptop: upgrades, Scrapazon, ebag selling, payroll, rename | ✓ | ✗ | ✗ |
 | Keep crate, shelves, display cases | ✓ | put in only | ✗ |
 | Curb bags and loose trash in the street | ✓ | ✓ | ✓ (global) |
 
@@ -2082,9 +2106,9 @@ with the number of **businesses** (trucks), so everyone has work but the town do
 The bag cap scales the same way. Lateness pay, Pile Goblins and Clean
 Days stay per bag/district, shared by everyone. Prices never scale (§11 #9).
 
-### 13.8 ebae between players
+### 13.8 ebag between players
 
-- Your ebae listings appear to everyone in the Town under a **Neighbours** tab (with your name and colour), next to the NPC buyers.
+- Your ebag listings appear to everyone in the Town under a **Neighbours** tab (with your name and colour), next to the NPC buyers.
 - Buyers can **Buy now** or **Make offer**; the seller answers with the same **Accept / Counter / Decline** rules NPC offers use today.
   The host moves the item and the cash in one step through the Ledger (never half a trade).
 - **Trades:** an offer can be cash, an item from the buyer's keep crate, or both.
@@ -2092,7 +2116,7 @@ Days stay per bag/district, shared by everyone. Prices never scale (§11 #9).
 - **As built (N5):** offers live 60–90 s like NPC offers; max 5 offers per listing, 6 open offers per buyer, one offer per
   buyer per listing. Unlike NPC buyers (who only counter after a decline), a neighbour seller can **Counter** (above the offer,
   at most asking) and the buyer can counter back once (between their offer and the seller's counter): 2 counters per deal, then
-  Accept/Decline only. Each counter restarts the timer. Cash offers go from $0 (a straight swap) up to asking; ebae's fee
+  Accept/Decline only. Each counter restarts the timer. Cash offers go from $0 (a straight swap) up to asking; ebag's fee
   (the seller's own, 1–8%) comes off the cash only. An item offered in a trade is locked in the buyer's keep crate (can't be
   listed or pawned) while the offer lives. A listing being settled can't be sold to an NPC, pawned or delisted for those
   few hundred ms.
@@ -2106,7 +2130,7 @@ Days stay per bag/district, shared by everyone. Prices never scale (§11 #9).
 | N2b | **Tug of war** (from M5) | Rhythm tug on any contested bag, rips and rip billing. |
 | N3 | **Depot Row + free roam** (M7 core) | One world, 4 lots, shop plop, colours and coloured trucks, signs and names, shutters when an owner leaves, permissions. |
 | N4 | **Payroll** | Hire, wage, pay ticks, fire/quit, employee permissions and HUD. |
-| N5 | **Neighbour ebae** | Cross-player listings, offers, counters, item trades. |
+| N5 | **Neighbour ebag** | Cross-player listings, offers, counters, item trades. |
 
 Voice (M4), sorting duels and shared-station rotation (M5), night-shift co-op (M6) and Community servers (M8) follow, unchanged.
 
@@ -2164,14 +2188,16 @@ Voice (M4), sorting duels and shared-station rotation (M5), night-shift co-op (M
 - **N4 (2 Oct, payroll, code in):** `Assets/Scripts/Business/Payroll/` — `Payroll` (facade: rules, queries, requests,
   `WorksFor` = N3's `EmployeeHook`/`DriverHook`), `PayrollNet` (`[NetSessionComponent]`, `NetworkList<PayrollJob>`, offer /
   answer / fire / quit / shop-pay / keep RPCs, host pay ticks on `GameClock.TotalHours`), `PayrollUi` (Hire card, Payroll app
-  sheet + laptop tab injected into ebae's app strip at runtime, HUD line, offer card, `HireTarget` zones on other players,
+  sheet + laptop tab injected into ebag's app strip at runtime, HUD line, offer card, `HireTarget` zones on other players,
   employer-colour vests), `PayrollBotBrain` (`payroll`). Integration fix: `World/DepotRow/DepotTruckCargo.cs` sets
   `TruckHopper.BusinessResolver` (lot truck → the lot's business by PlayerKey), so pickups pay the truck's business; and
   `DepotTruckCargoNet` (`[NetSessionComponent]`) hands a non-local truck's cargo (`Businesses.HostCargo`, or the host's
   `GameSession.TruckBags`) to whoever tips it, so a guest can unload its own truck and an employee the boss's.
   Additive edits outside N4 (all small): `Ledger.Redirect` (un-scoped credit/charge hook), `BusinessRegistry.Closing` (raised
   before a guest business closes), `NetSession.GuestLeaving` (last words before a guest disconnects, ≤1.5 s),
-  `TruckUnloader` (status/prompt/tip from `DepotTruckCargo`), `TruckControllerV2.DriverClientId`, `ChuckPuppet.SetVestColor`,
+  `TruckUnloader` (status/prompt/tip from `DepotTruckCargo`; replaced 2026-10-08 by `TruckTipper` on the truck: the DRIVER
+  holds G and asks `DepotTruckCargoNet.RequestDump(truck)`, the host checks the seat, `Permissions.CanWorkIn` for a bay, the
+  speed and the ground, then tips onto the shop's `TippingFloor` or onto the street; protocol 15), `TruckControllerV2.DriverClientId`, `ChuckPuppet.SetVestColor`,
   `SortBin.Keep` (hand-over), `DisplayPiece` + `Permissions.LocalCanManageAt` (shelves owner-only), `PauseMenu` ("QUIT JOB").
   Setup_Coop re-run (NetSession.prefab: + DepotTruckCargoNet, PayrollNet). Known gap (N3's): each machine simulates its own
   copy of a shop's trash, so an employee sorts the bags *they* tipped, on their screen; the boss doesn't see that pile.
@@ -2188,8 +2214,8 @@ Voice (M4), sorting duels and shared-station rotation (M5), night-shift co-op (M
   `ClearNeighbourHolds`, `Notify`): Accept/Delist/PawnNow/List refuse held/reserved items; solo unchanged (hooks inert).
   Laptop: **Neighbours** tab (`EbaeUI.Neighbours.cs`, built in code; hidden outside a Town): waiting-on-you deals, your deals,
   neighbours' listings with seller name + colour, Buy now, Make offer (cash + keep-crate item cycle), Accept/Counter/Decline;
-  Listings tab notes neighbour offers/holds; badges + HUD toasts. Bot brain `ebae` (`Net/Ebae/EbaeBotBrain.cs`):
-  `run_bots.sh -n 3 -m 3.5 -p crew_bad_wifi --brain ebae --rejoin bot-3@100 --guests-may-write` PASS (audit + N5 checker
+  Listings tab notes neighbour offers/holds; badges + HUD toasts. Bot brain `ebag` (`Net/Ebae/EbaeBotBrain.cs`):
+  `run_bots.sh -n 3 -m 3.5 -p crew_bad_wifi --brain ebag --rejoin bot-3@100 --guests-may-write` PASS (audit + N5 checker
   `<session scratch>/n5/verify.py`): listings visible to all 3, buy now, offer→seller counter→accept, decline, trade (item+$5),
   host trade (item only), two races → one winner each (losers refused "gone"), seller leaves → offer cancelled + listings back
   on rejoin, 18 seeded items conserved/no dupes, all business ledgers balanced. Not covered by bots: the "settling" lock path
@@ -2268,7 +2294,7 @@ Everything here works in solo and co-op, for owners, employees and visitors alik
 - **Compactor cube:** a player shoved/thrown into a shop's hopper and SMASHed pops out as a squished cartoon cube that waddles for
   10 s (harmless; no damage; never traps).
 - **Bag cannon** (truck upgrade): lob bags into the hopper from ~10 m with an aim arc; misfires splatter (juice puddle + bonk).
-- **Grabber pole** (tool, Scrapazon): extra reach for bags over fences, poking friends, snatching a held bag.
+- **Grabber pole** (tool; since Oct 2026 printed as *Grabby Hand* from the Blueprints tree in SolidWaste 3D, `Progression.md` §6.9, no longer sold on Scrapazon): extra reach for bags over fences, poking friends, snatching a held bag.
 
 ### 14.4 F4 Night shift together
 - **Night pay ×1.5** for pickups between NightStart and dawn.
@@ -2356,8 +2382,9 @@ Everything here works in solo and co-op, for owners, employees and visitors alik
   `RaccoonLatch` scrambles their movement (never frozen), mash Space ×6 to shake it, a friend's E / shove / bonk knocks it off
   (`HandsNet.HostKnocked`, a new additive hook), 4 s timeout = 50% rabies. **Rabies per player**: host `NetworkList<RabiesRec>`
   keyed by PlayerKey (each player reports their own; a rejoin restores it), everyone sees everyone's foam (`RabiesLook`); goofy
-  hiccup hops; co-op pass-out = lie flopped 30 s so a friend can carry you to **any shop laptop's first-aid box**
-  (`RabiesShotKiosk`, $35, anyone, or "Jab Dot") before the hospital bill; no scene trip in the one world. **Rabies Tag**: host
+  hiccup hops; co-op pass-out = lie flopped 30 s so a friend can jab you with a Rabies Shot where you lie (`RabiesJab`: an
+  interaction on a rabid player who is down or carried, $35, the jabber's business pays, host-verified `NightNet.ShotFor`;
+  the first-aid shelf by every shop laptop, `RabiesShotKiosk`, was removed 2026-10-08) before the hospital bill; no scene trip in the one world. **Rabies Tag**: host
   toggle in the Esc menu (and `Rubbish/Debug/Night`), off by default: a symptomatic player's knock passes it on (50%).
   **Traps** (Scrapazon "Humane-ish Raccoon Trap", $45, T to set; `RaccoonTrap`/`NightTraps`, host list): raccoons within 16 m are
   lured in; E = Animal Control bounty ($40, rabid $60, `animal_control`), F = keep it as a shop pet (`pet_raccoon`, tier-99

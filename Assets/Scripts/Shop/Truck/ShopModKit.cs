@@ -29,9 +29,9 @@ public static class ShopModKit
     /// TruckControllerV2.TruckPoint). +Z forward, +X right; ground ≈ y 0.4; body x ±1.3, z -2.2 (rear) .. 3.8 (nose),
     /// hopper body top y ≈ 3.05, cab roof y ≈ 2.5, hopper mouth ≈ (0, 1.82, -2.32).
     /// </summary>
-    public static Vector3 TruckPoint(Transform truck, Vector3 metres) => truck.position + truck.rotation * metres;
+    public static Vector3 TruckPoint(Transform truck, Vector3 metres) => truck.position + truck.rotation * TruckModelVisuals.MapMetres(truck, metres);
 
-    public static Vector3 ToTruckMetres(Transform truck, Vector3 world) => Quaternion.Inverse(truck.rotation) * (world - truck.position);
+    public static Vector3 ToTruckMetres(Transform truck, Vector3 world) => TruckModelVisuals.UnmapMetres(truck, Quaternion.Inverse(truck.rotation) * (world - truck.position));
 
     public const float BodyHalfWidth = 1.3f, BodyRearZ = -2.2f, BodyNoseZ = 3.8f, BodyTopY = 3.05f;
 
@@ -50,6 +50,7 @@ public static class ShopModKit
         root.SetParent(parent, false);
         Vector3 ls = parent.lossyScale;
         root.localScale = new Vector3(SafeInv(ls.x), SafeInv(ls.y), SafeInv(ls.z));
+        TruckModelVisuals.RegisterMetreRoot(parent, root);
         return root;
     }
 

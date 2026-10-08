@@ -181,6 +181,25 @@ public class PlayerSpawner : MonoBehaviour
             }
         }
 
+        // Out of the legacy garage: the shop's own door poses on Depot Row (beside the door on foot, on the apron in the
+        // truck, facing the road). The layout is the source of truth; the scene's markers are only a fallback.
+        if (afterSceneLoad && SceneTransitionData.HasArrival)
+        {
+            string arrival = isHost || !SceneTransitionData.ArrivedDriving
+                ? SceneTransitionData.ArrivalSpawnPointName : SceneTransitionData.OnFootSpawnPointName;
+            if (DepotFlowRules.TryArrivalPose(arrival, out Pose apron))
+            {
+                pos = apron.position;
+                rot = apron.rotation;
+                if (slot > 0)
+                {
+                    float side = ((slot + 1) / 2) * extraPlayerSpacing * (slot % 2 == 1 ? 1f : -1f);
+                    pos += rot * Vector3.right * side;
+                }
+                return;
+            }
+        }
+
         if (marker == null && !(afterSceneLoad && SceneTransitionData.HasArrival) && SpawnPoseOverride != null)
         {
             Pose? over = null;

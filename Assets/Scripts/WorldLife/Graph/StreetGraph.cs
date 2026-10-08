@@ -13,7 +13,8 @@ using UnityEngine;
 ///    through an intersection are short Road edges flagged <see cref="EdgeFlags.Turn"/> (and <see cref="EdgeFlags.Yield"/>).
 ///  - Sidewalk lanes sit 7.4 m from the centre line. Every non-Road edge is two-way unless flagged
 ///    <see cref="EdgeFlags.OneWay"/> (the driveway in / out ramps). Cars use Road + Driveway edges; people use the rest.
-///  - District byte = tier − 1 (<see cref="WorldLifeIds.DistrictIndex(DistrictDef)"/>). An edge flagged
+///  - District byte is the append-only save/network district index (<see cref="WorldLifeIds.DistrictIndex(DistrictDef)"/>),
+///    independent of its economy tier or unlock order. An edge flagged
 ///    <see cref="EdgeFlags.GateLocked"/> passes through a DistrictGate: usable only while that gate's district is unlocked
 ///    (the gate is <see cref="Node.gate"/> of either end).
 ///  - <see cref="None"/> (0xFFFF) = no node / no gate.
@@ -153,6 +154,7 @@ public sealed partial class StreetGraph : ScriptableObject
     // ------------------------------------------------------------------ data (serialized)
 
     public int version = SchemaVersion;
+    public string layoutId = "";
     public int builderSeed;
     public Node[] nodes = new Node[0];
     public Edge[] edges = new Edge[0];
@@ -321,7 +323,7 @@ public sealed partial class StreetGraph : ScriptableObject
             var nd = nodes[i];
             if (!IsFinite(nd.pos)) errors.Add($"node {i}: position not finite");
             if (nd.gate != None && nd.gate >= gates.Length) errors.Add($"node {i}: gate {nd.gate} out of range");
-            if (nd.district > 3) errors.Add($"node {i}: district {nd.district} > 3");
+            if (nd.district >= Districts.All.Count) errors.Add($"node {i}: district {nd.district} out of range");
         }
 
         for (int e = 0; e < EdgeCount; e++)
@@ -388,12 +390,14 @@ public sealed partial class StreetGraph : ScriptableObject
         }
 
         // One walk component per district (moving only through that district's own nodes).
-        for (int d = 0; d < 4; d++)
+        for (int d = 0; d < Districts.All.Count; d++)
         {
             int start = -1, total = 0;
             for (int i = 0; i < n; i++) if (nodes[i].district == d && IsWalkNode(nodes[i].kind)) { total++; if (start < 0) start = i; }
             if (start < 0) continue;
-            Flood(start, reach, queue, walk: true, unlockedMask: -1, district: d);
+            // Coastal connectors run outside district rectangles. A district's two entrances can legitimately
+            // meet through a bridge approach; validate connectivity without inventing a fence at that rectangle.
+            Flood(start, reach, queue, walk: true, unlockedMask: -1, district: layoutId == "coastal-v4" ? -1 : d);
             int got = 0;
             for (int i = 0; i < n; i++) if (reach[i] && nodes[i].district == d && IsWalkNode(nodes[i].kind)) got++;
             if (got != total) errors.Add($"district {d}: walk network has {total - got} of {total} nodes cut off from the rest");
@@ -454,16 +458,16 @@ public sealed partial class StreetGraph : ScriptableObject
     public string Describe()
     {
         var sb = new StringBuilder();
-        var perDistrict = new int[4];
+        var perDistrict = new int[Districts.All.Count];
         var perKind = new int[Enum.GetValues(typeof(NodeKind)).Length];
-        for (int i = 0; i < NodeCount; i++) { perDistrict[Mathf.Min(3, (int)nodes[i].district)]++; perKind[(int)nodes[i].kind]++; }
+        for (int i = 0; i < NodeCount; i++) { perDistrict[Mathf.Min(perDistrict.Length - 1, (int)nodes[i].district)]++; perKind[(int)nodes[i].kind]++; }
         var edgeKinds = new int[Enum.GetValues(typeof(EdgeKind)).Length];
-        var edgeDistrict = new int[4];
-        for (int e = 0; e < EdgeCount; e++) { edgeKinds[(int)edges[e].kind]++; edgeDistrict[Mathf.Min(3, (int)nodes[edges[e].a].district)]++; }
-        var loopDistrict = new int[4];
-        for (int l = 0; l < (loops?.Length ?? 0); l++) loopDistrict[Mathf.Min(3, (int)loops[l].district)]++;
+        var edgeDistrict = new int[Districts.All.Count];
+        for (int e = 0; e < EdgeCount; e++) { edgeKinds[(int)edges[e].kind]++; edgeDistrict[Mathf.Min(edgeDistrict.Length - 1, (int)nodes[edges[e].a].district)]++; }
+        var loopDistrict = new int[Districts.All.Count];
+        for (int l = 0; l < (loops?.Length ?? 0); l++) loopDistrict[Mathf.Min(loopDistrict.Length - 1, (int)loops[l].district)]++;
         sb.Append($"nodes {NodeCount} · edges {EdgeCount} · houses {houses?.Length ?? 0} · exits {exits?.Length ?? 0} · gates {gates?.Length ?? 0} · loops {loops?.Length ?? 0}\n");
-        for (int d = 0; d < 4; d++)
+        for (int d = 0; d < perDistrict.Length; d++)
             if (perDistrict[d] > 0) sb.Append($"  district {d}: nodes {perDistrict[d]}, edges {edgeDistrict[d]}, loops {loopDistrict[d]}\n");
         sb.Append("  node kinds:");
         for (int k = 0; k < perKind.Length; k++) if (perKind[k] > 0) sb.Append($" {(NodeKind)k} {perKind[k]}");

@@ -9,24 +9,25 @@ public static class ScrapazonAdvisor
 {
     const string SeenRankCounter = "sz_seen_rank";
 
-    /// <summary>Lower = buy sooner. Pacing-critical lines (permits, hopper, arm, Kevin, Magnus's career path) are favoured.</summary>
+    /// <summary>Lower = buy sooner. Pacing-critical lines (permits, hopper, arm, Magnus's career path) are favoured.</summary>
     static float Weight(string id)
     {
         switch (id)
         {
             case ShopIds.PermitMinivanMeadows:
+            case ShopIds.PermitCouponCommons:
             case ShopIds.PermitSnootingtonHills:
+            case ShopIds.PermitStackingtonHeights:
             case ShopIds.PermitBillionaireBluffs: return 0.3f;
             case ShopIds.TruckCapacity: return 0.55f;
+            case ShopIds.TruckModel: return 0.4f; // after cheap sideboards, trade-up beats buying the pricier second extension
             case ShopIds.TruckArm: return 0.6f;
-            case ShopIds.HireKevin: return 0.65f;
             case ShopIds.RecyclingContracts:
             case ShopIds.MagnusBrain:
             case ShopIds.MagnusRailMotor:
             case ShopIds.MagnusGripper:
             case ShopIds.MagnusVision:
             case ShopIds.ConveyorBelt: return 0.8f;
-            case ShopIds.WorkGloves:
             case ShopIds.TruckTurbo:
             case ShopIds.TruckHandling: return 0.85f;
             case ShopIds.GoldenTruck: return 1f;

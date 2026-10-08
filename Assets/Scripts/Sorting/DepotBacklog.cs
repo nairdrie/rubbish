@@ -1,9 +1,10 @@
 using UnityEngine;
 
-/// <summary>Two owner-sized truckloads of unsorted physical stock per depot. Never deletes existing stock.</summary>
+/// <summary>Two owner-sized truckloads of unsorted stock, with a 320 kg floor for small trucks. Never deletes existing stock.</summary>
 public static class DepotBacklog
 {
     public const float Truckloads = 2f;
+    public const float MinimumCapacityKg = 320f;
     public const string FullMessage = "Depot full — sort or compact some trash. The rest stays in the truck.";
 
     /// <summary>Disconnect cleanup follows the destination depot, never the employee/computer that spawned the junk.</summary>
@@ -14,12 +15,17 @@ public static class DepotBacklog
         !float.IsNaN(incomingKg) && !float.IsInfinity(incomingKg) && incomingKg >= 0f &&
         usedKg + incomingKg <= capacityKg + 0.001f;
 
+    /// <summary>A compact starter must not also shrink the player's sorting/storage space.</summary>
+    public static float CapacityForTruck(float truckCapacityKg) =>
+        float.IsNaN(truckCapacityKg) || float.IsInfinity(truckCapacityKg) ? MinimumCapacityKg :
+        Mathf.Max(MinimumCapacityKg, Truckloads * Mathf.Max(1f, truckCapacityKg));
+
     public static float CapacityKg(int lot)
     {
         string business = lot >= 0 ? DepotTruckCargo.BusinessOfLot(lot) : GameSession.BusinessId;
         float capacity = GameSession.TruckCapacityKg;
         if (lot >= 0 && !Businesses.TryGetTruckLoad(business, out _, out capacity)) capacity = Economy.StartingTruckCapacityKg;
-        return Truckloads * Mathf.Max(1f, capacity);
+        return CapacityForTruck(capacity);
     }
 
     public static float UsedKg(int lot)

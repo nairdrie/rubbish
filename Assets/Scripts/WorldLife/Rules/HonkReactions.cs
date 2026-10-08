@@ -57,7 +57,7 @@ public sealed class HonkReactions
         startles = pullOvers = honkBacks = 0;
         var rb = truck.Body;
         Quaternion rot = rb != null ? rb.rotation : truck.transform.rotation;
-        Vector3 centre = (rb != null ? rb.position : truck.transform.position) + rot * TruckControllerV2.BodyBoxMetres.center;
+        Vector3 centre = (rb != null ? rb.position : truck.transform.position) + rot * truck.ModelBodyBoxMetres.center;
         Vector3 fwd = rot * Vector3.forward; fwd.y = 0f;
         fwd = fwd.sqrMagnitude > 1e-6f ? fwd.normalized : Vector3.forward;
         Vector3 vel = rb != null ? rb.linearVelocity : Vector3.zero;
@@ -65,7 +65,7 @@ public sealed class HonkReactions
         byte actor = WorldLifeAuthority.SlotOf(truck);
         var dir = ResidentDirector.Instance;
         double hours = GameClock.TotalHours;
-        var bb = TruckControllerV2.BodyBoxMetres;
+        var bb = truck.ModelBodyBoxMetres;
         var boxHalf = new Vector2(bb.extents.x, bb.extents.z);
 
         found.Clear();
@@ -107,7 +107,7 @@ public sealed class HonkReactions
 /// </summary>
 public static class NightNoise
 {
-    static readonly int[] tonight = new int[4];
+    static readonly int[] tonight = new int[Districts.All.Count];
     static int pendingNight = int.MinValue;
     static float nextShout;
     static string[] keys;
@@ -137,7 +137,7 @@ public static class NightNoise
         }
         if (nearest < 0) return false;
         var house = g.houses[nearest];
-        byte district = (byte)Mathf.Clamp(house.district, 0, 3);
+        byte district = (byte)Mathf.Clamp(house.district, 0, Districts.All.Count - 1);
         string did = WorldLifeIds.DistrictId(district);
         Vector3 door = g.nodes[house.door].pos;
         if (Time.time >= nextShout)
@@ -165,8 +165,8 @@ public static class NightNoise
     static void EnsureKeys()
     {
         if (keys != null) return;
-        keys = new string[4];
-        for (int i = 0; i < 4; i++) keys[i] = "wl_noise:" + WorldLifeIds.DistrictId((byte)i);
+        keys = new string[Districts.All.Count];
+        for (int i = 0; i < keys.Length; i++) keys[i] = "wl_noise:" + WorldLifeIds.DistrictId((byte)i);
     }
 
     /// <summary>Host, every in-game hour: the morning after a noisy night (06:00 or later), send the one letter.</summary>

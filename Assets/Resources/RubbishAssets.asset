@@ -156,16 +156,6 @@ MonoBehaviour:
     material: {fileID: 2100000, guid: 84e66227e15374e3d8f4fffdac684a07, type: 2}
   - key: mat/fx_additive
     material: {fileID: 2100000, guid: f6d1c31617e6244d690d0d2a1b58f69c, type: 2}
-  - key: mat/sorting_outline
-    material: {fileID: 2100000, guid: ccb233de52823495db79612fa21f7305, type: 2}
-  - key: mat/sorting_bale
-    material: {fileID: 2100000, guid: 7ce5338d2152446c9bc1222d586f7584, type: 2}
-  - key: mat/sorting_strap
-    material: {fileID: 2100000, guid: 044788f4356ba4b379a58741c0133650, type: 2}
-  - key: mat/sorting_sack_scrap
-    material: {fileID: 2100000, guid: f792b540347c647d596caacdff0d0e3a, type: 2}
-  - key: mat/garage_glint
-    material: {fileID: 2100000, guid: a01318622c45a4888b94bc2bbae6c480, type: 2}
   - key: mat/worldlife_knock_red
     material: {fileID: 2100000, guid: 66d7f9814c4db4c7f9865db74a7ed76f, type: 2}
   - key: mat/worldlife_knock_darkred
@@ -198,4 +188,14 @@ MonoBehaviour:
     material: {fileID: 2100000, guid: d4904fcbec80d4cbaa718504360d2b38, type: 2}
   - key: mat/worldlife_res_beam
     material: {fileID: 2100000, guid: 8d2476ae1f57a4134a7ff4ee9e4c772f, type: 2}
+  - key: mat/sorting_outline
+    material: {fileID: 2100000, guid: ccb233de52823495db79612fa21f7305, type: 2}
+  - key: mat/sorting_bale
+    material: {fileID: 2100000, guid: 7ce5338d2152446c9bc1222d586f7584, type: 2}
+  - key: mat/sorting_strap
+    material: {fileID: 2100000, guid: 044788f4356ba4b379a58741c0133650, type: 2}
+  - key: mat/sorting_sack_scrap
+    material: {fileID: 2100000, guid: f792b540347c647d596caacdff0d0e3a, type: 2}
+  - key: mat/garage_glint
+    material: {fileID: 2100000, guid: a01318622c45a4888b94bc2bbae6c480, type: 2}
   clips: []

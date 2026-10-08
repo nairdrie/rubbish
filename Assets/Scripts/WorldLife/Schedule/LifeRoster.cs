@@ -138,7 +138,7 @@ public sealed class LifeRoster
             var ch = ResidentCast.HouseholdOf(hi);
             var hold = new LifeHousehold
             {
-                stopId = house.stopId, house = (ushort)hi, district = (byte)Mathf.Clamp(house.district, 0, 3),
+                stopId = house.stopId, house = (ushort)hi, district = (byte)Mathf.Clamp(house.district, 0, Districts.All.Count - 1),
                 firstResident = ch.first, residentCount = ch.count, firstCar = -1, carCount = 0,
             };
             householdOfHouse[hi] = (ushort)hh.Count;
@@ -207,13 +207,14 @@ public sealed class LifeRoster
     /// <summary>"households 81 · residents 210 · cars 86" plus per-district counts.</summary>
     public string Describe()
     {
-        var hd = new int[4]; var rd = new int[4]; var cd = new int[4]; var dd = new int[4];
+        int count = Districts.All.Count;
+        var hd = new int[count]; var rd = new int[count]; var cd = new int[count]; var dd = new int[count];
         foreach (var h in households) hd[h.district]++;
         foreach (var r in residents) { rd[r.district]++; if (r.dog >= 0) dd[r.district]++; }
         foreach (var c in cars) cd[c.district]++;
         var sb = new System.Text.StringBuilder();
         sb.Append($"households {households.Length} · residents {residents.Length} · cars {cars.Length} · dogs {dogCount}");
-        for (int d = 0; d < 4; d++) if (hd[d] > 0) sb.Append($"\n  district {d}: households {hd[d]}, residents {rd[d]}, cars {cd[d]}, dogs {dd[d]}");
+        for (int d = 0; d < count; d++) if (hd[d] > 0) sb.Append($"\n  district {d}: households {hd[d]}, residents {rd[d]}, cars {cd[d]}, dogs {dd[d]}");
         return sb.ToString();
     }
 }

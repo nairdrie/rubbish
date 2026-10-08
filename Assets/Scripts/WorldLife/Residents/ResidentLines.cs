@@ -27,7 +27,7 @@ public static class ResidentLines
         new[] { "Do you know who I AM?!", "My solicitor will hear of this!", "How DARE you!", "Most UNCOUTH!", "Ghastly! Simply GHASTLY!", "I'll have you UNSUBSCRIBED!" },
         new[] { "I'll buy your company and FIRE you!", "Do you know what this robe COST?!", "SECURITY!", "My lawyers have lawyers!", "Do you know what my LAWN costs?!", "I'll put it on YOUR tab!" },
     };
-    public static string[] AngryFor(byte district) => Angry[Mathf.Min(district, (byte)3)];
+    public static string[] AngryFor(byte district) => Angry[Districts.StyleIndex(district)];
 
     // ---- nudges, horns, bumps (§8.1, §8.4, §8.5)
     public static readonly string[] Nudge = { "HEY! WATCH IT!", "Excuse me?!", "I'm WALKING here!", "Rude!", "Personal SPACE!" };
@@ -75,8 +75,8 @@ public static class ResidentLines
         new[] { "In my OWN driveway?!", "Not the town car!", "I saw that, you scamp!" },
         new[] { "THE LIMO?!", "SECURITY!!", "That's my third-favourite limo!" },
     };
-    public static string[] DriverFor(byte district) => Driver[Mathf.Min(district, (byte)3)];
-    public static string[] OwnerFor(byte district) => Owner[Mathf.Min(district, (byte)3)];
+    public static string[] DriverFor(byte district) => Driver[Districts.StyleIndex(district)];
+    public static string[] OwnerFor(byte district) => Owner[Districts.StyleIndex(district)];
 
     /// <summary>A car stuck behind the truck (§7.3), after 3 s.</summary>
     public static readonly string[] Honk = { "HONK HONK! GARBAGE DAY, HUH?!", "MOVE IT, TRASH MAN!", "SOME OF US HAVE JOBS!", "BEEEEP!", "I'M LATE FOR PILATES!", "TAKE YOUR TIME, I GUESS!" };

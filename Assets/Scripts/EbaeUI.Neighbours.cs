@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 
 /// <summary>
-/// The laptop's <b>Neighbours</b> tab (Docs/Multiplayer.md §13.8, package N5): other players' ebae listings (with their name and
+/// The laptop's <b>Neighbours</b> tab (Docs/Multiplayer.md §13.8, package N5): other players' ebag listings (with their name and
 /// colour), Buy now / Make offer (cash, an item from your keep crate, or both), and the offers waiting on you with Accept /
 /// Counter / Decline. Everything goes through <see cref="EbaeNeighbours"/>; the host decides. Hidden outside a Town.
 /// </summary>
@@ -221,7 +221,7 @@ public partial class EbaeUI
 
         // the trade item: cycle through what's in your keep crate (not listed, not already offered)
         var pool = new List<ItemInstance>();
-        foreach (var it in GameSession.Inventory) if (it != null && !EbaeMarket.IsReservedUid(it.uid)) pool.Add(it);
+        foreach (var it in GameSession.Inventory) if (it != null && !it.hot && !EbaeMarket.IsReservedUid(it.uid)) pool.Add(it);
         offerTrade.TryGetValue(key, out string uid);
         ItemInstance chosen = null;
         foreach (var it in pool) if (it.uid == uid) chosen = it;

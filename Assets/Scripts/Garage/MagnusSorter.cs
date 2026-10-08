@@ -10,14 +10,17 @@ using UnityEngine;
 /// one toward its bin (recyclables + junk at brain L1, + treasure at L2, + hazards at L3, around the clock at L4).
 /// Things he can't handle go to a LEFTOVERS corner. With probability (1 - accuracy) an item goes into the wrong
 /// recycling bin: normal contamination, plus an apology. Robots never touch the player's combo; his sorts are credited
-/// byMagnus. No conveyor needed: he works the table, the Bag Belt only feeds it.
-/// Bags: until the Lobster Pincer (gripper L1, or brain L3) he only sorts what you rip onto the table. With it he feeds
-/// himself: the Bag Belt tray's bag first, else the next tipping-pile bag ("YOINK!", vision-flagged ones first, the
-/// same lob the station's "Next bag!" uses), and SLAMS it open on the table. He waits for each spray to land and stop
-/// rolling, only rips while the table holds fewer than ripTableLimit items, and while he's on shift anything that
-/// bounced onto the floor hops back onto the table (SortStation.RescueFloorItems).
+/// byMagnus. No conveyor needed: he works the table and whatever lies within his reach.
+/// Bags: from the job on he picks up bags WITHIN REACH (MagnusReach: on or within 2 m of the table top, which includes
+/// the Bag Belt's queue rack; vision-flagged ones first), "YOINK!"s each one into his claw and SLAMS it open on the
+/// table. He can never take a bag from the dump pile: without a belt you carry bags over to him. HEAVY bags need the
+/// Lobster Pincer (gripper L1); before it he leaves them for you. He waits for each spray to land and stop rolling,
+/// only rips while the table holds fewer than ripTableLimit items, and while he's on shift anything that bounced onto
+/// the floor hops back onto the table (SortStation.RescueFloorItems).
+/// With the Double-Wide table (sorting_table L2) a player can sort at the second position while he works: he then
+/// leaves that half of the table alone (SortSeats.MagnusMayTake) and never takes an item a player is pointing at.
 ///
-/// Speed contract: items/min = brain rate × MagnusSpeedMult (rail motor, quad-claw, twin belt). The arm's
+/// Speed contract: items/min = brain rate × MagnusSpeedMult (rail motor, quad-claw). The arm's
 /// SpeedMultiplier is tuned from each measured cycle and every cycle is padded to the contract, so the rate lands on it.
 /// A player stepping up sees "Magnus is on shift. Shoo him"; he drives back to chess.
 /// Host decides (GarageRig.Decides); everything he touches is local garage state like the rest of sorting today.
@@ -76,11 +79,7 @@ public class MagnusSorter : MonoBehaviour, SortStation.IStationWorker
     {
         get
         {
-            float mult = 1f;
-            if (Level(ShopIds.MagnusRailMotor) >= 1) mult *= UpgradeEffects.RailMotorSpeed;
-            if (Level(ShopIds.MagnusGripper) >= 2) mult *= UpgradeEffects.QuadClawSpeed;
-            if (Level(ShopIds.ConveyorBelt) >= 3) mult *= UpgradeEffects.TwinBeltMagnusSpeed;
-            return LotBrain.itemsPerMin * mult;
+            return LotBrain.itemsPerMin * UpgradeEffects.MagnusSpeedMultAt(Level(ShopIds.MagnusRailMotor), Level(ShopIds.MagnusGripper));
         }
     }
 
@@ -97,7 +96,6 @@ public class MagnusSorter : MonoBehaviour, SortStation.IStationWorker
     readonly HashSet<string> leftovers = new HashSet<string>();
     readonly HashSet<string> tooHeavySaid = new HashSet<string>();
     readonly Dictionary<string, int> attempts = new Dictionary<string, int>();
-    readonly List<Carryable> pileScratch = new List<Carryable>();
     readonly List<Carryable> hopperScratch = new List<Carryable>();
     TrashBag bagInFlight;   // a bag he's lobbing / holding (handed back to physics if he's switched off mid-flight)
 
@@ -105,7 +103,7 @@ public class MagnusSorter : MonoBehaviour, SortStation.IStationWorker
     MagnusArm Arm => rig != null ? rig.arm : null;
     SortingTable Table => rig != null ? rig.table : null;
     SortStation Station => rig != null ? rig.station : null;
-    ConveyorTray tray;
+    SortStation SecondStation => rig != null ? rig.secondStation : null;
 
     // ------------------------------------------------------------------ IStationWorker
 
@@ -164,7 +162,7 @@ public class MagnusSorter : MonoBehaviour, SortStation.IStationWorker
             leftovers.Clear();
             tooHeavySaid.Clear();
         }
-        if (id == ShopIds.MagnusBrain || id == ShopIds.MagnusGripper || id == ShopIds.MagnusRailMotor || id == ShopIds.ConveyorBelt)
+        if (id == ShopIds.MagnusBrain || id == ShopIds.MagnusGripper || id == ShopIds.MagnusRailMotor)
             armSpeed = -1f;   // re-derived from the new contract on the next item (cycleAtX1 is kept)
     }
 
@@ -293,13 +291,15 @@ public class MagnusSorter : MonoBehaviour, SortStation.IStationWorker
             if (ChessOccupied()) return "Magnus: leave the chess game so he can sort.";
             if (GarageRig.Decides && Time.time < restUntil)
                 return $"Magnus: short break — resumes automatically in {Mathf.CeilToInt(restUntil - Time.time)}s.";
-            return ReadyHint(CanRipBags, brain.startHour, brain.endHour);
+            return ReadyHint(HandlesHeavyBags, brain.startHour, brain.endHour);
         }
     }
 
-    public static string ReadyHint(bool canRip, float start, float end)
+    /// <summary>What to do so he starts by himself. <paramref name="heavyToo"/> = he has the pincer (heavy bags too).</summary>
+    public static string ReadyHint(bool heavyToo, float start, float end)
     {
-        string work = canRip ? "leave bags on the tipping floor, then step away" : "rip a bag onto the table, then step away";
+        string work = heavyToo ? "leave bags by the table (any bag, within 2 m) or on the belt's rack, then step away"
+                               : "leave bags by the table (within 2 m, not HEAVY ones) or on the belt's rack, then step away";
         string hours = end - start >= 23.99f ? "24h" : $"{start:00}:00–{end:00}:00";
         return $"Magnus: {work}. Auto-sorts {hours}.";
     }
@@ -317,25 +317,16 @@ public class MagnusSorter : MonoBehaviour, SortStation.IStationWorker
         return start <= end ? hour >= start && hour < end : hour >= start || hour < end;
     }
 
-    /// <summary>Lobster Pincer (gripper L1) or brain L3: he fetches and rips bags himself.</summary>
-    bool CanRipBags => Level(ShopIds.MagnusBrain) >= 1 && (Level(ShopIds.MagnusGripper) >= 1 || LotBrain.ripsBags);
-
-    ConveyorTray Tray
-    {
-        get
-        {
-            if (tray == null && Station != null) tray = Station.tray;
-            return tray;
-        }
-    }
+    /// <summary>From the job on he rips the bags within his reach himself.</summary>
+    bool CanRipBags => MagnusReach.MayRip(Level(ShopIds.MagnusBrain), Level(ShopIds.MagnusGripper), false);
+    /// <summary>Lobster Pincer (gripper L1): heavy bags too.</summary>
+    bool HandlesHeavyBags => MagnusReach.MayRip(Level(ShopIds.MagnusBrain), Level(ShopIds.MagnusGripper), true);
 
     bool HasWork(bool fromChess)
     {
         if (NextItem(fromChess, out _) != null) return true;
         if (fromChess && Station != null && Station.HasFloorItems()) return true;   // spray on the floor: go hop it back
-        if (!CanRipBags || !TableHasRoom()) return false;
-        var t = Tray;
-        return (t != null && t.HasBag) || NextPileBag() != null;
+        return CanRipBags && TableHasRoom() && NextReachBag() != null;
     }
 
     /// <summary>
@@ -433,11 +424,9 @@ public class MagnusSorter : MonoBehaviour, SortStation.IStationWorker
                 }
                 if (CanRipBags && TableHasRoom())
                 {
-                    // Feed himself: the Bag Belt tray first, else the next bag off the tipping pile.
-                    var t = Tray;
-                    if (t != null && t.HasBag) { yield return RipBag(t.Take(), false); idleSince = Time.time; continue; }
-                    var pileBag = NextPileBag();
-                    if (pileBag != null) { yield return RipBag(pileBag, true); idleSince = Time.time; continue; }
+                    // Feed himself from what is within reach: bags you carried over, and the Bag Belt's queue rack.
+                    var reachBag = NextReachBag();
+                    if (reachBag != null) { yield return RipBag(reachBag); idleSince = Time.time; continue; }
                 }
                 if (Time.time - idleSince > idleGiveUpSeconds) break;
                 yield return new WaitForSeconds(0.3f);
@@ -481,7 +470,12 @@ public class MagnusSorter : MonoBehaviour, SortStation.IStationWorker
         if (table == null || arm == null || track == null || track.SortStop == null) return null;
         Vector3 shift = fromChess ? track.transform.position - track.SortStop.position : Vector3.zero;
         var brain = LotBrain;
-        float maxKg = brain.itemsPerMin <= 0f ? 0f : Level(ShopIds.MagnusGripper) >= 1 ? 25f : 5f;
+        float maxKg = UpgradeEffects.GripperMaxKgAt(Level(ShopIds.MagnusBrain), Level(ShopIds.MagnusGripper));
+        // A player sorting at the second position keeps their half of the table; nobody loses the item they point at.
+        var second = SecondStation;
+        bool secondSeatPlayer = second != null && second.SeatOpen && (second.IsActive || second.Occupied);
+        float splitX = second != null && Station != null ? SeatSplitLocalX(table, Station, second) : 0f;
+        float secondX = second != null ? table.transform.InverseTransformPoint(second.standPoint != null ? second.standPoint.position : second.transform.position).x - table.topOffset.x : 0f;
         var compactor = rig.compactor;
         Vector3 claw = fromChess ? table.TopPoint(0f, 0f) : arm.ClawPosition;
 
@@ -496,6 +490,7 @@ public class MagnusSorter : MonoBehaviour, SortStation.IStationWorker
             if (leftovers.Contains(uid)) continue;
             Vector3 p = li.Box != null ? li.Box.bounds.center : li.transform.position;
             if (!arm.CanReach(p + shift)) continue;
+            if (!SortSeats.MagnusMayTake(table.transform.InverseTransformPoint(p).x - table.topOffset.x, secondSeatPlayer, splitX, secondX, SortStation.AnyPlayerAimsAt(li))) continue;
             float d = (p - claw).sqrMagnitude;
             bool can = CanSort(li.Category, brain) && li.MassKg <= maxKg;
             if (can && li.Category == ItemCategory.Junk && compactor != null && compactor.Busy) continue;
@@ -510,6 +505,14 @@ public class MagnusSorter : MonoBehaviour, SortStation.IStationWorker
         if (best != null) return best;
         leftover = bestLeft != null;
         return bestLeft;
+    }
+
+    /// <summary>The line between the two sorting positions, in table-local x (items beyond it are the second sorter's).</summary>
+    static float SeatSplitLocalX(SortingTable table, SortStation first, SortStation second)
+    {
+        Vector3 a = first.standPoint != null ? first.standPoint.position : first.transform.position;
+        Vector3 b = second.standPoint != null ? second.standPoint.position : second.transform.position;
+        return table.transform.InverseTransformPoint((a + b) * 0.5f).x - table.topOffset.x;
     }
 
     static bool CanSort(ItemCategory c, UpgradeEffects.BrainTier brain)
@@ -546,7 +549,12 @@ public class MagnusSorter : MonoBehaviour, SortStation.IStationWorker
         float accuracy = LotBrain.accuracy;
         bool mistake = MistakeRoll(uid, tries, accuracy);
         var category = li.Category;
-        var bin = mistake ? WrongBin(category, uid) : (category == ItemCategory.Junk ? null : rig.BinFor(category));
+        // A part the lot's owner is hunting for (a def pinned on the Callings tree) goes in the KEEP crate instead of its bin.
+        // NextItem only hands him items whose category his brain already handles, so this needs no gate of its own.
+        var keepCrate = !mistake && category != ItemCategory.Valuable && li.Item != null &&
+            Workshop.IsWantedAt(DepotMachineContext.LotOf(this), li.Item.defId) ? rig.BinFor(ItemCategory.Valuable) : null;
+        bool wanted = keepCrate != null;
+        var bin = mistake ? WrongBin(category, uid) : wanted ? keepCrate : (category == ItemCategory.Junk ? null : rig.BinFor(category));
         if (mistake && bin == null) mistake = false;
         Vector3 binPos = bin != null ? bin.TossTargetPosition : rig.compactor != null ? rig.compactor.TossTargetPosition : table.TopPoint(0f, 0f);
         Vector3 release = ReleasePoint(binPos);
@@ -560,11 +568,11 @@ public class MagnusSorter : MonoBehaviour, SortStation.IStationWorker
             delivered = true;
             if (li == null || li.State == CarryState.Consumed) return;
             Vector3 spit = table.RandomTopPoint(0.3f);
-            if (category == ItemCategory.Junk && !mistake && rig.compactor != null) rig.compactor.AcceptFromRobot(li);
+            if (category == ItemCategory.Junk && !mistake && !wanted && rig.compactor != null) rig.compactor.AcceptFromRobot(li);
             else if (bin != null) bin.AcceptFromRobot(li, spit);
             else li.EndCarry(Vector3.down, true);
             if (mistake) Say(SorterLines.Mistake(uid + tries));
-            else if (category == ItemCategory.Valuable) Say(SorterLines.Kept(uid));
+            else if (category == ItemCategory.Valuable || wanted) Say(SorterLines.Kept(uid));
         };
         arm.PlayPlan(-1, new List<MagnusArm.Step> { step });
         yield return WaitArm(20f);
@@ -614,10 +622,10 @@ public class MagnusSorter : MonoBehaviour, SortStation.IStationWorker
     }
 
     /// <summary>
-    /// Lobster Pincer (gripper L1) / brain L3: take a bag (the tray's, already in flight, or one off the tipping pile),
-    /// carry it over the table and SLAM it open himself.
+    /// Take a bag from within reach (a free, resting bag by the table or in the queue rack), yoink it into his claw's
+    /// reach, carry it over the table and SLAM it open himself.
     /// </summary>
-    IEnumerator RipBag(TrashBag bag, bool fromPile)
+    IEnumerator RipBag(TrashBag bag)
     {
         if (bag == null) yield break;
         var arm = Arm;
@@ -625,30 +633,18 @@ public class MagnusSorter : MonoBehaviour, SortStation.IStationWorker
         Vector3 spot = table.ClampToTop(table.TopPoint(-table.topSize.x * 0.15f, 0f), 0.6f);
         bagInFlight = bag;
         Vector3 c = bag.WorldCenter;
-        if (fromPile)
-        {
-            // "NEXT BAG!": it lobs across the garage into his claw's reach (the station's own Next bag! does the same).
-            bag.SetInFlight();
-            Vector3 catchAt = arm.ClampToReach(spot + Vector3.up * 0.55f);
-            float dist = Vector3.Distance(c, catchAt);
-            GameHUD.FloatingText(c + Vector3.up * 0.8f, "YOINK!", ChessBanter.BubbleColor, 1f);
-            Sfx.Play("whoosh", c, 0.8f, 0.85f);
-            Sfx.Play("beep", arm.HeadPosition, 0.4f, 1.5f);
-            Fx.Dust(c, 0.6f);
-            yield return SortingKit.Arc(bag.transform, catchAt - (bag.WorldCenter - bag.transform.position),
-                                        Mathf.Clamp(0.45f + dist * 0.05f, 0.5f, 1.1f), Mathf.Clamp(dist * 0.22f, 1f, 2.4f));
-            if (bag == null || bag.State == CarryState.Consumed) { bagInFlight = null; yield break; }
-            Juice.Squash(bag.JuiceTarget, 0.3f, 0.2f);
-        }
-        else if (!arm.CanReach(c + Vector3.up * 0.1f))
-        {
-            // Out of reach on the tray? Yoink it over first (the animation can flex).
-            Vector3 near = arm.ClampToReach(new Vector3(c.x, table.TopWorldY + 0.5f, c.z));
-            GameHUD.FloatingText(c + Vector3.up * 0.5f, "YOINK!", ChessBanter.BubbleColor, 0.9f);
-            Sfx.Play("whoosh", c, 0.6f, 1.5f);
-            yield return SortingKit.Arc(bag.transform, near - (bag.WorldCenter - bag.transform.position), 0.35f, 0.4f);
-            if (bag == null) { bagInFlight = null; yield break; }
-        }
+        // "YOINK!": a short hop into his claw's reach (bags lie on the floor around the table, or in the rack beside it).
+        bag.SetInFlight();
+        Vector3 catchAt = arm.ClampToReach(spot + Vector3.up * 0.55f);
+        float dist = Vector3.Distance(c, catchAt);
+        GameHUD.FloatingText(c + Vector3.up * 0.8f, "YOINK!", ChessBanter.BubbleColor, 1f);
+        Sfx.Play("whoosh", c, 0.8f, 0.85f);
+        Sfx.Play("beep", arm.HeadPosition, 0.4f, 1.5f);
+        Fx.Dust(c, 0.6f);
+        yield return SortingKit.Arc(bag.transform, catchAt - (bag.WorldCenter - bag.transform.position),
+                                    Mathf.Clamp(0.35f + dist * 0.08f, 0.35f, 0.9f), Mathf.Clamp(dist * 0.3f, 0.4f, 1.4f));
+        if (bag == null || bag.State == CarryState.Consumed || bag.State == CarryState.Carried) { bagInFlight = null; yield break; }
+        Juice.Squash(bag.JuiceTarget, 0.3f, 0.2f);
         arm.SpeedMultiplier = Mathf.Max(1.2f, armSpeed > 0f ? armSpeed : 1.2f);
         int sprayCount = bag.Contents != null && bag.Contents.items != null ? bag.Contents.items.Count : 0;
         var lb = bag.LocalBounds();
@@ -683,29 +679,43 @@ public class MagnusSorter : MonoBehaviour, SortStation.IStationWorker
     }
 
     /// <summary>
-    /// The next tipping-floor bag he'd yoink, like the station's "Next bag!": vision-flagged treasure bags first, then the
-    /// top of the heap. Never one the compactor is about to eat, the tray's, a curb bag or one already on the table.
-    /// Null while CRUSH ALL / SMASH is running.
+    /// The next bag he would take: a free, resting bag WITHIN REACH (MagnusReach: on or within 2 m of the table top, so
+    /// the queue rack counts and the dump pile never does), in his own garage. Vision-flagged treasure bags first, then
+    /// the nearest. Never one the compactor is about to eat, a curb bag, one already on the table, or (before the Lobster
+    /// Pincer) a HEAVY one. Null while the compactor is busy.
     /// </summary>
-    TrashBag NextPileBag()
+    public TrashBag NextReachBag()
     {
         var c = rig != null ? rig.compactor : null;
-        if (c == null || c.Busy) return null;
-        SortingKit.CarryablesInBox(c.pileCenter, c.pileSize * 0.5f + new Vector3(0.7f, 0.5f, 0.7f), Quaternion.identity, pileScratch);
-        if (pileScratch.Count == 0) return null;
-        c.Contents(hopperScratch);
         var table = Table;
-        var tray = Tray;
+        if (table == null || (c != null && c.Busy)) return null;
+        if (c != null) c.Contents(hopperScratch); else hopperScratch.Clear();
+        int brainLevel = Level(ShopIds.MagnusBrain), gripper = Level(ShopIds.MagnusGripper), vision = Level(ShopIds.MagnusVision);
+        int lot = DepotMachineContext.LotOf(this);
+        Vector2 half = table.topSize * 0.5f;
+        float topY = table.TopWorldY;
         TrashBag best = null;
         float bestScore = float.MinValue;
-        foreach (var cc in pileScratch)
+        foreach (var b in GaragePile.Bags)
         {
-            if (!(cc is TrashBag b) || !Grabbable(b) || b.SourceStop != null || hopperScratch.Contains(b)) continue;
-            if (tray != null && tray.Owns(b)) continue;
+            if (!Grabbable(b) || b.SourceStop != null || b.Contents == null || hopperScratch.Contains(b)) continue;
             Vector3 p = b.WorldCenter;
-            if (table != null && table.IsOnTop(p)) continue;
-            if (NearHopper(c, p)) continue;
-            float score = (MagnusVisionFlags.IsFlagged(b.Contents, Level(ShopIds.MagnusVision)) ? 500f : 0f) + p.y * 10f;
+            if (lot >= 0 ? DepotRowLayout.InteriorAt(p) != lot : b.gameObject.scene != table.gameObject.scene) continue;
+            if (Mathf.Abs(p.y - topY) > 2.2f || table.IsOnTop(p)) continue;
+            if (c != null && NearHopper(c, p)) continue;
+            Vector3 l = table.transform.InverseTransformPoint(p);
+            var local = new Vector2(l.x - table.topOffset.x, l.z - table.topOffset.y);
+            bool heavy = ConveyorRules.IsHeavy(b.Contents);
+            bool onPile = c != null && GaragePile.InPile(c, p);
+            if (!MagnusReach.InReach(local, half, onPile)) continue;
+            if (!MagnusReach.MayRip(brainLevel, gripper, heavy))
+            {
+                string id = b.Contents.bagId ?? b.name;
+                if (Phase == State.Working && tooHeavySaid.Add(id))
+                    GameHUD.FloatingText(p + Vector3.up * 0.6f, SorterLines.Heavy(id), ChessBanter.BubbleColor, 0.9f);
+                continue;
+            }
+            float score = (MagnusVisionFlags.IsFlagged(b.Contents, vision) ? 500f : 0f) - MagnusReach.DistanceToRect(local, half);
             if (score > bestScore) { bestScore = score; best = b; }
         }
         return best;

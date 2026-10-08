@@ -13,7 +13,7 @@ public enum ItemCategory
     Metal,      // recyclable
     Paper,      // recyclable (paper + cardboard)
     Hazard,     // batteries, spray cans, paint: hazard bin. Compacting one goes boom.
-    Valuable    // treasure: keep crate -> inventory -> sell on ebae
+    Valuable    // treasure: keep crate -> inventory -> sell on ebag
 }
 
 public enum Rarity { Common, Uncommon, Rare, Epic, Legendary }
@@ -28,9 +28,9 @@ public class ItemDef
     public Rarity rarity;
     public float minMass = 0.1f;    // kg
     public float maxMass = 0.5f;    // kg
-    public float minValue;          // Valuables: ebae market value range ($). Others: ignored (see Economy).
+    public float minValue;          // Valuables: ebag market value range ($). Others: ignored (see Economy).
     public float maxValue;
-    [TextArea] public string flavor; // one-line derpy description shown on reveal / ebae
+    [TextArea] public string flavor; // one-line derpy description shown on reveal / ebag
     public string visual;           // key understood by ItemVisuals.Build (e.g. "ring", "bottle", "prefab:item/tire")
     public Color color = Color.gray; // primary tint for the visual
 }
@@ -47,6 +47,7 @@ public class ItemInstance
     public string foundAt;          // address, e.g. "14 Maple St"
     public int dayFound;
     public string note;             // optional flavor (e.g. ring engraving "Forever yours - Dave")
+    public bool hot;                // stolen (Scavenger calling): only a fence takes it. Default false; absent in old saves.
 
     public ItemDef Def => ItemCatalog.Get(defId);
 }
@@ -175,7 +176,7 @@ public static class Economy
     public const float RabiesIncubationHours = 1.5f; // in-game hours before symptoms kick in
     public const float RabiesPassOutHours = 20f;     // untreated this long -> pass out, hospital bill, cured
     public const float HospitalBill = 100f;
-    public const float StartingTruckCapacityKg = 160f;
+    public const float StartingTruckCapacityKg = 120f;
 
     // Sorting ($ per kg, credited instantly when an item lands in the correct bin). Docs/Progression.md §3.1 rebalance.
     public static float RecycleRatePerKg(ItemCategory c) => c switch
@@ -204,10 +205,6 @@ public static class Economy
     public const float WorkOrderMinPay = 25f;
     public const int WorkOrdersPerDay = 3;
 
-    // Kevin's Crew
-    public const float KevinFeeShare = 0.70f;       // of the district fee × pay fraction
-    public const float KevinBurstChance = 0.05f;    // his bags that burst on the way (no fee, gone)
-
     public const float TowFee = 25f;                // "Hold R" truck recovery without truck_handling L1
 
     // Sort combo: consecutive correct sorts within ComboWindow seconds multiply payouts
@@ -215,9 +212,9 @@ public static class Economy
     public const float ComboStep = 0.1f;            // +10% per combo step
     public const float ComboMax = 2.0f;             // x2 cap
 
-    // ebae
+    // ebag
     public const float PawnFraction = 0.45f;        // instant sell at 45% of market value
-    public const float EbaeFeeFraction = 0.08f;     // ebae takes 8% of a sale
+    public const float EbaeFeeFraction = 0.08f;     // ebag takes 8% of a sale
 
     public static string Money(float v) => (v < 0 ? "-$" : "$") + Mathf.Abs(v).ToString(Mathf.Abs(v) >= 100 ? "N0" : "0.00");
 }

@@ -738,29 +738,6 @@
     rotate: -14deg;
 }
 
-.sz-drop-box {
-    position: absolute;
-    left: 50%;
-    top: 34px;
-    width: 96px;
-    height: 86px;
-    margin-left: -48px;
-    translate: 0 -260px;
-    transition-duration: 0.3s;
-    transition-timing-function: ease-in-cubic;
-}
-
-.sz-drop-box--landed {
-    translate: 0 0;
-}
-
-.sz-drop-box--gone {
-    translate: 0 0;
-    scale: 0.4 0.4;
-    opacity: 0;
-    transition-duration: 0.35s;
-    transition-timing-function: ease-in-back;
-}
 
 /* card body */
 
@@ -1162,18 +1139,6 @@
 }
 
 .sz-blurb--hidden {
-    display: none;
-}
-
-.sz-wage {
-    padding: 0;
-    margin: 0 0 2px 0;
-    font-size: 13px;
-    -unity-font-style: bold;
-    color: var(--sz-orange-dark);
-}
-
-.sz-wage--hidden {
     display: none;
 }
 

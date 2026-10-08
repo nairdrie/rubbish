@@ -84,7 +84,7 @@ public sealed class FeelHudHotbar
         bool onFoot = mode == HudMode.Street || mode == HudMode.Depot;
         if (preview)
         {
-            Add("POLE", "V", "READY", true, FeelUi.Gold);
+            Add("GRABBY", "V", "READY", true, FeelUi.Gold);
             Add("TRAP", "T", "x2", true, FeelUi.GoodGreen);
             Add("JUICE", "J", "x3", true, FeelUi.GoodGreen);
             Add("SHOT", "AUTO", "x1", true, FeelUi.Gold);
@@ -92,7 +92,11 @@ public sealed class FeelHudHotbar
         else
         {
             if (GrabberPole.Owned)
-                Add("POLE", pad ? "D-L" : "V", onFoot ? "READY" : "ON FOOT", onFoot, FeelUi.Gold);
+                Add("GRABBY", pad ? "D-L" : "V", onFoot ? "READY" : "ON FOOT", onFoot, FeelUi.Gold);
+            if (RocketBlades.Hotbar(out string boostDetail, out bool boostReady))
+                Add("BOOST", pad ? "LB" : "Q", onFoot ? boostDetail : "ON FOOT", onFoot && boostReady, FeelUi.Gold);
+            if (CompactorPack.Hotbar(out string packDetail, out bool packReady))
+                Add("PACK", pad ? "Y" : "C", packDetail, onFoot && packReady, FeelUi.GoodGreen);
             int traps = GameSession.GetConsumable(RaccoonTrap.ConsumableId);
             if (traps > 0)
                 Add("TRAP", pad ? "D-R" : "T", "x" + traps, onFoot && !NightPlayers.IsIndoors(PlayerController.Local), FeelUi.GoodGreen); // coop:allow(local) local-only HUD checks the local player's indoor state

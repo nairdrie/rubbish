@@ -119,6 +119,8 @@ public class TruckControllerV2 : NetworkBehaviour, IInteractable
     public static Bounds BodyBoxMetres => new Bounds(
         new Vector3(0f, (BodyBottomY + BodyTopY) * 0.5f, (BodyRearZ + BodyNoseZ) * 0.5f),
         new Vector3(BodyHalfWidth * 2f, BodyTopY - BodyBottomY, BodyNoseZ - BodyRearZ));
+    /// <summary>Physical envelope of this truck's selected body; static BodyBoxMetres is the rear-loader template.</summary>
+    public Bounds ModelBodyBoxMetres => GetComponent<TruckModelVisuals>() is TruckModelVisuals model ? model.BodyBounds : BodyBoxMetres;
     const float BodyBottomY = 0.41f;
 
     void OnEnable() { if (!all.Contains(this)) all.Add(this); }
@@ -410,7 +412,7 @@ public class TruckControllerV2 : NetworkBehaviour, IInteractable
     const float BodyRearZ = -2.2f, BodyNoseZ = 3.8f, BodyHalfWidth = 1.3f, BodyTopY = 3.31f;
 
     /// <summary>World point at an offset in metres from the truck root (ignores the root's scale).</summary>
-    Vector3 TruckPoint(Vector3 metres) => transform.position + transform.rotation * metres;
+    Vector3 TruckPoint(Vector3 metres) => ShopModKit.TruckPoint(transform, metres);
 
     /// <summary>
     /// DriverEjectPosition if a player capsule fits there (on real ground, not through a wall); else the
@@ -419,7 +421,7 @@ public class TruckControllerV2 : NetworkBehaviour, IInteractable
     Vector3 FindSafeEjectPosition()
     {
         Vector3 eject = driverEjectPosition != null
-            ? Quaternion.Inverse(transform.rotation) * (driverEjectPosition.transform.position - transform.position)
+            ? ShopModKit.ToTruckMetres(transform, driverEjectPosition.transform.position)
             : new Vector3(-1.61f, 0.85f, 3.04f);
         float sideX = Mathf.Max(Mathf.Abs(eject.x), BodyHalfWidth + 0.35f);
         float driverSign = eject.x <= 0f ? -1f : 1f;
@@ -538,6 +540,7 @@ public class TruckControllerV2 : NetworkBehaviour, IInteractable
         TruckImpact.Ensure(this);
 
         // adjust CoM
+        rigidBody.ResetCenterOfMass(); // a model may already have installed its smaller collider set before Start
         var com = rigidBody.centerOfMass;
         com.y += centreOfGravityOffset;
         rigidBody.centerOfMass = com;
@@ -576,7 +579,7 @@ public class TruckControllerV2 : NetworkBehaviour, IInteractable
             return;
         }
         if (!IsLocalPlayerSeated) return;
-        if (PlayerController.IsUIBlocking || SceneController.IsTransitioning) return;
+        if ((PlayerController.IsUIBlocking && !FullMap.DrivingAllowed) || SceneController.IsTransitioning) return;
 
         if (GameControls.Down(hornKey, GameControls.Action.Horn) && Time.time >= nextHornTime)
         {
@@ -657,7 +660,8 @@ public class TruckControllerV2 : NetworkBehaviour, IInteractable
         if (!LocalDrives) return;
 
         // Laptop / menus / scene fade: ignore drive input and hold the truck.
-        if ((PlayerController.IsUIBlocking && InputOverride == null) || SceneController.IsTransitioning)
+        // Laptop / menus / scene fade: ignore drive input and hold the truck. The full map alone does not: you can drive with it open.
+        if ((PlayerController.IsUIBlocking && InputOverride == null && !FullMap.DrivingAllowed) || SceneController.IsTransitioning)
         {
             ApplyAllBrakes(brakeTorque);
             return;
@@ -689,7 +693,7 @@ public class TruckControllerV2 : NetworkBehaviour, IInteractable
             }
             float v2 = forwardSpeed * forwardSpeed;
             if (v2 > 0.01f)
-                currentSteerRange = Mathf.Min(currentSteerRange, Mathf.Atan(LateralWheelbase * maxLateralAccel / v2) * Mathf.Rad2Deg);
+                currentSteerRange = Mathf.Min(currentSteerRange, Mathf.Atan(LateralWheelbase * TruckModelVisuals.ScaleFor(transform).z * maxLateralAccel / v2) * Mathf.Rad2Deg);
         }
 
         bool neutral = Mathf.Abs(vInput) <= TruckCoastRules.InputDeadZone;
@@ -700,7 +704,7 @@ public class TruckControllerV2 : NetworkBehaviour, IInteractable
 
         foreach (var wheel in wheels)
         {
-            if (wheel == null || wheel.WheelCollider == null) continue;
+            if (wheel == null || wheel.WheelCollider == null || !wheel.WheelCollider.enabled) continue;
             if (wheel.steerable)
                 wheel.WheelCollider.steerAngle = hInput * currentSteerRange;
 
@@ -720,7 +724,7 @@ public class TruckControllerV2 : NetworkBehaviour, IInteractable
         {
             bool grounded = false;
             foreach (var wheel in wheels)
-                if (wheel != null && wheel.WheelCollider != null && wheel.WheelCollider.isGrounded) { grounded = true; break; }
+                if (wheel != null && wheel.WheelCollider != null && wheel.WheelCollider.enabled && wheel.WheelCollider.isGrounded) { grounded = true; break; }
             Vector3 planar = Vector3.ProjectOnPlane(rigidBody.linearVelocity, Vector3.up);
             float loss = TruckCoastRules.SpeedLoss(planar.magnitude, vInput, grounded, Time.fixedDeltaTime);
             if (loss > 0f) rigidBody.AddForce(-planar.normalized * loss, ForceMode.VelocityChange);
@@ -749,7 +753,7 @@ public class TruckControllerV2 : NetworkBehaviour, IInteractable
         if (wheels == null) return;
         foreach (var wheel in wheels)
         {
-            if (wheel == null || wheel.WheelCollider == null) continue;
+            if (wheel == null || wheel.WheelCollider == null || !wheel.WheelCollider.enabled) continue;
             wheel.WheelCollider.motorTorque = 0f;
             wheel.WheelCollider.brakeTorque = torque;
         }

@@ -1,8 +1,9 @@
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 
-/// <summary>A renderer-only handmade workshop prop. Gameplay and ownership are attached by WorkshopWorld.</summary>
+/// <summary>A renderer-only handmade prop (shop decor, the Monument). Gameplay and ownership are attached by WorkshopWorld.</summary>
 public sealed class WorkshopModel : MonoBehaviour
 {
     public int lot = -1;
@@ -11,8 +12,6 @@ public sealed class WorkshopModel : MonoBehaviour
     public Transform movingPart;
     public float spinDegrees;
     public TMP_Text businessLabel;
-    Renderer[] constructionParts;
-    float progress = 1f;
 
     public Transform Anchor(string name)
     {
@@ -20,15 +19,30 @@ public sealed class WorkshopModel : MonoBehaviour
         return null;
     }
 
-    /// <summary>Foundation first, then structure, details and trim. Reversible; no model or material allocation.</summary>
-    public void SetProgress(float value)
+    /// <summary>Show the piece being 3D-printed: its parts appear from the ground up over <paramref name="seconds"/>.
+    /// Renderers only (no model or material allocation); an interrupted print just shows everything.</summary>
+    public void PrintIn(float seconds)
     {
-        progress = float.IsNaN(value) ? 0f : Mathf.Clamp01(value);
-        if (constructionParts == null) constructionParts = GetComponentsInChildren<Renderer>(true);
-        int visible = Mathf.Max(1, Mathf.CeilToInt(constructionParts.Length * progress));
-        for (int i = 0; i < constructionParts.Length; i++)
-            if (constructionParts[i] != null) constructionParts[i].enabled = i < visible;
+        StopAllCoroutines();
+        if (isActiveAndEnabled && seconds > 0f) StartCoroutine(PrintRoutine(seconds));
     }
+
+    IEnumerator PrintRoutine(float seconds)
+    {
+        var parts = GetComponentsInChildren<Renderer>(true);
+        System.Array.Sort(parts, (a, b) => a.bounds.min.y.CompareTo(b.bounds.min.y));
+        foreach (var part in parts) part.enabled = false;
+        int shown = 0;
+        for (float e = 0f; e < seconds; e += Time.deltaTime)
+        {
+            int want = Mathf.Min(parts.Length, Mathf.CeilToInt(parts.Length * (e / seconds)));
+            for (; shown < want; shown++) if (parts[shown] != null) parts[shown].enabled = true;
+            yield return null;
+        }
+        for (; shown < parts.Length; shown++) if (parts[shown] != null) parts[shown].enabled = true;
+    }
+
+    void OnDisable() { foreach (var part in GetComponentsInChildren<Renderer>(true)) part.enabled = true; } // never leave a half-printed piece
 
     public void SetBusinessName(string value)
     {
@@ -37,17 +51,17 @@ public sealed class WorkshopModel : MonoBehaviour
 
     void Update()
     {
-        if (progress >= 1f && movingPart != null && spinDegrees != 0f)
+        if (movingPart != null && spinDegrees != 0f)
             movingPart.Rotate(Vector3.up, spinDegrees * Time.deltaTime, Space.Self);
     }
 }
 
 /// <summary>
-/// Metre-scale recycled-wood, enamel and steel workshop models. Every part is visual-only: callers add one deliberate
+/// Metre-scale recycled-wood, enamel and steel decor models. Every part is visual-only: callers add one deliberate
 /// collision/interaction volume where needed, never a collider per screw. +Z is the face and Y=0 is floor/support.
 /// DisplaySlotN points forward and marks the support surface, matching DisplayPiece's existing mount convention.
 /// </summary>
-public static class WorkshopModels
+public static partial class WorkshopModels
 {
     static readonly Color Wood = new Color(.48f, .29f, .14f), WoodLight = new Color(.72f, .51f, .28f);
     static readonly Color Steel = new Color(.53f, .62f, .65f), Dark = new Color(.12f, .17f, .18f);
@@ -55,10 +69,10 @@ public static class WorkshopModels
     static readonly Color Green = new Color(.28f, .55f, .39f), Coral = new Color(.88f, .34f, .22f);
     static readonly Color Blue = new Color(.24f, .48f, .65f);
 
+    /// <summary>The eleven decor pieces (WorkshopCatalog's non-retired entries). The Monument is <c>BuildMonument</c>.</summary>
     public static readonly string[] RecipeIds = {
         "bottle_cabinet", "rotating_pedestal", "wall_display", "grand_display", "business_sign",
-        "junk_sculpture", "sculpture_tower", "sculpture_monument", "bag_hoop", "sorting_chute",
-        "break_sofa", "scrap_radio", "spring_launcher", "doorbell"
+        "bag_hoop", "sorting_chute", "break_sofa", "scrap_radio", "spring_launcher", "doorbell"
     };
 
     public static bool IsDisplay(string id) => id == "bottle_cabinet" || id == "rotating_pedestal" || id == "wall_display" || id == "grand_display";
@@ -77,9 +91,6 @@ public static class WorkshopModels
             case "wall_display": WallDisplay(k); break;
             case "grand_display": GrandDisplay(k); break;
             case "business_sign": Sign(k, businessName); break;
-            case "junk_sculpture": Sculpture(k, 1); break;
-            case "sculpture_tower": Sculpture(k, 2); break;
-            case "sculpture_monument": Sculpture(k, 3); break;
             case "bag_hoop": Hoop(k); break;
             case "sorting_chute": Chute(k); break;
             case "break_sofa": Sofa(k); break;
@@ -89,40 +100,6 @@ public static class WorkshopModels
         }
         if (k.root.Find("Action") == null) k.Anchor("Action", new Vector3(0f, 0f, 1f));
         return k.Finish(id);
-    }
-
-    public static WorkshopModel BuildBench(Transform parent, Color accent)
-    {
-        var k = new Kit("Handmade Workbench", parent, accent);
-        foreach (float x in new[] { -.72f, .72f }) foreach (float z in new[] { -.28f, .28f })
-            k.Box("Leg", new Vector3(x, .46f, z), new Vector3(.085f, .92f, .085f), Dark);
-        k.Box("Lower tool shelf", new Vector3(0, .2f, 0), new Vector3(1.55f, .055f, .66f), Wood);
-        k.Box("Thick worktop", new Vector3(0, .96f, 0), new Vector3(1.72f, .09f, .78f), WoodLight);
-        k.Box("Front apron", new Vector3(0, .81f, .34f), new Vector3(1.58f, .2f, .045f), accent);
-        foreach (float x in new[] { -.75f, .75f }) k.Box("Pegboard support", new Vector3(x, 1.29f, -.34f), new Vector3(.055f, .67f, .05f), Dark);
-        k.Box("Pegboard", new Vector3(0, 1.37f, -.36f), new Vector3(1.56f, .54f, .035f), Wood);
-        for (int x = -5; x <= 5; x++) for (int y = 0; y < 3; y++)
-            k.Cyl("Peg hole", new Vector3(x * .125f, 1.19f + y * .14f, -.337f), .018f, .005f, Dark, new Vector3(90f, 0, 0));
-        k.Box("Hammer handle", new Vector3(-.55f, 1.35f, -.3f), new Vector3(.035f, .25f, .035f), WoodLight, new Vector3(0, 0, -12f));
-        k.Box("Hammer head", new Vector3(-.525f, 1.48f, -.3f), new Vector3(.14f, .06f, .06f), Steel);
-        k.Beam("Wrench", new Vector3(.52f, 1.24f, -.3f), new Vector3(.59f, 1.48f, -.3f), .033f, Steel);
-        k.Ring("Wrench jaw", new Vector3(.59f, 1.48f, -.3f), .085f, .018f, Steel, Quaternion.Euler(90, 0, 0));
-        k.Box("Blueprint", new Vector3(-.49f, 1.01f, .07f), new Vector3(.34f, .007f, .38f), Blue, new Vector3(0, -12f, 0));
-        for (int i = 0; i < 3; i++) k.Box("Blueprint lines", new Vector3(-.5f, 1.015f, -.045f + i * .09f), new Vector3(.22f, .003f, .005f), Cream);
-        k.Box("Bench vise base", new Vector3(.62f, 1.045f, .2f), new Vector3(.2f, .08f, .17f), Dark);
-        foreach (float x in new[] { .565f, .68f }) k.Box("Vise jaw", new Vector3(x, 1.115f, .2f), new Vector3(.06f, .1f, .18f), Steel);
-        k.Cyl("Vise screw", new Vector3(.77f, 1.055f, .2f), .025f, .2f, Steel, new Vector3(0, 0, 90));
-        k.Beam("Vise handle", new Vector3(.88f, .98f, .2f), new Vector3(.88f, 1.12f, .2f), .018f, Steel);
-        for (int i = 0; i < 3; i++)
-        {
-            k.Box("Salvage bin", new Vector3(-.46f + i * .46f, .34f, .05f), new Vector3(.38f, .23f, .43f), i == 0 ? Blue : i == 1 ? Green : Coral);
-            k.Box("Bin label", new Vector3(-.46f + i * .46f, .36f, .27f), new Vector3(.2f, .07f, .006f), Cream);
-        }
-        k.Text("Bench title", "MAKE SOMETHING", new Vector3(0, .82f, .368f), new Vector2(1.26f, .14f), Cream);
-        k.Anchor("Action", new Vector3(0, 0, 1.05f));
-        k.Anchor("Project", new Vector3(.02f, 1.013f, -.01f));
-        k.Anchor("ProjectLabel", new Vector3(0, 1.73f, -.32f));
-        return k.Finish("workbench");
     }
 
     static void Cabinet(Kit k)
@@ -206,46 +183,6 @@ public static class WorkshopModels
         foreach (float x in new[] { -.79f, .79f }) k.Ball("Rivet", new Vector3(x, 1.6f, .09f), .04f, Steel);
     }
 
-    static void Sculpture(Kit k, int tier)
-    {
-        k.Cyl("Concrete plinth", new Vector3(0, .075f, 0), tier == 3 ? 1.08f : .8f, .15f, Steel);
-        float y = .2f;
-        for (int level = 0; level < tier; level++)
-        {
-            float width = .54f - level * .07f;
-            k.Box("Tin torso", new Vector3(0, y + .23f, 0), new Vector3(width, .42f, .3f), level % 2 == 0 ? k.accent : Coral, new Vector3(0, level * 19f, (level % 2 == 0 ? 1 : -1) * 7f));
-            k.Cyl("Hubcap belt", new Vector3(0, y + .45f, 0), width + .12f, .06f, Steel);
-            foreach (float s in new[] { -1f, 1f })
-            {
-                Vector3 hand = new Vector3(s * (width * .5f + .18f), y + .3f + s * .09f, .03f);
-                k.Beam("Scrap arm", new Vector3(s * width * .5f, y + .28f, 0), hand, .055f, Gold);
-                k.Ring("Washer hand", hand, .14f, .035f, Dark, Quaternion.Euler(90, 0, 0));
-            }
-            y += .52f;
-        }
-        k.Ball("Teapot head", new Vector3(0, y + .11f, 0), new Vector3(.42f, .3f, .33f), Cream);
-        foreach (float x in new[] { -.092f, .092f })
-        {
-            k.Cyl("Button eye", new Vector3(x, y + .16f, .153f), .085f, .023f, Dark, new Vector3(90, 0, 0));
-            k.Ball("Eye glint", new Vector3(x + .013f, y + .176f, .17f), .026f, Cream);
-        }
-        k.Box("Crooked grin", new Vector3(0, y + .035f, .161f), new Vector3(.16f, .025f, .025f), Coral, new Vector3(0, 0, -8f));
-        k.Cyl("Saucepan hat", new Vector3(0, y + .29f, 0), .48f, .095f, k.accent);
-        if (tier >= 2) k.Beam("Hat handle", new Vector3(.18f, y + .31f, 0), new Vector3(.43f, y + .39f, 0), .04f, Dark);
-        if (tier == 3)
-        {
-            for (int i = 0; i < 7; i++)
-            {
-                float a = (i * 26f - 78f) * Mathf.Deg2Rad;
-                Vector3 tip = new Vector3(Mathf.Sin(a) * .53f, y + .29f + Mathf.Cos(a) * .44f, -.12f);
-                k.Beam("Spoon sunray", new Vector3(0, y + .26f, -.12f), tip, .022f, Gold);
-                k.Ball("Spoon bowl", tip, new Vector3(.10f, .13f, .035f), Steel);
-            }
-        }
-        k.Box("Art plaque", new Vector3(0, .135f, .37f), new Vector3(.38f, .1f, .025f), Gold);
-        k.Text("Art title", tier == 1 ? "SCRAP PAL" : tier == 2 ? "HIGHER PURPOSE" : "TRASHCENDENCE", new Vector3(0, .137f, .386f), new Vector2(.35f, .07f), Dark);
-    }
-
     static void Hoop(Kit k)
     {
         k.Box("Weighted foot", new Vector3(0, .07f, -.33f), new Vector3(.9f, .14f, .52f), Dark);
@@ -326,9 +263,9 @@ public static class WorkshopModels
         for (int i = -2; i <= 2; i++) k.Box("Grip strip", new Vector3(i * .105f, .833f, .025f), new Vector3(.045f, .012f, .40f), Cream, new Vector3(-16f, 0, 0));
         var muzzle = k.Anchor("Muzzle", new Vector3(0, .98f, .14f));
         muzzle.localRotation = Quaternion.LookRotation(new Vector3(0, .9f, .45f).normalized, Vector3.up);
-        // The host's 1.1-second ballistic arc descends through the adjacent hoop, below the annex roof.
+        // The host's 1.1-second ballistic arc descends through the hoop that stands LaunchDistance in front (WorkshopWorld.StreetPlacement).
         // This is an aiming point, not a second launch surface; the bag keeps its normal physics afterwards.
-        k.Anchor("Landing", new Vector3(0, .93f, 3.10f));
+        k.Anchor("Landing", new Vector3(0, .93f, WorkshopWorld.LaunchDistance));
         k.Anchor("Action", new Vector3(0, 0, 1f));
         k.Text("Warning", "BOING!", new Vector3(0, .18f, .357f), new Vector2(.55f, .13f), Gold);
     }
@@ -369,7 +306,7 @@ public static class WorkshopModels
     /// <summary>
     /// TMP caches its renderer and font in Awake. Keep the default shared font material;
     /// outline setters instantiate a material and must not be used for these plain labels.
-    /// Hidden depot interiors and inactive construction bays are normal, so initialize the label
+    /// Hidden depot interiors are normal, so initialize the label
     /// unparented, then attach it synchronously. No inactive gameplay hierarchy is ever activated.
     /// </summary>
     public static TextMeshPro MakeLabel(Transform parent, string name, string value, float size, Color color)
@@ -433,6 +370,9 @@ public static class WorkshopModels
             text.transform.localPosition = p; text.transform.localRotation = Quaternion.Euler(0, 180, 0);
             text.rectTransform.sizeDelta = size; text.enableAutoSizing = true; text.fontSizeMin = .3f; text.fontSizeMax = 3f;
             text.alignment = TextAlignmentOptions.Center; text.richText = false;
+            // lay it out now: until then the renderer keeps the bounds of the unboxed 3-point mesh MakeLabel generated,
+            // which is metres wide (anything that frames or measures a fresh model would see that)
+            text.ForceMeshUpdate(true);
             return text;
         }
         public WorkshopModel Finish(string id)

@@ -12,8 +12,12 @@ using UnityEngine.Rendering;
 /// <item>indoor lighting while the local camera is inside a shop (the garage's flat ambient, no fog, no sun), restored
 /// on the way out;</item>
 /// <item>business colours on trucks (body paint) and players (Chuck's cap, shirt and sleeves);</item>
-/// <item>the old RUBBISH CO. building on the depot pad becomes the Town Yard (its door to ShopScene is closed).</item>
+/// <item>a pre-coastal town's old RUBBISH CO. building (if one is still in the scene) is closed in the one world.</item>
 /// </list>
+/// <para><b>Legacy scene flow (solo):</b> the host loads this scene next to the town too
+/// (<see cref="DepotRowNet"/>), but only its street side is used: lot 1 is the player's shop with their name and colour
+/// on the sign, its roller door leads to ShopScene, the other lots are shuttered FOR LEASE units
+/// (<see cref="DepotFlowRules.LookFor"/>). No pocket interior, indoor lighting, truck or player tint runs.</para>
 /// </summary>
 [DefaultExecutionOrder(900)] // after DayNightSky's Update so indoor lighting wins this frame
 public class DepotRowScene : MonoBehaviour
@@ -41,7 +45,9 @@ public class DepotRowScene : MonoBehaviour
     Light savedSun;
     bool savedSunEnabled;
 
-    float nextTint;
+    float nextTint, nextLegacySign;
+    string legacyOwner = "", legacyName = DepotBusinesses.DefaultName;
+    int legacyColor;
     bool townYardDone;
     readonly List<PlayerController> players = new List<PlayerController>(8);
     static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
@@ -61,10 +67,17 @@ public class DepotRowScene : MonoBehaviour
         int localLot = active ? DepotRowWorld.LocalLot : -1;
         int here = active ? DepotRowWorld.LocalInterior : -1;
         int pending = active ? DepotRowWorld.PendingInterior : -1;
+        bool legacy = !active && DepotRowWorld.LegacyStreet;
+        if (legacy && Time.unscaledTime >= nextLegacySign) RefreshLegacySign();
         for (int i = 0; i < lots.Length; i++)
         {
             var l = lots[i];
             if (l == null) continue;
+            if (legacy)
+            {
+                l.PresentLegacy(DepotFlowRules.LookFor(DepotFlow.LegacyScenes, i, false, false), legacyOwner, legacyName, legacyColor);
+                continue;
+            }
             DepotLotState s = default;
             bool have = active && net.TryGetLot(i, out s);
             l.Present(have, s, localLot, here, pending);
@@ -85,6 +98,24 @@ public class DepotRowScene : MonoBehaviour
         bool inside = DepotRowWorld.Active && (DepotRowWorld.LocalInterior >= 0 || DepotRowWorld.PendingInterior >= 0);
         if (inside) ApplyIndoorLighting();
         else EndIndoorLighting();
+    }
+
+    // ------------------------------------------------------------------ the legacy shop's sign
+
+    /// <summary>
+    /// Whose shop lot 1 is in the legacy flow: the host's business (solo: yours). Same sources as a claimed lot's sign
+    /// (<see cref="DepotBusinesses"/>), so a rename on the garage laptop shows on the street the next time you step out.
+    /// </summary>
+    void RefreshLegacySign()
+    {
+        nextLegacySign = Time.unscaledTime + 0.5f;
+        ulong host = NetworkManager.ServerClientId;
+        legacyOwner = DepotBusinesses.OwnerNameFor(host);
+        string name = DepotBusinesses.NameFor(host);
+        var nm = NetBoot.Manager;
+        if (name == null && nm != null && nm.IsServer) name = DepotBusinesses.Clean(GameSession.BusinessName);
+        legacyName = name ?? DepotBusinesses.DefaultName;
+        legacyColor = DepotBusinesses.ColorIndexFor(host, DepotFlowRules.LegacyShopLot);
     }
 
     // ------------------------------------------------------------------ lighting

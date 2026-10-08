@@ -163,7 +163,10 @@ public static class Setup_Shop
                 if (ScrapazonStore.TryBuy(it.id) != ScrapazonPurchase.Ok) break;
             }
         }
-        Debug.Log("[Shop] Bought everything (2 of each consumable).");
+        // Personal gear is printed in SolidWaste 3D now (blueprints), not bought: give that too (and the disk with it).
+        bool callings = Workshop.DebugSetCallings(true, out string why);
+        ShopEffects.ApplyAll();
+        Debug.Log("[Shop] Bought everything (2 of each consumable)" + (callings ? " and printed every available blueprint." : ". Blueprints NOT printed: " + why));
     }
 
     [MenuItem("Rubbish/Debug/Shop/Reset Upgrades + Pockets")]
@@ -175,8 +178,92 @@ public static class Setup_Shop
             if (it.IsUpgrade) GameSession.SetUpgradeLevel(it.id, 0);
             else if (it.IsConsumable) GameSession.AddConsumable(it.id, -GameSession.GetConsumable(it.id));
         }
+        bool callings = ResetCallingsAndGear(out string why);
         ShopEffects.ApplyAll();
-        Debug.Log("[Shop] Upgrades + consumables reset.");
+        Debug.Log("[Shop] Upgrades + consumables reset" + (callings ? ", blueprints and personal gear too." : ". Blueprints NOT reset: " + why));
+    }
+
+    /// <summary>The tree only ever raises upgrade levels, so a reset clears the tree first and then the gear ids it drives.</summary>
+    static bool ResetCallingsAndGear(out string why)
+    {
+        if (!Workshop.DebugSetCallings(false, out why)) return false;
+        foreach (var node in CallingCatalog.All)
+            if (!string.IsNullOrEmpty(node.upgradeId)) GameSession.SetUpgradeLevel(node.upgradeId, 0);
+        return true;
+    }
+
+    // ---- SolidWaste 3D (the laptop's third tab): the disk, the blueprint tree, the Monument
+
+    [MenuItem("Rubbish/Debug/Shop/SolidWaste: Install It (skip the floppy)")]
+    static void InstallDisk()
+    {
+        if (!Application.isPlaying) { Debug.LogWarning("[Shop] Enter play mode first."); return; }
+        Debug.Log(Workshop.DebugSetDisk(true, out string why) ? "[Shop] SolidWaste 3D installed: the laptop has its third tab." : "[Shop] Not installed: " + why);
+    }
+
+    [MenuItem("Rubbish/Debug/Shop/SolidWaste: Remove It (clears prints, restarts the 10-bag hunt)")]
+    static void RemoveDisk()
+    {
+        if (!Application.isPlaying) { Debug.LogWarning("[Shop] Enter play mode first."); return; }
+        bool ok = Workshop.DebugSetDisk(false, out string why);
+        if (ok) foreach (var node in CallingCatalog.All) if (!string.IsNullOrEmpty(node.upgradeId)) GameSession.SetUpgradeLevel(node.upgradeId, 0);
+        GameSession.SetCounter(SolidWasteApp.SeenCounter, 0);
+        ShopEffects.ApplyAll();
+        Debug.Log(ok ? "[Shop] Disk removed: no print tab, no blueprints, no Monument. A floppy turns up within the next ten sorted bags." : "[Shop] Not removed: " + why);
+    }
+
+    [MenuItem("Rubbish/Debug/Shop/SolidWaste: Drop A Floppy On The Sorting Table")]
+    static void DropDisk()
+    {
+        if (!Application.isPlaying) { Debug.LogWarning("[Shop] Enter play mode first."); return; }
+        Debug.Log(DiskItem.DebugDrop() ? "[Shop] A floppy disk popped out on the sorting table." : "[Shop] No sorting table in the loaded scenes (go to your garage).");
+    }
+
+    [MenuItem("Rubbish/Debug/Shop/Blueprints: Print Everything Available (free)")]
+    static void BuildAllCallings()
+    {
+        if (!Application.isPlaying) { Debug.LogWarning("[Shop] Enter play mode first."); return; }
+        bool ok = Workshop.DebugSetCallings(true, out string why);
+        ShopEffects.ApplyAll();
+        Debug.Log(ok ? "[Shop] Every available blueprint printed (no parts charged)." : "[Shop] Blueprints not printed: " + why);
+    }
+
+    [MenuItem("Rubbish/Debug/Shop/Blueprints: Reset Tree + Personal Gear")]
+    static void ResetCallings()
+    {
+        if (!Application.isPlaying) { Debug.LogWarning("[Shop] Enter play mode first."); return; }
+        bool ok = ResetCallingsAndGear(out string why);
+        ShopEffects.ApplyAll();
+        Debug.Log(ok ? "[Shop] Blueprint tree and personal gear reset." : "[Shop] Blueprints not reset: " + why);
+    }
+
+    [MenuItem("Rubbish/Debug/Shop/Blueprints: Give 3 Of Every Recipe Part")]
+    static void GiveMaterials()
+    {
+        if (!Application.isPlaying) { Debug.LogWarning("[Shop] Enter play mode first."); return; }
+        Debug.Log(Workshop.DebugAddParts(3, out string why) ? "[Shop] +3 of every part a blueprint recipe names (and of a can, a bottle, a beer bottle and a newspaper) in the inventory." : "[Shop] Parts not added: " + why);
+    }
+
+    [MenuItem("Rubbish/Debug/Shop/Monument: +1 Tier (free)")]
+    static void MonumentUp()
+    {
+        if (!Application.isPlaying) { Debug.LogWarning("[Shop] Enter play mode first."); return; }
+        int tier = Mathf.Min(MonumentCatalog.MaxLevel, GameSession.WorkshopMonument + 1);
+        Debug.Log(Workshop.DebugSetMonument(tier, out string why) ? $"[Shop] Monument is tier {tier}: {MonumentCatalog.Tier(tier)?.name}. Walk outside to watch it print." : "[Shop] Monument not changed: " + why);
+    }
+
+    [MenuItem("Rubbish/Debug/Shop/Monument: Reset To Nothing")]
+    static void MonumentReset()
+    {
+        if (!Application.isPlaying) { Debug.LogWarning("[Shop] Enter play mode first."); return; }
+        Debug.Log(Workshop.DebugSetMonument(0, out string why) ? "[Shop] Monument removed." : "[Shop] Monument not changed: " + why);
+    }
+
+    [MenuItem("Rubbish/Debug/Shop/Monument: Give 60 Scrap Of Each Type")]
+    static void GiveScrap()
+    {
+        if (!Application.isPlaying) { Debug.LogWarning("[Shop] Enter play mode first."); return; }
+        Debug.Log(Workshop.DebugAddScrap(60, out string why) ? "[Shop] +60 cans, bottles, beer bottles and newspapers in the inventory (ignores the shelf cap)." : "[Shop] Scrap not added: " + why);
     }
 
     [MenuItem("Rubbish/Debug/Shop/Get Rabies (test the shot)")]

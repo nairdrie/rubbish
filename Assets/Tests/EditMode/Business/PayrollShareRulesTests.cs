@@ -51,6 +51,7 @@ public sealed class PayrollShareRulesTests
     [TestCase("clean_streets")]
     [TestCase("night_shift")]
     [TestCase("event_prize")]
+    [TestCase("raccoon_crew")]
     public void PositiveOperatingIncomeEarnsShares(string id) => Assert.IsTrue(Eligible("credit", 1, id));
 
     [TestCase("payroll_wage")]
@@ -60,6 +61,9 @@ public sealed class PayrollShareRulesTests
     [TestCase("purchase")]
     [TestCase("refund")]
     [TestCase("debug")]
+    [TestCase("kevin_fees")]
+    [TestCase("raccoon_antics")]
+    [TestCase("hutch_food")]
     [TestCase(null)]
     public void WagesSharesRefundsAndUnknownCashNeverRecurse(string id) => Assert.IsFalse(Eligible("credit", 10000, id));
 

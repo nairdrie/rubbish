@@ -58,7 +58,9 @@ public static class MapRaster
         {
             case Districts.MildlyPleasant: return MildlyPleasant;
             case Districts.MinivanMeadows: return MinivanMeadows;
+            case Districts.CouponCommons: return Hex(0xDFC49C);
             case Districts.SnootingtonHills: return Snootington;
+            case Districts.StackingtonHeights: return Hex(0xA6C7CB);
             case Districts.BillionaireBluffs: return Bluffs;
         }
         return Wild;
@@ -74,6 +76,8 @@ public static class MapRaster
 
         // 1. district tints (tier order: richer districts paint over the overlap, like Districts.AtPosition)
         foreach (var dist in d.districts) c.Rects(new[] { dist.rect }, DistrictTint(dist.id), 1f);
+        // Coastal water sits beneath bridge roads, not over them. Legacy pool rects retain their original top layer.
+        c.Areas(d, MapAreaKind.Water, Water);
         // 2. lots, a touch lighter
         c.Rects(Kind(d, MapAreaKind.Lot), new Color32(255, 255, 240, 255), 0.16f);
         // 3. park, greens, courts, hedges, sand, helipads
@@ -89,11 +93,14 @@ public static class MapRaster
         // 5. curbs and sidewalks
         c.Rects(Kind(d, MapAreaKind.Curb), CurbColor, 1f);
         c.Rects(Kind(d, MapAreaKind.Sidewalk), Sidewalk, 1f);
+        c.Areas(d, MapAreaKind.Sidewalk, Sidewalk);
+        c.Areas(d, MapAreaKind.ParkPath, Sidewalk);
         // 6. roads + curb edge + centre dashes
         var roadRects = new List<Rect>(d.roads.Count);
         var bulbs = new List<Rect>();
         foreach (var r in d.roads)
         {
+            if (r.points != null && r.points.Length >= 2) continue;
             // cul-de-sac bulbs and turnarounds (square "plaza" rects of 18 m+) are drawn round
             if (r.axis == 2 && r.rect.width >= 18f && r.rect.height >= 18f) bulbs.Add(r.rect);
             else roadRects.Add(r.rect);
@@ -101,6 +108,11 @@ public static class MapRaster
         var padRects = Kind(d, MapAreaKind.DepotPad);
         var roadCov = c.Coverage(roadRects);
         var driveCov = c.Coverage(Concat(roadRects, padRects));
+        foreach (var r in d.roads) if (r.points != null && r.points.Length >= 2)
+        {
+            c.AddPolyline(roadCov, r.points, r.halfWidth);
+            c.AddPolyline(driveCov, r.points, r.halfWidth);
+        }
         foreach (var b in bulbs)
         {
             float rad = Mathf.Min(b.width, b.height) * 0.5f;
@@ -110,6 +122,7 @@ public static class MapRaster
         c.Composite(roadCov, Road, 1f);
         c.Edges(roadCov, driveCov, RoadEdge);
         c.Rects(Dashes(d), Dash, 1f);
+        c.PolylineDashes(d);
         // 7. the depot pad with its hazard-stripe border
         c.Rects(padRects, Pad, 1f);
         foreach (var p in padRects) c.Hazard(p, HazardBorder);
@@ -121,7 +134,7 @@ public static class MapRaster
             else if (a.kind == MapAreaKind.BigHouse) c.RoundRect(a.rect, 1.6f, RoofOutline, RoofBig);
         }
         // 9. water (rounded), hedges and walls on top of lawns, tunnels
-        foreach (var a in d.areas) if (a.kind == MapAreaKind.Water) c.RoundRect(a.rect, Mathf.Min(a.rect.width, a.rect.height) * 0.5f, Hex(0x3F8FB3), Water);
+        foreach (var a in d.areas) if (a.kind == MapAreaKind.Water && (a.points == null || a.points.Length < 2)) c.RoundRect(a.rect, Mathf.Min(a.rect.width, a.rect.height) * 0.5f, Hex(0x3F8FB3), Water);
         c.Rects(Kind(d, MapAreaKind.Hedge), Hedge, 1f);
         c.Rects(Kind(d, MapAreaKind.Fence), Fence, 1f);
         c.Rects(Kind(d, MapAreaKind.StoneWall), Stone, 1f);
@@ -138,7 +151,7 @@ public static class MapRaster
     static List<Rect> Kind(TownMapData d, MapAreaKind k)
     {
         var l = new List<Rect>();
-        foreach (var a in d.areas) if (a.kind == k) l.Add(a.rect);
+        foreach (var a in d.areas) if (a.kind == k && (a.points == null || a.points.Length < 2)) l.Add(a.rect);
         return l;
     }
 
@@ -217,6 +230,84 @@ public static class MapRaster
         public void Fill(Color32 c)
         {
             for (int i = 0; i < W * H; i++) { px[i * 3] = c.r / 255f; px[i * 3 + 1] = c.g / 255f; px[i * 3 + 2] = c.b / 255f; }
+        }
+
+        public void AddPolyline(float[] coverage, Vector2[] points, float radius)
+        {
+            float feather = .7f / ppm;
+            for (int i = 1; i < points.Length; i++)
+            {
+                var a = points[i - 1]; var b = points[i]; var delta = b - a;
+                int x0 = Mathf.Max(0, Mathf.FloorToInt((Mathf.Min(a.x, b.x) - radius - feather - bx) * ppm));
+                int x1 = Mathf.Min(W - 1, Mathf.CeilToInt((Mathf.Max(a.x, b.x) + radius + feather - bx) * ppm));
+                int y0 = Mathf.Max(0, Mathf.FloorToInt((Mathf.Min(a.y, b.y) - radius - feather - bz) * ppm));
+                int y1 = Mathf.Min(H - 1, Mathf.CeilToInt((Mathf.Max(a.y, b.y) + radius + feather - bz) * ppm));
+                for (int y = y0; y <= y1; y++) for (int x = x0; x <= x1; x++)
+                {
+                    var p = new Vector2(bx + (x + .5f) / ppm, bz + (y + .5f) / ppm);
+                    var nearest = a + delta * Mathf.Clamp01(Vector2.Dot(p - a, delta) / Mathf.Max(.00001f, delta.sqrMagnitude));
+                    float amount = Mathf.Clamp01((radius + feather - Vector2.Distance(p, nearest)) / (2 * feather));
+                    int pixel = y * W + x; coverage[pixel] = Mathf.Max(coverage[pixel], amount);
+                }
+            }
+        }
+
+        public void Areas(TownMapData data, MapAreaKind kind, Color32 colour)
+        {
+            float[] coverage = null;
+            foreach (var area in data.areas)
+            {
+                if (area.kind != kind || area.points == null || area.points.Length < 2) continue;
+                if (coverage == null) coverage = new float[W * H];
+                if (area.halfWidth > 0) AddPolyline(coverage, area.points, area.halfWidth);
+                else AddPolygon(coverage, area.points);
+            }
+            if (coverage != null) Composite(coverage, colour, 1f);
+        }
+
+        void AddPolygon(float[] coverage, Vector2[] points)
+        {
+            var intersections = new List<float>();
+            for (int y = 0; y < H; y++)
+            {
+                intersections.Clear(); float z = bz + (y + .5f) / ppm;
+                for (int i = 0, j = points.Length - 1; i < points.Length; j = i++)
+                {
+                    var a = points[j]; var b = points[i];
+                    if ((a.y > z) == (b.y > z)) continue;
+                    intersections.Add(a.x + (b.x - a.x) * (z - a.y) / (b.y - a.y));
+                }
+                intersections.Sort();
+                for (int i = 1; i < intersections.Count; i += 2)
+                {
+                    int x0 = Mathf.Max(0, Mathf.FloorToInt((intersections[i - 1] - bx) * ppm));
+                    int x1 = Mathf.Min(W - 1, Mathf.CeilToInt((intersections[i] - bx) * ppm));
+                    for (int x = x0; x <= x1; x++) coverage[y * W + x] = 1;
+                }
+            }
+        }
+
+        public void PolylineDashes(TownMapData data)
+        {
+            float[] coverage = null;
+            foreach (var road in data.roads)
+            {
+                if (road.points == null || road.points.Length < 2) continue;
+                if (coverage == null) coverage = new float[W * H];
+                float travelled = 0;
+                for (int i = 1; i < road.points.Length; i++)
+                {
+                    var a = road.points[i - 1]; var b = road.points[i]; float length = Vector2.Distance(a, b);
+                    for (float start = Mathf.Floor(travelled / DashPeriod) * DashPeriod + DashLength; start < travelled + length; start += DashPeriod)
+                    {
+                        float from = Mathf.Max(0, start - travelled), to = Mathf.Min(length, start + DashLength - travelled);
+                        if (to <= from || length < .001f) continue;
+                        AddPolyline(coverage, new[] { Vector2.Lerp(a, b, from / length), Vector2.Lerp(a, b, to / length) }, DashWidth * .5f);
+                    }
+                    travelled += length;
+                }
+            }
+            if (coverage != null) Composite(coverage, Dash, 1);
         }
 
         void Blend(int i, Color32 c, float a)

@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Grabber pole (F3, Docs/Multiplayer.md §14.3; Scrapazon <see cref="ShopIds.GrabberPole"/>, gear). Press <b>V</b> on foot:
+/// The Grabby Hand (the grabber pole of F3, Docs/Multiplayer.md §14.3; <see cref="ShopIds.GrabberPole"/>, a Hauler calling
+/// since Docs/Progression.md §6.9: level 2 reaches further and YANKS, level 3 further still and grabs two bags; numbers in
+/// <see cref="HaulerTuning"/>, the reach checked on the host by the actor's own level). Press <b>V</b> on foot:
 /// <list type="number">
 /// <item>a friend holding a bag in front of you within <see cref="SnatchRange"/> m: <b>snatch</b> it (co-op): that's an ordinary grab
 /// attempt through N2's ownership rules (<see cref="HandsNet.LocalSnatch"/>: it can start a tug, or the host says no);</item>
@@ -19,6 +21,12 @@ public class GrabberPole : MonoBehaviour, IInteractable
     public const KeyCode Key = KeyCode.V;
     public const float ReachGrab = 4.5f, PokeRange = 3.3f, SnatchRange = 3.2f, Cooldown = 0.6f, Cone = 40f;
 
+    /// <summary>Bag reach (m) of a Grabby Hand at this level: 4.5 / 6.5 / 8.5 (<see cref="ReachGrab"/> is level 1's).</summary>
+    public static float ReachFor(int level) => HaulerRules.PoleReach(Mathf.Max(1, level));
+    /// <summary>This copy's level: the local player's own upgrade level, or a remote copy's replicated calling level.</summary>
+    int Level => Mathf.Clamp(IsLocal ? UpgradeEffects.Level(ShopIds.GrabberPole) : Workshop.CallingLevelForClient(ClientId, CallingIds.GrabberPole), 1, 3);
+    float Reach => ReachFor(Level);
+
     public static int Grabs, Pokes, Snatches;
 
     PlayerController pc;
@@ -31,7 +39,8 @@ public class GrabberPole : MonoBehaviour, IInteractable
     NetCarry bestHeld;
     Coroutine swing;
     LineRenderer targetRing;
-    Transform jawLeft, jawRight;
+    Transform jawLeft, jawRight, secondClaw;
+    float stockStiffness = -1f, yankUntil = -1f;
     readonly Vector3[] ringPoints = new Vector3[33];
     Vector3 Hand => transform.position + Vector3.up * 1.1f + transform.right * 0.25f;
 
@@ -53,6 +62,7 @@ public class GrabberPole : MonoBehaviour, IInteractable
         SetHint(null);
         if (pole != null) pole.gameObject.SetActive(false);
         if (targetRing != null) targetRing.enabled = false;
+        EndYank();
     }
 
     void OnDestroy()
@@ -68,6 +78,7 @@ public class GrabberPole : MonoBehaviour, IInteractable
 
     void Update()
     {
+        if (yankUntil >= 0f && Time.time >= yankUntil) EndYank();
         if (!IsLocal) return;
         bool can = Owned && pc != null && !pc.IsDriving && !pc.IsPlayingChess && !PlayerController.IsUIBlocking && !SceneController.IsTransitioning
                    && (carrier == null || !carrier.ExternalControl);
@@ -98,7 +109,7 @@ public class GrabberPole : MonoBehaviour, IInteractable
     {
         ScanTargets();
         string cap = GameControls.HasGamepad ? "[X / D-pad left]" : "[E / V]";
-        if (bestHeld != null && bestPlayer != null) scanHint = $"{cap} Pole-snatch {HandsNet.NameOf(bestPlayer.ClientId)}'s bag!";
+        if (bestHeld != null && bestPlayer != null) scanHint = $"{cap} Grabby-snatch {HandsNet.NameOf(bestPlayer.ClientId)}'s bag!";
         else if (bestItem != null) scanHint = $"{cap} Yoink {bestItem.DisplayName}";
         else if (bestPlayer != null) scanHint = $"{(GameControls.HasGamepad ? "[D-pad left]" : "[V]")} Poke {HandsNet.NameOf(bestPlayer.ClientId)}";
         else scanHint = null;
@@ -108,6 +119,7 @@ public class GrabberPole : MonoBehaviour, IInteractable
     {
         bestItem = null; bestPlayer = null; bestHeld = null;
         float bi = float.MaxValue, bp = float.MaxValue;
+        float reach = Reach;
         Ray aim = Aim;
         var hands = HandsNet.Instance != null && HandsNet.Instance.Active ? HandsNet.Instance : null;
         foreach (var p in PlayerTells.All)
@@ -130,8 +142,8 @@ public class GrabberPole : MonoBehaviour, IInteractable
             var c = all[i];
             if (c == null || !c.isActiveAndEnabled || c.State == CarryState.Carried || c.State == CarryState.Consumed || c.IsInScriptedFlight) continue;
             Vector3 w = c.transform.position;
-            if ((w - transform.position).sqrMagnitude > (ReachGrab + 0.5f) * (ReachGrab + 0.5f)) continue;
-            if (!PoleTargeting.WithinReach(Hand, c.WorldCenter, ReachGrab) || !c.CanInteract()) continue;
+            if ((w - transform.position).sqrMagnitude > (reach + 0.5f) * (reach + 0.5f)) continue;
+            if (!PoleTargeting.WithinReach(Hand, c.WorldCenter, reach) || !c.CanInteract()) continue;
             float d = PoleTargeting.AimScore(aim, c.WorldCenter, 0.45f);
             if (d < bi && PoleTargeting.ClearPath(Hand, c.WorldCenter, transform, c.transform)) { bi = d; bestItem = c; }
         }
@@ -153,7 +165,7 @@ public class GrabberPole : MonoBehaviour, IInteractable
         BodyFree() && carrier != null && !carrier.IsCarrying && !carrier.ExternalControl &&
         (PlayerTells.LocalTells == null || !PlayerTells.LocalTells.IsCube && !PlayerTells.LocalTells.Helping) &&
         (HandsNet.Instance == null || !HandsNet.Instance.TugOf(ClientId).HasValue);
-    public string GetInteractionPrompt() => bestHeld != null ? "Pole-snatch bag" : bestItem != null ? $"Pole-yoink {bestItem.DisplayName}" : "Use grabber pole";
+    public string GetInteractionPrompt() => bestHeld != null ? "Grabby-snatch bag" : bestItem != null ? $"Grabby-yoink {bestItem.DisplayName}" : "Use the Grabby Hand";
     public void OnInteract(GameObject interactor) { if (CanInteract()) Use(); }
     public void Highlight(bool highlight) { }
 
@@ -206,8 +218,16 @@ public class GrabberPole : MonoBehaviour, IInteractable
             if (accepted)
             {
                 Grabs++;
-                GameHUD.FloatingText(at + Vector3.up * 0.5f, "YOINK (pole)", new Color(0.6f, 0.9f, 1f), 0.9f);
+                int level = Level;
+                GameHUD.FloatingText(at + Vector3.up * 0.5f, HaulerRules.PoleYanks(level) ? "YANK!" : "YOINK!", new Color(0.6f, 0.9f, 1f), HaulerRules.PoleYanks(level) ? 1.1f : 0.9f);
                 Sfx.Play("squeak", at, 0.6f, 1.4f);
+                // Level 3: the same squeeze takes a second bag lying next to the first (into the pack, or to your feet).
+                var second = HaulerRules.PoleGrabsTwo(level) ? SecondBag(c) : null;
+                if (second != null && HandsNet.Instance != null && HandsNet.Instance.IsSpawned)
+                {
+                    HandsNet.Instance.LocalPoleSecond(second);
+                    GameHUD.FloatingText(second.WorldCenter + Vector3.up * 0.5f, "...AND YOINK!", new Color(0.6f, 0.9f, 1f), 0.9f);
+                }
                 NetAudit.Event("tells", new Dictionary<string, object> { { "op", "pole-grab" }, { "client", (long)ClientId }, { "dist", Mathf.Round(Dist(at) * 10f) / 10f } });
             }
             return;
@@ -223,7 +243,36 @@ public class GrabberPole : MonoBehaviour, IInteractable
             return;
         }
         // Whiff.
-        BagTellsNet.Send(BagTellsNet.FxPole, HandsNet.None, hand, hand + Aim.direction * ReachGrab);
+        BagTellsNet.Send(BagTellsNet.FxPole, HandsNet.None, hand, hand + Aim.direction * Reach);
+    }
+
+    /// <summary>The bag a two-fisted squeeze takes along: the closest resting bag within <see cref="HaulerTuning.TwoBagRadius"/>
+    /// of the first that the hand can also reach (the host checks it again).</summary>
+    TrashBag SecondBag(Carryable first)
+    {
+        if (first == null) return null;
+        TrashBag best = null;
+        float bestD = HaulerTuning.TwoBagRadius * HaulerTuning.TwoBagRadius, reach = Reach;
+        Vector3 at = first.WorldCenter, hand = Hand;
+        var all = Carryable.All;
+        for (int i = 0; i < all.Count; i++)
+        {
+            if (!(all[i] is TrashBag b) || b == first || !b.isActiveAndEnabled || b.State != CarryState.Resting || b.Holder != null ||
+                b.IsInScriptedFlight || b.HasBurst) continue;
+            float d = (b.WorldCenter - at).sqrMagnitude;
+            if (d >= bestD || !PoleTargeting.WithinReach(hand, b.WorldCenter, reach) || !Permissions.LocalCanWorkAt(b.transform.position)) continue;
+            if (!PoleTargeting.ClearPath(hand, b.WorldCenter, transform, b.transform)) continue;
+            bestD = d;
+            best = b;
+        }
+        return best;
+    }
+
+    /// <summary>Every copy: put the carrier's hold spring back after a yank.</summary>
+    void EndYank()
+    {
+        yankUntil = -1f;
+        if (carrier != null && stockStiffness > 0f) carrier.holdStiffness = stockStiffness;
     }
 
     void SetHint(string text)
@@ -250,6 +299,13 @@ public class GrabberPole : MonoBehaviour, IInteractable
             if (swing != null) StopCoroutine(swing);
             swing = StartCoroutine(Swing(b));
             Sfx.Play("whoosh", a, 0.6f, 1.5f);
+            if (HaulerRules.PoleYanks(Level) && carrier != null)
+            {
+                // The YANK: for a moment the bag is reeled in on a much tighter spring (each copy poses its own).
+                if (stockStiffness < 0f) stockStiffness = carrier.holdStiffness;
+                carrier.holdStiffness = stockStiffness * HaulerTuning.YankStiffnessMult;
+                yankUntil = Time.time + HaulerTuning.YankSeconds;
+            }
         }
         else if (kind == BagTellsNet.FxPoke && other == ClientId)
         {
@@ -269,12 +325,13 @@ public class GrabberPole : MonoBehaviour, IInteractable
     {
         if (pole == null) Build();
         pole.gameObject.SetActive(true);
+        if (secondClaw != null) secondClaw.gameObject.SetActive(HaulerRules.PoleGrabsTwo(Level));
         for (float t = 0f; t < 0.45f; t += Time.deltaTime)
         {
             float k = t < 0.15f ? t / 0.15f : t < 0.28f ? 1f : 1f - (t - 0.28f) / 0.17f;
             Vector3 from = Hand;
             Vector3 d = to - from;
-            float len = Mathf.Clamp(d.magnitude, 0.3f, ReachGrab + 0.75f);
+            float len = Mathf.Clamp(d.magnitude, 0.3f, Reach + 0.75f);
             if (d.sqrMagnitude > 0.001f) pole.rotation = Quaternion.LookRotation(d.normalized, Vector3.up);
             pole.position = from;
             float l = Mathf.Lerp(0.6f, len, Mathf.SmoothStep(0f, 1f, k));
@@ -299,6 +356,11 @@ public class GrabberPole : MonoBehaviour, IInteractable
         jawLeft = ShopModKit.Prim(PrimitiveType.Cube, "JawL", claw, orange, new Vector3(-0.06f, 0f, 0.05f), new Vector3(0.03f, 0.05f, 0.16f), new Vector3(0f, -20f, 0f)).transform;
         jawRight = ShopModKit.Prim(PrimitiveType.Cube, "JawR", claw, orange, new Vector3(0.06f, 0f, 0.05f), new Vector3(0.03f, 0.05f, 0.16f), new Vector3(0f, 20f, 0f)).transform;
         ShopModKit.Prim(PrimitiveType.Cylinder, "Grip", pole, orange, new Vector3(0f, 0f, 0.1f), new Vector3(0.07f, 0.12f, 0.07f), new Vector3(90f, 0f, 0f));
+        // Level 3's second fist: a twin claw riding just under the first (it follows it: a child of the claw pivot).
+        secondClaw = ShopModKit.Pivot("Claw 2", claw, new Vector3(0f, -0.16f, -0.04f));
+        ShopModKit.Prim(PrimitiveType.Cube, "JawL", secondClaw, orange, new Vector3(-0.06f, 0f, 0.05f), new Vector3(0.03f, 0.05f, 0.16f), new Vector3(0f, -20f, 0f));
+        ShopModKit.Prim(PrimitiveType.Cube, "JawR", secondClaw, orange, new Vector3(0.06f, 0f, 0.05f), new Vector3(0.03f, 0.05f, 0.16f), new Vector3(0f, 20f, 0f));
+        ShopModKit.Prim(PrimitiveType.Cube, "Yoke", secondClaw, steel, new Vector3(0f, 0.08f, -0.02f), new Vector3(0.03f, 0.16f, 0.03f));
         foreach (var r in pole.GetComponentsInChildren<Renderer>(true)) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         pole.gameObject.SetActive(false);
     }

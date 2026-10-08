@@ -52,6 +52,8 @@ public class TruckSideLoader : MonoBehaviour
     }
 
     TruckControllerV2 truck;
+    int ArmLevel => BusinessUpgradeNet.LevelForTruck(truck, ShopIds.TruckArm);
+    UpgradeEffects.ArmTier Tier => UpgradeEffects.ArmAtLevel(ArmLevel);
     Rigidbody body;
     ShopTruckMods mods;
     TruckHopper hopper;
@@ -109,7 +111,7 @@ public class TruckSideLoader : MonoBehaviour
     {
         if (id != ShopIds.TruckArm) return;
         builtLevel = -1; // rebuild (L3 claws)
-        if (!UpgradeEffects.Arm.auto) autoOn = false;
+        if (!Tier.auto) autoOn = false;
     }
 
     // =====================================================================
@@ -121,8 +123,8 @@ public class TruckSideLoader : MonoBehaviour
     /// <summary>One arm step of dt seconds (Update; edit-mode tests step it by hand). Input is read only when seated.</summary>
     public void Tick(float dt)
     {
-        var tier = UpgradeEffects.Arm;
-        int level = Mathf.Clamp(UpgradeEffects.Level(ShopIds.TruckArm), 0, 3);
+        var tier = Tier;
+        int level = Mathf.Clamp(ArmLevel, 0, 3);
         if (!tier.present)
         {
             if (phase != Phase.Idle) AbortCycle();

@@ -74,7 +74,7 @@ Extends `Docs/CoreLoop.md` (read it first: conventions, ownership rules, setup-s
 
 ## 4. The shop: **Scrapazon** (Shop system)
 
-The buy-side app on the shop laptop, next to ebae (sell-side). Laptop opens a tiny desktop / tab strip: **ebae** | **Scrapazon**.
+The buy-side app on the shop laptop, next to ebag (sell-side). Laptop opens a tiny desktop / tab strip: **ebag** | **Scrapazon**.
 Name alternatives offered to the user (easy rename, keep the name in one const): Scrapazon, Bin There Depot, Hoarder's Hardware.
 Purchases are instant ("Scrapazon Prime: delivered in 0.3 seconds"), persisted via `GameSession.SetUpgradeLevel/GetUpgradeLevel` and
 `AddConsumable/GetConsumable`. **Upgrade/consumable ids (contract, other systems read these):**

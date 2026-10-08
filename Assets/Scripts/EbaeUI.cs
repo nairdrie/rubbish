@@ -5,13 +5,15 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using Random = UnityEngine.Random;
 
-/// <summary>The two apps on the shop laptop's tab strip.</summary>
-public enum LaptopApp { Ebae, Scrapazon }
+/// <summary>The apps on the shop laptop's tab strip. The third only exists once the business has found its floppy disk
+/// (<see cref="Workshop.HasPrinter"/>).</summary>
+public enum LaptopApp { Ebae, Scrapazon, Printer }
 
 /// <summary>
 /// The shop laptop screen (UI Toolkit, Assets/UI/ebae/ebae.uxml): a tiny browser with an app tab strip —
-/// ebae (sell-side, this class) | Scrapazon (buy-side, <see cref="ScrapazonApp"/>, Assets/UI/shop/).
-/// ebae, the parody auction site. Tabs: Your Junk (GameSession.Inventory: list at a preset/custom price or
+/// ebag (sell-side, this class) | Scrapazon (buy-side, <see cref="ScrapazonApp"/>, Assets/UI/shop/) | SolidWaste 3D
+/// (print your own gear and the Monument, <see cref="SolidWasteApp"/>, Assets/UI/print/; installed by a floppy disk).
+/// ebag, the parody auction site. Tabs: Your Junk (GameSession.Inventory: list at a preset/custom price or
 /// pawn now), Listings (live offers with accept/decline + countdowns) and Sold (history). All economy goes
 /// through <see cref="EbaeMarket"/>. Show()/Hide() push/pop the player's UI lock exactly once each; switching
 /// apps while open never touches the lock.
@@ -59,9 +61,10 @@ public partial class EbaeUI : MonoBehaviour
     readonly List<VisualElement> logoLetters = new List<VisualElement>();
 
     // laptop app strip
-    VisualElement ebaePage, shopPage, appTabEbae, appTabShop;
-    Label appTabEbaeLabel, appTabEbaeBadge, appTabShopLabel, appTabShopBadge, osClockLabel;
+    VisualElement ebaePage, shopPage, printPage, appTabEbae, appTabShop, appTabPrint;
+    Label appTabEbaeLabel, appTabEbaeBadge, appTabShopLabel, appTabShopBadge, appTabPrintLabel, appTabPrintBadge, osClockLabel;
     ScrapazonApp shop;
+    SolidWasteApp printer;
     LaptopApp app = LaptopApp.Ebae;
     static LaptopApp lastApp = LaptopApp.Ebae;
     float nextClockAt;
@@ -83,7 +86,7 @@ public partial class EbaeUI : MonoBehaviour
     readonly List<VisualElement> shinyIcons = new List<VisualElement>();
     readonly List<Confetto> confetti = new List<Confetto>();
 
-    // Neighbours tab (co-op ebae, Docs/Multiplayer.md §13.8, N5)
+    // Neighbours tab (co-op ebag, Docs/Multiplayer.md §13.8, N5)
     class NeighbourTimer { public int offerId; public Label time; public VisualElement fill; public int lastSecond = -1; }
     VisualElement tabNeighbours;
     Label tabNeighboursLabel, tabNeighboursBadge;
@@ -105,7 +108,7 @@ public partial class EbaeUI : MonoBehaviour
         }
         if (ebae == null)
         {
-            Debug.LogWarning("[EbaeUI] No 'ebae' UIDocument GameObject assigned; the laptop can't open ebae.");
+            Debug.LogWarning("[EbaeUI] No 'ebag' UIDocument GameObject assigned; the laptop can't open ebag.");
             return;
         }
         ebae.SetActive(true); // the document lives on an inactive object in the scene
@@ -135,6 +138,8 @@ public partial class EbaeUI : MonoBehaviour
         GameSession.Changed += MarkDirty;
         EbaeNeighbours.Changed += MarkDirty;
         Businesses.Changed += MarkDirty;
+        Workshop.Changed += MarkDirty;
+        Workshop.DiskInstalled += OnDiskInstalled;
     }
 
     void OnDisable()
@@ -145,12 +150,15 @@ public partial class EbaeUI : MonoBehaviour
         GameSession.Changed -= MarkDirty;
         EbaeNeighbours.Changed -= MarkDirty;
         Businesses.Changed -= MarkDirty;
+        Workshop.Changed -= MarkDirty;
+        Workshop.DiskInstalled -= OnDiskInstalled;
         ReleaseLock();
     }
 
     void OnDestroy()
     {
         ReleaseLock();
+        printer?.Dispose();
         itemThumbnails.Dispose();
         if (Instance == this) Instance = null;
     }
@@ -163,6 +171,7 @@ public partial class EbaeUI : MonoBehaviour
         SetVisible(false);
         ClearFx();
         shop?.SetActive(false);
+        printer?.SetActive(false);
         PlayerController.PopUILock();
     }
 
@@ -192,6 +201,7 @@ public partial class EbaeUI : MonoBehaviour
         TickConfetti();
         TickClock();
         if (app == LaptopApp.Scrapazon) shop?.Tick();
+        else if (app == LaptopApp.Printer) printer?.Tick();
     }
 
     // ------------------------------------------------------------------ show / hide
@@ -209,7 +219,7 @@ public partial class EbaeUI : MonoBehaviour
         bool stale = doc == null || wiredRoot == null || doc.rootVisualElement != wiredRoot;
         if (stale && !Wire())
         {
-            GameHUD.Toast("ebae is down for maintenance (a raccoon ate the wifi)", ToastStyle.Bad);
+            GameHUD.Toast("ebag is down for maintenance (a raccoon ate the wifi)", ToastStyle.Bad);
             Sfx.Play("buzz");
             return;
         }
@@ -228,24 +238,41 @@ public partial class EbaeUI : MonoBehaviour
         nextTickerAt = 0f;
         nextClockAt = 0f;
         SwitchApp(which, false);
-        if (GameControls.HasGamepad) (app == LaptopApp.Ebae ? appTabEbae : appTabShop)?.Focus();
+        if (GameControls.HasGamepad) TabOf(app)?.Focus();
 
         Sfx.Play("click");
         Sfx.Play("pop", null, 0.7f, 1.3f);
-        if (app != LaptopApp.Ebae) return; // Scrapazon greets you itself
+        if (app != LaptopApp.Ebae) return; // Scrapazon and SolidWaste 3D greet you themselves
         LogoHop();
         if (offers > 0)
             UiToast($"welcome back! {offers} offer{(offers == 1 ? " is" : "s are")} waiting", "offer");
         else if (GameSession.Inventory.Count == 0 && EbaeMarket.Listings.Count == 0 && EbaeMarket.TotalSales == 0)
-            UiToast("welcome to ebae! sell your garbage to strangers on the internet", "good");
+            UiToast("welcome to ebag! sell your garbage to strangers on the internet", "good");
     }
 
-    /// <summary>Infected with no shot in your pocket → Scrapazon; buyers waiting → ebae; else the last app used.</summary>
+    /// <summary>Infected with no shot in your pocket → Scrapazon; a freshly installed SolidWaste 3D nobody has opened yet →
+    /// that; buyers waiting → ebag; else the last app used.</summary>
     static LaptopApp DefaultApp()
     {
         if (GameSession.HasRabies && GameSession.GetConsumable(ShopIds.RabiesShot) == 0) return LaptopApp.Scrapazon;
+        if (PrinterIsNew) return LaptopApp.Printer;
         if (EbaeMarket.PendingOfferCount > 0 || NeighbourWaiting > 0) return LaptopApp.Ebae;
-        return lastApp;
+        return lastApp == LaptopApp.Printer && !Workshop.HasPrinter ? LaptopApp.Ebae : lastApp;
+    }
+
+    /// <summary>SolidWaste 3D is installed on this business's laptop and has never been opened (the tab wears a NEW badge).</summary>
+    public static bool PrinterIsNew => Workshop.HasPrinter && GameSession.GetCounter(SolidWasteApp.SeenCounter) == 0;
+
+    VisualElement TabOf(LaptopApp which) => which == LaptopApp.Ebae ? appTabEbae : which == LaptopApp.Scrapazon ? appTabShop : appTabPrint;
+    VisualElement PageOf(LaptopApp which) => which == LaptopApp.Ebae ? ebaePage : which == LaptopApp.Scrapazon ? shopPage : printPage;
+
+    /// <summary>The floppy just went in (this machine's own business): the tab appears, and says so if the laptop is open.</summary>
+    void OnDiskInstalled()
+    {
+        RefreshAppTabs();
+        if (!isOpen) return;
+        Flash(appTabPrint, "app-tab--pulse", 400);
+        UiToast($"new software detected: {SolidWaste.Edition}. it's in the third tab.", "sw");
     }
 
     /// <summary>Swap the visible app page. Pure UI: the player's lock is untouched.</summary>
@@ -256,20 +283,28 @@ public partial class EbaeUI : MonoBehaviour
             which = LaptopApp.Ebae;
             if (animate) UiToast($"{Scrapazon.Name} is down. a raccoon unplugged the router.", "bad");
         }
+        if (which == LaptopApp.Printer && (printer == null || !Workshop.HasPrinter))
+        {
+            which = LaptopApp.Ebae;
+            if (animate) UiToast("no such program. (if only somebody threw out a disk.)", "info");
+        }
         bool changed = which != app;
         app = which;
         lastApp = which;
 
         if (ebaePage != null) ebaePage.style.display = which == LaptopApp.Ebae ? DisplayStyle.Flex : DisplayStyle.None;
         shop?.SetActive(which == LaptopApp.Scrapazon);
+        printer?.SetActive(which == LaptopApp.Printer);
+        // SolidWaste keeps its PRINT button bottom right, where the toasts land: there they drop in at the top of its inspector
+        toastLayer?.EnableInClassList("toast-layer--sw", which == LaptopApp.Printer);
         if (which == LaptopApp.Scrapazon) ScrapazonVisited = true;
-        else { SetEbaeAddress(); Refresh(false); }
+        else if (which == LaptopApp.Ebae) { SetEbaeAddress(); Refresh(false); }
         RefreshAppTabs();
 
         if (!animate || !changed) return;
-        var page = which == LaptopApp.Ebae ? ebaePage : shopPage;
+        var page = PageOf(which);
         if (page != null) PopIn(page, "app-page--enter");
-        Flash(which == LaptopApp.Ebae ? appTabEbae : appTabShop, "app-tab--pulse", 160);
+        Flash(TabOf(which), "app-tab--pulse", 160);
         Sfx.Play("whoosh", null, 0.45f, 1.5f);
         if (which == LaptopApp.Ebae) LogoHop();
     }
@@ -278,7 +313,7 @@ public partial class EbaeUI : MonoBehaviour
     {
         appTabEbae?.EnableInClassList("app-tab--active", app == LaptopApp.Ebae);
         appTabShop?.EnableInClassList("app-tab--active", app == LaptopApp.Scrapazon);
-        if (appTabEbaeLabel != null) appTabEbaeLabel.text = "ebae - sell your junk";
+        if (appTabEbaeLabel != null) appTabEbaeLabel.text = "ebag - sell your junk";
         if (appTabEbaeBadge != null)
         {
             int offers = EbaeMarket.PendingOfferCount + NeighbourWaiting;
@@ -292,6 +327,16 @@ public partial class EbaeUI : MonoBehaviour
             appTabShopBadge.text = needShot ? "!" : "NEW";
             appTabShopBadge.EnableInClassList("app-tab-badge--alert", needShot);
             appTabShopBadge.EnableInClassList("app-tab-badge--hidden", !needShot && ScrapazonVisited);
+        }
+        // SolidWaste 3D: no disk, no tab
+        if (appTabPrint != null)
+        {
+            bool installed = printer != null && Workshop.HasPrinter;
+            appTabPrint.style.display = installed ? DisplayStyle.Flex : DisplayStyle.None;
+            appTabPrint.EnableInClassList("app-tab--active", app == LaptopApp.Printer);
+            if (appTabPrintLabel != null) appTabPrintLabel.text = SolidWaste.TabLabel;
+            appTabPrintBadge?.EnableInClassList("app-tab-badge--hidden", !PrinterIsNew);
+            if (!installed && app == LaptopApp.Printer && isOpen) SwitchApp(LaptopApp.Ebae, false);
         }
     }
 
@@ -308,10 +353,10 @@ public partial class EbaeUI : MonoBehaviour
         if (addressLabel == null || app != LaptopApp.Ebae) return;
         addressLabel.text = tab switch
         {
-            Tab.Junk => "www.ebae.com/my-junk",
-            Tab.Listings => "www.ebae.com/selling?sort=most_desperate",
-            Tab.Neighbours => "www.ebae.com/neighbours?distance=next_door",
-            _ => "www.ebae.com/sold?feelings=proud",
+            Tab.Junk => "www.ebag.com/my-junk",
+            Tab.Listings => "www.ebag.com/selling?sort=most_desperate",
+            Tab.Neighbours => "www.ebag.com/neighbours?distance=next_door",
+            _ => "www.ebag.com/sold?feelings=proud",
         };
     }
 
@@ -320,7 +365,7 @@ public partial class EbaeUI : MonoBehaviour
     /// <summary>In-window toast. kind: good, bad, offer, info, sz.</summary>
     public void LaptopToast(string text, string kind) => UiToast(text, kind);
 
-    /// <summary>Big rubber-stamp slam over the window. variant: null (ebae red), "pawn", "sz".</summary>
+    /// <summary>Big rubber-stamp slam over the window. variant: null (ebag red), "pawn", "sz".</summary>
     public void LaptopStamp(string text, string sub, string variant) => Stamp(text, sub, variant);
 
     /// <summary>Confetti burst; palette = confetto color indices (0-8).</summary>
@@ -334,6 +379,9 @@ public partial class EbaeUI : MonoBehaviour
         if (addressLabel != null) addressLabel.text = url;
     }
 
+    /// <summary>A product photo of an item def (the same renderer-only model ebag photographs), for another app's lists.</summary>
+    public VisualElement LaptopPhoto(string defId, string name) => itemThumbnails.Request(defId, name);
+
     public void CloseLaptop() => Hide();
 
     /// <summary>Close the laptop screen. Releases the UI lock (only if Show took it).</summary>
@@ -344,6 +392,7 @@ public partial class EbaeUI : MonoBehaviour
         SetVisible(false);
         ClearFx();
         shop?.SetActive(false);
+        printer?.SetActive(false);
         PlayerController.PopUILock();
         Sfx.Play("pop", null, 0.6f, 0.8f);
     }
@@ -361,6 +410,7 @@ public partial class EbaeUI : MonoBehaviour
     {
         dirty = true;
         shop?.MarkDirty();
+        printer?.MarkDirty();
     }
 
     // ------------------------------------------------------------------ wiring
@@ -416,7 +466,7 @@ public partial class EbaeUI : MonoBehaviour
         OnClick(tabSold, () => SelectTab(Tab.Sold));
         WireNeighboursTab(root);
 
-        // laptop app strip: ebae | Scrapazon
+        // laptop app strip: ebag | Scrapazon
         ebaePage = root.Q<VisualElement>("ebaePage");
         shopPage = root.Q<VisualElement>("scrapazonPage");
         appTabEbae = root.Q<VisualElement>("appTabEbae");
@@ -428,16 +478,26 @@ public partial class EbaeUI : MonoBehaviour
         osClockLabel = root.Q<Label>("osClockLabel");
         var shopIcon = root.Q<Label>("appTabShopIcon");
         if (shopIcon != null) shopIcon.text = Scrapazon.Name.Substring(0, 1).ToLowerInvariant();
+        printPage = root.Q<VisualElement>("solidWastePage");
+        appTabPrint = root.Q<VisualElement>("appTabPrint");
+        appTabPrintLabel = root.Q<Label>("appTabPrintLabel");
+        appTabPrintBadge = root.Q<Label>("appTabPrintBadge");
         OnClick(appTabEbae, () => SwitchApp(LaptopApp.Ebae, true));
         OnClick(appTabShop, () => SwitchApp(LaptopApp.Scrapazon, true));
+        OnClick(appTabPrint, () => SwitchApp(LaptopApp.Printer, true));
         OnClick(root.Q<VisualElement>("appTabPlus"), () =>
         {
             Sfx.Play("squeak", null, 0.6f, 1.2f);
-            UiToast("new tab? on THIS laptop? it can barely run two.", "info");
+            UiToast(Workshop.HasPrinter ? "new tab? on THIS laptop? it can barely run three."
+                : "new tab? on THIS laptop? it can barely run two. (it does have a floppy drive, though.)", "info");
         });
         try { shop = ScrapazonApp.Create(this, root); }
         catch (Exception e) { Debug.LogException(e); shop = null; }
-        if (shop == null) Debug.LogWarning("[EbaeUI] No Scrapazon page in ebae.uxml (scrapazonPage); the laptop runs ebae only.");
+        if (shop == null) Debug.LogWarning("[EbaeUI] No Scrapazon page in ebae.uxml (scrapazonPage); the laptop runs ebag only.");
+        printer?.Dispose(); // a rebuilt document gets a fresh app
+        try { printer = SolidWasteApp.Create(this, root); }
+        catch (Exception e) { Debug.LogException(e); printer = null; }
+        if (printer == null) Debug.LogWarning("[EbaeUI] No SolidWaste 3D page in ebae.uxml (solidWastePage); the laptop cannot print.");
         if (ebaePage != null) ebaePage.style.display = DisplayStyle.Flex;
 
         builtSignature = null;
@@ -540,7 +600,8 @@ public partial class EbaeUI : MonoBehaviour
                 foreach (var it in GameSession.Inventory)
                     sb.Append(it != null ? it.uid : "-").Append(it != null && EbaeMarket.IsReservedUid(it.uid) ? "r" : "")
                         .Append(it != null && EbaeNeighbours.UsesHostNpc && EbaeNeighbours.Instance.IsNpcPending(it.uid) ? "p" : "").Append(',');
-                sb.Append("slots:").Append(EbaeMarket.Listings.Count);
+                sb.Append("slots:").Append(EbaeMarket.Listings.Count).Append("/wanted:").Append(GameSession.WorkshopWantedCount)
+                    .Append('/').Append(GameSession.GetUpgradeLevel(CallingIds.WorkGloves)).Append('/').Append(Workshop.BuildPending ? 1 : 0);
                 break;
             case Tab.Listings:
                 foreach (var l in EbaeMarket.Listings)
@@ -575,17 +636,137 @@ public partial class EbaeUI : MonoBehaviour
     void BuildJunk(IReadOnlyList<ItemInstance> items)
     {
         int active = EbaeMarket.Listings.Count;
+        // Treasures can be listed; kept parts (anything else from the KEEP crate) are bench stock and get their own section.
+        var treasures = new List<int>();
+        var parts = new List<ItemInstance>();
+        for (int i = 0; i < items.Count; i++)
+        {
+            if (items[i] == null) continue;
+            if (EbaeMarket.IsPart(items[i])) parts.Add(items[i]); else treasures.Add(i);
+        }
         content.Add(SectionHead("Your Junk", items.Count == 0 ? null
             : $"treasures you fished out of the trash. {active}/{EbaeTradingRules.MaxActiveListings} listing slots used."));
         if (active >= EbaeTradingRules.MaxActiveListings)
             content.Add(L(EbaeTradingRules.CapacityError(active), "item-note"));
         if (items.Count == 0)
         {
-            content.Add(Empty("(o_o)", "Nothing to sell.", "Go dig through some garbage. (toss treasures in the KEEP crate while sorting)"));
+            content.Add(Empty("(o_o)", "Nothing to sell.", "Go dig through some garbage. (toss treasures, and parts you want, in the KEEP crate while sorting)"));
             return;
         }
-        for (int i = items.Count - 1; i >= 0; i--)
-            if (items[i] != null) content.Add(BuildJunkCard(items[i], i));
+        if (treasures.Count == 0) content.Add(L("no treasures to list right now. your kept parts are below.", "item-note"));
+        for (int k = treasures.Count - 1; k >= 0; k--) content.Add(BuildJunkCard(items[treasures[k]], treasures[k]));
+        if (parts.Count > 0) BuildParts(parts);
+    }
+
+    // ---- kept parts: identical things are one card with a count; wanted and needed ones say so, loudly
+
+    void BuildParts(List<ItemInstance> parts)
+    {
+        content.Add(SectionHead($"Kept Parts ({parts.Count}/{GameSession.PartsCap})",
+            (Workshop.HasPrinter ? $"stuff for {SolidWaste.Name} (the third tab): parts for blueprints, scrap for the Monument." : "stuff you kept. it must be good for SOMETHING.") +
+            " buyers don't want it: a part only sells for SCRAP, exactly what its bin would have paid. no listings. no haggling."));
+        var state = Workshop.Snapshot(Workshop.OwnLot) ?? GameSession.WorkshopSave;
+        var groups = new Dictionary<string, List<ItemInstance>>();
+        var order = new List<string>();
+        foreach (var it in parts)
+        {
+            string key = it.defId + (it.hot ? "/hot" : "");
+            if (!groups.TryGetValue(key, out var list)) { groups[key] = list = new List<ItemInstance>(); order.Add(key); }
+            list.Add(it);
+        }
+        int Rank(string key)
+        {
+            var it = groups[key][0];
+            return Workshop.IsWanted(it) ? 0 : Workshop.NeededFor(it.defId, state).Length > 0 ? 1 : 2;
+        }
+        order.Sort((a, b) =>
+        {
+            int byRank = Rank(a).CompareTo(Rank(b));
+            return byRank != 0 ? byRank : string.CompareOrdinal(EbaeMarket.NameOf(groups[a][0]), EbaeMarket.NameOf(groups[b][0]));
+        });
+        for (int i = 0; i < order.Count; i++) content.Add(BuildPartCard(groups[order[i]], state, i));
+    }
+
+    VisualElement BuildPartCard(List<ItemInstance> group, WorkshopState state, int index)
+    {
+        var it = group[0];
+        var def = it.Def;
+        string name = EbaeMarket.NameOf(it);
+        bool wanted = Workshop.IsWanted(it);
+        string neededFor = Workshop.NeededFor(it.defId, state);
+        float each = EbaeMarket.PawnPrice(it), total = 0f, kg = 0f;
+        foreach (var one in group) { total += EbaeMarket.PawnPrice(one); kg += one.massKg; }
+        var card = V("card junk-card " + (index % 2 == 0 ? "card--tilt-l" : "card--tilt-r"));
+        card.Add(Icon(it, false));
+
+        var body = V("card-body");
+        var title = V("title-row");
+        title.Add(L(group.Count > 1 ? $"{name}  x{group.Count}" : name, "item-name"));
+        body.Add(title);
+        body.Add(L($"part · {ItemCategoryInfo.DisplayName(def.category).ToLowerInvariant()} · {kg:0.##} kg", "item-meta"));
+        if (wanted)
+        {
+            var tag = L($"WANTED: you are hunting for this in {SolidWaste.Name}. keep it!", "item-note");
+            tag.style.unityFontStyleAndWeight = FontStyle.Bold;
+            body.Add(tag);
+        }
+        if (neededFor.Length > 0)
+        {
+            var tag = L("NEEDED FOR: " + neededFor, "item-note");
+            tag.style.unityFontStyleAndWeight = FontStyle.Bold;
+            body.Add(tag);
+        }
+        if (it.hot) body.Add(L("HOT (stolen). Pawn Pete won't touch it, but the printer doesn't ask questions.", "item-note"));
+        if (!string.IsNullOrEmpty(def.flavor)) body.Add(L(def.flavor, "item-flavor"));
+        card.Add(body);
+        if (it.hot) return card;
+
+        if (EbaeNeighbours.UsesHostNpc && EbaeNeighbours.Instance.IsNpcPending(it.uid))
+        {
+            card.Add(L("Waiting for Town host…", "item-note"));
+            return card;
+        }
+        var actions = V("card-actions");
+        var appraisal = V("appraisal-row");
+        appraisal.Add(L(group.Count > 1 ? "pawn value, all of them" : "pawn value (less than its bin pays)", "appraisal-caption"));
+        appraisal.Add(L(Economy.Money(total), "appraisal-value"));
+        actions.Add(appraisal);
+        bool precious = wanted || neededFor.Length > 0;
+        var row = V("pawn-row");
+        row.Add(Btn($"{(precious ? "Pawn one anyway" : "Pawn one")} {Economy.Money(each)}  (Pawn Pete, less than recycling)", "btn-pawn", () => DoScrap(name, group.GetRange(0, 1))));
+        actions.Add(row);
+        // One at a time through a Town host (each is confirmed), and never a whole stack of something you need.
+        if (group.Count > 1 && !precious && !EbaeNeighbours.UsesHostNpc)
+        {
+            var all = V("pawn-row");
+            all.Add(Btn($"Pawn all {group.Count}  {Economy.Money(total)}", "btn-pawn", () => DoScrap(name, group)));
+            actions.Add(all);
+        }
+        card.Add(actions);
+        return card;
+    }
+
+    void DoScrap(string name, List<ItemInstance> items)
+    {
+        if (items.Count == 0) return;
+        if (EbaeNeighbours.UsesHostNpc)
+        {
+            if (EbaeNeighbours.Instance.RequestNpcPawn(items[0].uid)) UiToast("Waiting for Town host…", "info");
+            else { Sfx.Play("buzz"); UiToast("Couldn't pawn that. Check the item and try again.", "bad"); }
+            MarkDirty();
+            return;
+        }
+        float total = 0f;
+        int n = 0;
+        foreach (var it in items)
+            if (EbaeMarket.PawnNow(it.uid, out var sale)) { total += sale.price; n++; }
+        if (n == 0) { Sfx.Play("buzz"); UiToast("Pawn Pete squints at you. that part isn't here.", "bad"); }
+        else
+        {
+            Sfx.Play("whoosh");
+            UiToast($"Pawned {(n > 1 ? n + " x " : "")}{name} for {Economy.Money(total)}. Pete pays less than the bin would.", "good");
+        }
+        MarkDirty();
     }
 
     VisualElement BuildJunkCard(ItemInstance it, int index)
@@ -606,7 +787,9 @@ public partial class EbaeUI : MonoBehaviour
         if (def != null && !string.IsNullOrEmpty(def.flavor)) body.Add(L(def.flavor, "item-flavor"));
         if (!string.IsNullOrEmpty(it.note)) body.Add(L($"note: \"{it.note}\"", "item-note"));
         if (EbaeMarket.IsReservedUid(it.uid)) body.Add(L("offered to a neighbour in a trade (locked until they answer)", "item-note"));
+        if (it.hot) body.Add(L("HOT. ebag and Pawn Pete won't touch it. Find a fence after dark.", "item-note"));
         card.Add(body);
+        if (it.hot) { PopInOnce(card, "junk:" + it.uid, "card--pop"); return card; }
 
         if (EbaeNeighbours.UsesHostNpc && EbaeNeighbours.Instance.IsNpcPending(it.uid))
         {
@@ -617,7 +800,7 @@ public partial class EbaeUI : MonoBehaviour
 
         var actions = V("card-actions");
         var appraisal = V("appraisal-row");
-        appraisal.Add(L("ebae appraisal", "appraisal-caption"));
+        appraisal.Add(L("ebag appraisal", "appraisal-caption"));
         appraisal.Add(L(Economy.Money(EbaeMarket.Appraise(it)), "appraisal-value"));
         actions.Add(appraisal);
 
@@ -1099,7 +1282,7 @@ public partial class EbaeUI : MonoBehaviour
             row.Add(body);
             var price = V("sold-price");
             price.Add(L("+" + Economy.Money(s.net), "offer-gross"));
-            price.Add(L(s.pawned ? "pawned, no fee" : $"sold for {Economy.Money(s.price)}, ebae took {Economy.Money(s.price - s.net)}", "offer-net"));
+            price.Add(L(s.pawned ? "pawned, no fee" : $"sold for {Economy.Money(s.price)}, ebag took {Economy.Money(s.price - s.net)}", "offer-net"));
             row.Add(price);
             content.Add(row);
         }

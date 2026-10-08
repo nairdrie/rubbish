@@ -237,7 +237,16 @@ public class RaccoonKing : Critter
 
     void FocusAggressor()
     {
-        if (Time.time >= angryUntil || angryAt == ulong.MaxValue) return;
+        if (Time.time >= angryUntil || angryAt == ulong.MaxValue)
+        {
+            // Callings capstone (King's Rival): with nobody to be angry at, he goes for a Rival before the nearest player.
+            if (!NetPuppet && KingsRival.TryPickTarget(transform.position, out var rival))
+            {
+                target = rival; player = rival.pc; playerOnFoot = rival.onFoot; playerDriving = rival.driving;
+                playerFeet = rival.feet; playerDist = rival.dist;
+            }
+            return;
+        }
         var pc = NightPlayers.ForClient(angryAt);
         if (pc == null || NightPlayers.IsIndoors(pc)) { angryUntil = 0f; return; }
         var t = NightPlayers.Describe(pc, transform.position);
@@ -397,7 +406,7 @@ public static class RaccoonKingEvent
         Vector3 home;
         if (DepotRowWorld.Active)
         {
-            home = new Vector3((DepotRowLayout.LotCenterX(1) + DepotRowLayout.LotCenterX(2)) * 0.5f, 0f, DepotRowLayout.RoadZ);
+            home = (DepotRowLayout.RoadPoint(1) + DepotRowLayout.RoadPoint(2)) * 0.5f;
         }
         else
         {

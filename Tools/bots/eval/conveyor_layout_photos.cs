@@ -5,7 +5,7 @@ float floor = rig.transform.InverseTransformPoint(rig.table.transform.position).
 UnityEngine.Vector3 World(UnityEngine.Vector3 p) => rig.transform.TransformPoint(p + UnityEngine.Vector3.up * floor);
 var shots = new[] {
     new {name="wall-conveyor-route", eye=new UnityEngine.Vector3(-4.5f,2.3f,-.2f), look=new UnityEngine.Vector3(4f,2.7f,.3f), fov=72f},
-    new {name="kevin-wall-chute", eye=new UnityEngine.Vector3(1f,2f,-1.8f), look=new UnityEngine.Vector3(5.55f,2.2f,-4.35f), fov=58f},
+    new {name="delivery-wall-chute", eye=new UnityEngine.Vector3(1f,2f,-1.8f), look=new UnityEngine.Vector3(5.55f,2.2f,-4.35f), fov=58f},
 };
 var files = new System.Collections.Generic.List<string>();
 foreach (var shot in shots)

@@ -19,7 +19,9 @@ public class DistrictWelcome : MonoBehaviour
         switch (d.id)
         {
             case Districts.MinivanMeadows: return "An HOA Community · Pop. 64 minivans · Please Signal Your Feelings";
+            case Districts.CouponCommons: return "Buy One, Throw One Away · Service Entrance Around Back";
             case Districts.SnootingtonHills: return "Please Wipe Your Tires";
+            case Districts.StackingtonHeights: return "Forty Floors. One Recycling Bin.";
             case Districts.BillionaireBluffs: return "Name? …Garbage? …Fine.";
             default: return "Mildly Pleasant. Mostly.";
         }

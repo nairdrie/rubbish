@@ -1,10 +1,11 @@
 using UnityEngine;
 
 /// <summary>
-/// The shop laptop: E opens the laptop screen (<see cref="EbaeUI"/>) with its two apps, ebae (sell) and
-/// Scrapazon (buy). The prompt advertises waiting offers (or a Rabies Shot when you're infected) and a little
-/// bobbing sign floats above the laptop: "$ 2 offers!" while buyers are waiting, "+ RABIES SHOT $35" when
-/// you're foaming at the mouth with no shot in your pocket.
+/// The shop laptop: E opens the laptop screen (<see cref="EbaeUI"/>) with its apps, ebag (sell), Scrapazon (buy) and,
+/// once its floppy disk has been found, SolidWaste 3D (print). The prompt advertises waiting offers (or a Rabies Shot
+/// when you're infected) and a little bobbing sign floats above the laptop: "$ 2 offers!" while buyers are waiting,
+/// "+ RABIES SHOT $35" when you're foaming at the mouth with no shot in your pocket, "NEW! SolidWaste 3D" until the
+/// freshly installed print tab has been opened once.
 /// </summary>
 public class LaptopController : MonoBehaviour, IInteractable
 {
@@ -15,12 +16,13 @@ public class LaptopController : MonoBehaviour, IInteractable
 
     static readonly Color BadgeColor = new Color(1f, 0.84f, 0.2f);
     static readonly Color RabiesBadgeColor = new Color(1f, 0.35f, 0.35f);
+    static readonly Color PrinterBadgeColor = new Color(0.45f, 0.9f, 1f);
 
     TextMesh badge;
     Renderer body;
     bool highlighted;
     int shownCount = -1;
-    bool shownRabies;
+    bool shownRabies, shownPrinter;
     float punchUntil;
 
     public bool CanInteract() => !EbaeUI.IsOpen;
@@ -31,7 +33,8 @@ public class LaptopController : MonoBehaviour, IInteractable
         if (NeedsRabiesShot) return $"Use Laptop — buy a Rabies Shot on {Scrapazon.Name}!";
         int n = EbaeMarket.PendingOfferCount;
         string shop = EbaeUI.ScrapazonVisited ? Scrapazon.Name : Scrapazon.Name + " (new!)";
-        return n > 0 ? $"Use Laptop — ebae ({n} offer{(n == 1 ? "" : "s")}!) · {shop}" : $"Use Laptop — ebae · {shop}";
+        if (Workshop.HasPrinter) shop += " · " + SolidWaste.Name + (EbaeUI.PrinterIsNew ? " (new!)" : "");
+        return n > 0 ? $"Use Laptop — ebag ({n} offer{(n == 1 ? "" : "s")}!) · {shop}" : $"Use Laptop — ebag · {shop}";
     }
 
     static bool NeedsRabiesShot => GameSession.HasRabies && GameSession.GetConsumable(ShopIds.RabiesShot) == 0;
@@ -100,22 +103,26 @@ public class LaptopController : MonoBehaviour, IInteractable
     {
         bool rabies = showOfferBadge && !EbaeUI.IsOpen && NeedsRabiesShot;
         int n = showOfferBadge && !EbaeUI.IsOpen ? EbaeMarket.PendingOfferCount : 0;
-        if (n == 0 && !rabies)
+        // the freshly installed print tab outranks offers (they wait); a rabies shot outranks everything
+        bool printer = showOfferBadge && !EbaeUI.IsOpen && !rabies && EbaeUI.PrinterIsNew && Permissions.LocalCanUseLaptopAt(transform.position);
+        if (n == 0 && !rabies && !printer)
         {
             if (badge != null && badge.gameObject.activeSelf) badge.gameObject.SetActive(false);
             shownCount = 0;
-            shownRabies = false;
+            shownRabies = shownPrinter = false;
             return;
         }
         if (badge == null && !CreateBadge()) return;
         if (!badge.gameObject.activeSelf) badge.gameObject.SetActive(true);
-        if (rabies != shownRabies || (!rabies && n != shownCount))
+        if (rabies != shownRabies || printer != shownPrinter || (!rabies && !printer && n != shownCount))
         {
-            if (rabies && !shownRabies) punchUntil = Time.unscaledTime + 0.35f;
+            if (rabies && !shownRabies || printer && !shownPrinter) punchUntil = Time.unscaledTime + 0.35f;
             shownRabies = rabies;
+            shownPrinter = printer;
             shownCount = n;
-            badge.text = rabies ? $"+ RABIES SHOT {Economy.Money(ScrapazonCatalog.Get(ShopIds.RabiesShot)?.prices[0] ?? 35f)}" : $"$ {n} offer{(n == 1 ? "" : "s")}!";
-            badge.color = rabies ? RabiesBadgeColor : BadgeColor;
+            badge.text = rabies ? $"+ RABIES SHOT {Economy.Money(ScrapazonCatalog.Get(ShopIds.RabiesShot)?.prices[0] ?? 35f)}"
+                : printer ? "NEW! " + SolidWaste.Name : $"$ {n} offer{(n == 1 ? "" : "s")}!";
+            badge.color = rabies ? RabiesBadgeColor : printer ? PrinterBadgeColor : BadgeColor;
         }
 
         float t = Time.unscaledTime;
@@ -131,7 +138,7 @@ public class LaptopController : MonoBehaviour, IInteractable
     {
         var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         if (font == null) { showOfferBadge = false; return false; }
-        var go = new GameObject("ebae Offer Badge");
+        var go = new GameObject("ebag Offer Badge");
         badge = go.AddComponent<TextMesh>();
         badge.font = font;
         badge.fontSize = 64;

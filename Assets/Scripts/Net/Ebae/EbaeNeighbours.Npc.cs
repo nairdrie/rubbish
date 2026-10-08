@@ -9,7 +9,7 @@ using UnityEngine;
 public partial class EbaeNeighbours
 {
     const string MsgNpc = "rb.ebae.npc", MsgNpcSettings = "rb.ebae.npc-settings";
-    const string NpcCashPrefix = "ebae NPC sale #";
+    const string NpcCashPrefix = "ebag NPC sale #";
     public static bool UsesHostNpc => Active && !Instance.IsServer;
 
     sealed class NpcMarket
@@ -131,7 +131,7 @@ public partial class EbaeNeighbours
             foreach (var key in expired)
             {
                 npcPending.Remove(key);
-                ShowNotice("ebae: no confirmation yet. Your item has not been sold locally; check the listing before retrying.", ToastStyle.Bad);
+                ShowNotice("ebag: no confirmation yet. Your item has not been sold locally; check the listing before retrying.", ToastStyle.Bad);
                 EbaeMarket.Notify();
             }
             return;
@@ -392,9 +392,9 @@ public partial class EbaeNeighbours
             npcCompleted.Add(id);
             npcOwnerSales.Remove(id); npcOwnerHolds.Remove(id); holds.Remove(id);
             npcPending.Remove(string.IsNullOrEmpty(pending.listingId) ? pending.uid : pending.listingId);
-            GameSession.NetMirror.SetCashCents(balance, 0, "ebae confirmed", null);
-            BusinessSlots.HandBack("confirmed ebae NPC sale");
-            ShowNotice($"ebae: {sale.buyer} bought your {sale.itemName}. You received {Economy.Money(sale.net)}!", ToastStyle.Good);
+            GameSession.NetMirror.SetCashCents(balance, 0, "ebag confirmed", null);
+            BusinessSlots.HandBack("confirmed ebag NPC sale");
+            ShowNotice($"ebag: {sale.buyer} bought your {sale.itemName}. You received {Economy.Money(sale.net)}!", ToastStyle.Good);
             Sfx.Play("cash");
         }
     }
@@ -404,7 +404,7 @@ public partial class EbaeNeighbours
     {
         if (IsServer) return;
         npcPending.Remove(key.ToString());
-        ShowNotice("ebae: " + message, ok ? ToastStyle.Info : ToastStyle.Bad);
+        ShowNotice("ebag: " + message, ok ? ToastStyle.Info : ToastStyle.Bad);
         EbaeMarket.Notify();
     }
 
@@ -413,7 +413,7 @@ public partial class EbaeNeighbours
     {
         if (IsServer) return;
         npcOwnerHolds.Remove(id); npcOwnerSales.Remove(id); npcPending.Remove(key.ToString()); OwnerRelease(id);
-        ShowNotice("ebae: sale cancelled (" + reason + "). Nothing changed hands.", ToastStyle.Bad);
+        ShowNotice("ebag: sale cancelled (" + reason + "). Nothing changed hands.", ToastStyle.Bad);
         EbaeMarket.Notify();
     }
 }

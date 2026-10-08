@@ -44,7 +44,7 @@ public static partial class Progression
         public const string RankUp = "milestone_rank_up", DistrictUnlocked = "milestone_district_unlocked",
             FirstTreasure = "milestone_first_treasure", FirstRare = "milestone_first_rare",
             FirstLegendary = "milestone_first_legendary", MagnusFirstSort = "milestone_magnus_first_sort",
-            KevinHired = "milestone_kevin_hired", CityClean = "milestone_city_clean", KeyToCity = "milestone_key_to_city",
+            CityClean = "milestone_city_clean", KeyToCity = "milestone_key_to_city",
             GoldenTruck = "milestone_golden_truck", MagnusPrimeDefeated = "milestone_magnus_prime_defeated",
             TrashdexComplete = "milestone_trashdex_complete";
     }
@@ -146,7 +146,7 @@ public static partial class Progression
         lastMidnightDay = 0;
         KeyToCityGranted = null; DistrictOpened = null; MidnightReviewed = null;
         cleanMethodLooked = false; cleanMethod = null;
-        lastDirtyLetterDay = 0; lastKevinLetterDay = 0;
+        lastDirtyLetterDay = 0; lastCrewLetterDay = 0;
         dexDefs = null;
         DailyStats.ResetStatics();
         WorkOrders.ResetStatics();
@@ -164,13 +164,17 @@ public static partial class Progression
     {
         if (Ignore) return;
         string did = !string.IsNullOrEmpty(f.districtId) ? f.districtId : Districts.ForStopId(f.stopId).id;
-        float baseRep = f.onTime ? RepValues.BagOnTime : RepValues.BagLate;
-        if (f.byKevin) baseRep *= RepValues.KevinShare;
+        float baseRep = BagRep(f.onTime, f.byRaccoon);
         Ledger.Rep(f.onTime ? RepIds.BagOnTime : RepIds.BagLate, baseRep, did,
-                   f.byKevin || !CurbTrash.ActorFeedbackActive ? (Vector3?)null : f.pos);
+                   f.byRaccoon || !CurbTrash.ActorFeedbackActive ? (Vector3?)null : f.pos);
         DailyStats.OnBag(f);
         WorkOrders.OnBag(f, did);
     }
+
+    /// <summary>Base Rep for one collected kerb bag, before the district multiplier: a raccoon crew's bag earns
+    /// <see cref="RepValues.CrewShare"/> of what the same bag is worth in your own truck.</summary>
+    public static float BagRep(bool onTime, bool byRaccoon) =>
+        (onTime ? RepValues.BagOnTime : RepValues.BagLate) * (byRaccoon ? RepValues.CrewShare : 1f);
 
     static void OnCurbCleared(string stopId, string districtId, Vector3 pos)
     {
@@ -238,9 +242,15 @@ public static partial class Progression
         ApplyTreasureKept(item, byMagnus, false);
     }
 
+    /// <summary>True for a kept item that counts as a treasure find: a catalog Valuable (an unknown def keeps its old benefit of the doubt).</summary>
+    public static bool IsTreasure(ItemInstance item) => item != null && (item.Def == null || item.Def.category == ItemCategory.Valuable);
+
     static void ApplyTreasureKept(ItemInstance item, bool byMagnus, bool awardRep)
     {
         var def = item.Def;
+        // The KEEP crate takes parts too (non-valuables for printing). Those are never a treasure: no Rep, no
+        // Trash-dex, no day stats, no Work Order progress, no milestone, whoever raises the fact.
+        if (!IsTreasure(item)) return;
         var rarity = def != null ? def.rarity : Rarity.Uncommon;
         string did = Districts.ForAddress(item.foundAt).id;
         if (awardRep) Ledger.Rep(TreasureRepId(rarity), TreasureRep(rarity), did, null);
@@ -344,6 +354,9 @@ public static partial class Progression
                     Ledger.Rep(RepIds.NoiseComplaint, RepValues.NoiseComplaint, did, at);
                 break;
             }
+            case NeighborIncidentKind.Burglary:
+                Ledger.Rep(RepIds.NeighborIncident, ScavengerTuning.BurglaryRep, did, at);
+                break;
             case NeighborIncidentKind.Neighborly:
                 if (BumpDaily(NeighborlyCounter, GameClock.DayIndex, RepValues.NeighborlyPerDay))
                     Ledger.Rep(RepIds.Neighborly, RepValues.Neighborly, did, at);
@@ -433,7 +446,7 @@ public static partial class Progression
         GameSession.SetCounter(KeyStreakCounter, allSparkling ? GameSession.GetCounter(KeyStreakCounter) + 1 : 0);
         if (allSparkling) Milestone(Milestones.CityClean);
 
-        // 5. Head Office letters: dirty districts + the Kevin nudge (§4.6, §2.2)
+        // 5. Head Office letters: dirty districts + the raccoon-crew nudge (§4.6, §2.2)
         DirtyLetters(r);
 
         // 6. midnight Work Orders (clean district, no crush) for the day that just ended
@@ -474,7 +487,7 @@ public static partial class Progression
         return d == Districts.Starter ? CityCleanliness.Value01 : 0f;
     }
 
-    static int lastDirtyLetterDay, lastKevinLetterDay;
+    static int lastDirtyLetterDay, lastCrewLetterDay;
 
     static void DirtyLetters(MidnightReport r)
     {
@@ -497,14 +510,40 @@ public static partial class Progression
             HeadOffice.Send($"Complaint: {dirtiest.name}",
                 $"Mayor Bandit's office called. Twice. {dirtiest.name} was {Mathf.RoundToInt(worst * 100f)}% clean at midnight. Fewer houses will trust us tomorrow.");
         }
-        var kevin = ScrapazonCatalog.Get(ShopIds.HireKevin);
-        if (nudge && kevin != null && lastKevinLetterDay != today && !ScrapazonStore.IsMaxed(kevin)
-            && !ScrapazonStore.IsLocked(kevin) && ScrapazonStore.CanAfford(kevin))
+        if (nudge && lastCrewLetterDay != today
+            && CrewNudge(GameSession.GetUpgradeLevel(CallingIds.CritterHutch), GameSession.GetUpgradeLevel(CallingIds.CollarChip),
+                         GameSession.GetUpgradeLevel(CallingIds.BrainChip), Hutch.Local.CountJob(HutchJob.Crew), out string subject, out string body))
         {
-            lastKevinLetterDay = today;
-            HeadOffice.Send("Have you considered Kevin?",
-                $"A district has been filthy two nights running. Kevin is available. Kevin is always available. {ScrapazonStore.ShortName(kevin)}: {Economy.Money(ScrapazonStore.NextPrice(kevin))} on {Scrapazon.Name}.");
+            lastCrewLetterDay = today;
+            HeadOffice.Send(subject, body);
         }
+    }
+
+    /// <summary>
+    /// The Head Office nudge when a district has been filthy two nights running (§2.2): it points at the next step toward
+    /// a working raccoon crew (blueprints printed in SolidWaste 3D), the only background collection there is. False when the
+    /// business already runs a Brain Chip crew: Head Office has nothing left to suggest.
+    /// </summary>
+    public static bool CrewNudge(int hutchLevel, int collarLevel, int brainLevel, int onCrew, out string subject, out string body)
+    {
+        const string where = SolidWaste.Name + ", on your laptop.";
+        subject = "Have you considered raccoons?";
+        if (hutchLevel <= 0)
+            body = "A district has been filthy two nights running. Raccoons are available. Raccoons are always available. Head Office does not recognise raccoons as staff, but they work nights and are paid in kibble. Build a Critter Hutch. " + where;
+        else if (collarLevel <= 0)
+            body = "A district has been filthy two nights running. You have a hutch. The hutch has opinions but no job. A Collar Chip puts them on the night shift. " + where;
+        else if (onCrew <= 0)
+        {
+            subject = "Your raccoons are unemployed";
+            body = "A district has been filthy two nights running, and nobody in your hutch is on the crew. Walk over, press E, and put somebody to work. Head Office will pretend not to know.";
+        }
+        else if (brainLevel <= 0)
+        {
+            subject = "About your night crew";
+            body = "A district has been filthy two nights running. Your raccoons are trying. One of them is asleep in a bin. A Brain Chip adds a noon run and stops the naps. " + where;
+        }
+        else { subject = null; body = null; return false; }
+        return true;
     }
 
     // ------------------------------------------------------------------ Key to the City (§7.1)
@@ -524,7 +563,7 @@ public static partial class Progression
 
     // ------------------------------------------------------------------ purchases (called by ScrapazonStore.TryBuy)
 
-    /// <summary>Progression side effects of a purchase: permits open districts, gnomes start, Kevin / Golden Truck milestones.</summary>
+    /// <summary>Progression side effects of a purchase: permits open districts, gnomes start, the Golden Truck milestone.</summary>
     public static void OnPurchased(ScrapazonItem it, int now)
     {
         if (it == null) return;
@@ -535,10 +574,6 @@ public static partial class Progression
             case ShopIds.LuckyGnome:
             case ShopIds.GoldenGnome:
                 TickGnomes();
-                break;
-            case ShopIds.HireKevin:
-                if (Milestone(Milestones.KevinHired))
-                    HeadOffice.Send("Kevin has been hired", "Kevin starts today. Kevin has already lost a shoe. He sweeps his houses at 8 AM, 2 PM and 8 PM, and his bags show up on the tipping floor.");
                 break;
             case ShopIds.GoldenTruck:
                 if (Milestone(Milestones.GoldenTruck))
@@ -628,7 +663,11 @@ public static partial class Progression
     {
         get
         {
-            if (dexDefs == null || dexDefs.Count == 0) dexDefs = ItemCatalog.InCategory(ItemCategory.Valuable);
+            if (dexDefs == null || dexDefs.Count == 0)
+            {
+                dexDefs = new List<ItemDef>(ItemCatalog.InCategory(ItemCategory.Valuable));
+                dexDefs.RemoveAll(def => def.id == DiskItem.DefId); // a story item: it goes into the laptop, never an inventory
+            }
             return dexDefs;
         }
     }
@@ -666,7 +705,7 @@ public static partial class Progression
         GameHUD.Toast($"New Trash-dex entry: {def.name}! ({DexFound}/{DexTotal})", ToastStyle.Rare, 2.6f);
     }
 
-    /// <summary>Old saves: anything already in the inventory or sold on ebae counts as found (day found if known).</summary>
+    /// <summary>Old saves: anything already in the inventory or sold on ebag counts as found (day found if known).</summary>
     public static void BackfillDex()
     {
         try

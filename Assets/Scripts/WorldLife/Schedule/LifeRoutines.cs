@@ -80,7 +80,7 @@ public static class LifeRoutines
     public static Row ExtraDogEvening = new Row(ExcursionKind.DogWalk, 17.5f, 19.8f, 550);
 
     /// <summary>Density by district (scales every chance; the §4.3 tuning knob).</summary>
-    public static readonly float[] DistrictScale = { 1f, 1f, 1f, 1f };
+    public static readonly float[] DistrictScale = { 1f, 1f, 1f, 1f, 0.8f, 1f };
 
     // ------------------------------------------------------------------ excursion shapes
 
@@ -141,12 +141,12 @@ public static class LifeRoutines
     /// a 22–26 car peak at 08:00 (a trip lasts ~64 real s ≈ 1.3 in-game h, so N commuters keep ≈ N × 1.3 / window cars moving).
     /// The residents who now stay home walk more, so a few walk rows above were trimmed (Monocle Gent, Housekeeper, Butler,
     /// Bodyguard) and the Billionaire's morning Segway moved earlier; outings went up for the 20–23 band.</summary>
-    public static readonly int[] CommuteChance = { 360, 400, 320, 300 };
+    public static readonly int[] CommuteChance = { 360, 400, 320, 300, 240, 400 };
     /// <summary>Added to a two-car household's commute chance (‰).</summary>
     public static int CommuteTwoCarBonus = 140;
-    public static readonly int[] ErrandChance = { 150, 150, 150, 150 };
+    public static readonly int[] ErrandChance = { 150, 150, 150, 150, 240, 150 };
     public static int ErrandWhenCommuting = 40;
-    public static readonly int[] OutingChance = { 170, 170, 170, 170 };
+    public static readonly int[] OutingChance = { 170, 170, 170, 170, 120, 190 };
     public static int DawnShiftChance = 28, LateChance = 18;
     /// <summary>The second car of a two-car house (it parks nearer the street): it leaves first and comes back last, so
     /// the deeper car only drives inside its away windows.</summary>

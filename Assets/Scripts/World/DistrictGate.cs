@@ -36,7 +36,7 @@ public class DistrictGate : MonoBehaviour, IInteractable
     public TextMeshPro statusText;
 
     public DistrictDef District => Districts.Get(districtId);
-    public bool Unlocked => Districts.IsUnlocked(District);
+    public bool Unlocked => DistrictAccess.LocalCanEnter(District);
     /// <summary>The barrier is out of the way (collider off).</summary>
     public bool IsOpen { get; private set; }
     public string RibbonKey => "ribbon_cut_" + districtId;
@@ -50,6 +50,9 @@ public class DistrictGate : MonoBehaviour, IInteractable
     {
         GameSession.UpgradeChanged += OnUpgradeChanged;
         ProgressionEvents.DistrictUnlocked += OnDistrictUnlocked;
+        BusinessUpgradeNet.Changed += OnCrewAccessChanged;
+        Payroll.Changed += OnCrewAccessChanged;
+        Businesses.Changed += OnCrewAccessChanged;
         SyncState(true);
     }
 
@@ -57,7 +60,12 @@ public class DistrictGate : MonoBehaviour, IInteractable
     {
         GameSession.UpgradeChanged -= OnUpgradeChanged;
         ProgressionEvents.DistrictUnlocked -= OnDistrictUnlocked;
+        BusinessUpgradeNet.Changed -= OnCrewAccessChanged;
+        Payroll.Changed -= OnCrewAccessChanged;
+        Businesses.Changed -= OnCrewAccessChanged;
     }
+
+    void OnCrewAccessChanged() { if (Unlocked != IsOpen) SyncState(false); }
 
     void OnUpgradeChanged(string id, int level)
     {
@@ -95,7 +103,7 @@ public class DistrictGate : MonoBehaviour, IInteractable
         if (statusText == null) return;
         var d = District;
         statusText.text = IsOpen
-            ? "<color=#7CFF8A>OPEN</color>\n<size=45%>collection permit on file</size>"
+            ? "<color=#7CFF8A>OPEN</color>\n<size=45%>" + (Districts.IsUnlocked(d) ? "your business permit" : "your employer's permit · while hired") + "</size>"
             : $"<color=#FF6A5A>PERMIT ONLY</color>\n<size=45%>Rank {d.rankRequired} + {Economy.Money(d.permitPrice)} permit</size>";
     }
 
@@ -109,7 +117,7 @@ public class DistrictGate : MonoBehaviour, IInteractable
     IEnumerator AnimateOpen(bool open)
     {
         float target = open ? 1f : 0f;
-        if (open && !secondaryEntrance)
+        if (open && !secondaryEntrance && Districts.IsUnlocked(District))
         {
             var d = District;
             Vector3 p = transform.position + Vector3.up * 3f;
@@ -145,6 +153,8 @@ public class DistrictGate : MonoBehaviour, IInteractable
     public string GetInteractionPrompt()
     {
         var d = District;
+        var permit = ScrapazonCatalog.Get(d.permitId);
+        if (ScrapazonStore.IsLocked(permit, out string why)) return d.name + ": " + why;
         if (Progression.HasRank(d.rankRequired)) return $"Buy {d.name} permit ({Economy.Money(d.permitPrice)})";
         return $"{d.name}: needs Rank {d.rankRequired} ({Progression.RankTitle(d.rankRequired)}) + Collection Permit ({Economy.Money(d.permitPrice)})";
     }

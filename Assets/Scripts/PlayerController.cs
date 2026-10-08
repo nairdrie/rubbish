@@ -245,9 +245,9 @@ public class PlayerController : NetworkBehaviour
     /// </summary>
     public static System.Func<PlayerController, bool> InteractionFocusOverride;
 
-    // ---------------- UI input lock (ebae laptop, menus) ----------------
+    // ---------------- UI input lock (ebag laptop, menus) ----------------
     static int uiLocks;
-    /// <summary>True while a UI (e.g. the ebae laptop) has taken over mouse/keyboard.</summary>
+    /// <summary>True while a UI (e.g. the ebag laptop) has taken over mouse/keyboard.</summary>
     public static bool IsUIBlocking => uiLocks > 0;
 
     /// <summary>Free the cursor and freeze player look/move/interact. Pair every Push with a Pop.</summary>

@@ -3,10 +3,10 @@ using TMPro;
 using UnityEngine;
 
 /// <summary>
-/// Magnus's X-Ray Googly Eyes (magnus_vision, Docs/Progression.md §6.3): treasure-bearing bags on the tipping floor (and
-/// riding the Bag Belt) get a gold glint and a bobbing "!" — 60% of them at L1, all of them at L2, where the glint takes
+/// Magnus's X-Ray Googly Eyes (magnus_vision, Docs/Progression.md §6.3): treasure-bearing bags in the garage (on the
+/// tipping floor, riding the Bag Belt, in its rack or lying by the table) get a gold glint and a bobbing "!" — 60% of them at L1, all of them at L2, where the glint takes
 /// the rarity colour of the best thing inside. The roll is deterministic per bag id (UpgradeEffects.DetectRoll), so every
-/// machine flags the same bags. "Next bag!" and the belt take flagged bags first (<see cref="IsFlagged"/>).
+/// machine flags the same bags. The Bag Belt and Magnus take flagged bags first (<see cref="IsFlagged"/>).
 /// Markers are separate objects that follow their bag (never children: a child renderer would change the bag's bounds).
 /// </summary>
 public class MagnusVisionFlags : MonoBehaviour
@@ -86,8 +86,8 @@ public class MagnusVisionFlags : MonoBehaviour
             foreach (var b in FindObjectsByType<TrashBag>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
             {
                 if (b == null || b.Contents == null || b.State == CarryState.Consumed || b.HasBurst || b.SourceStop != null) continue;
-                bool onFloorOrBelt = GaragePile.InPile(compactor, b.WorldCenter) || OnLine(b);
-                if (!onFloorOrBelt || !IsFlagged(b.Contents, visionLevel)) continue;
+                // Anywhere in this garage: the pile, the belt and its rack, or lying by the table where you put it down.
+                if (!(GaragePile.InPile(compactor, b.WorldCenter) || OnLine(b) || InThisGarage(b)) || !IsFlagged(b.Contents, visionLevel)) continue;
                 seen.Add(b);
                 if (!markers.ContainsKey(b)) markers[b] = MakeMarker(b);
             }
@@ -99,6 +99,12 @@ public class MagnusVisionFlags : MonoBehaviour
             if (markers.TryGetValue(b, out var m) && m.go != null) Destroy(m.go);
             markers.Remove(b);
         }
+    }
+
+    bool InThisGarage(TrashBag b)
+    {
+        int lot = DepotMachineContext.LotOf(this);
+        return lot >= 0 ? DepotRowLayout.InteriorAt(b.WorldCenter) == lot : b.gameObject.scene == gameObject.scene;
     }
 
     bool OnLine(TrashBag b)

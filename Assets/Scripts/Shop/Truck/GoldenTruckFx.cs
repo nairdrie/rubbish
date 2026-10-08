@@ -25,6 +25,7 @@ public class GoldenTruckFx : MonoBehaviour
     enum Paint { Stock, Primer, Flames, Camo, Chrome, Golden }
 
     TruckControllerV2 truck;
+    int Level(string id) => BusinessUpgradeNet.LevelForTruck(truck, id);
     Rigidbody body;
     Renderer bodyRenderer;
     int mainIdx = -1, cabIdx = -1;
@@ -47,8 +48,9 @@ public class GoldenTruckFx : MonoBehaviour
     {
         if (!live.Contains(this)) live.Add(this);
         GameSession.UpgradeChanged += OnUpgradeChanged;
+        BusinessUpgradeNet.Changed += Apply;
         Apply();
-        if (deliveryPending && Application.isPlaying && UpgradeEffects.Level(ShopIds.GoldenTruck) > 0)
+        if (deliveryPending && Application.isPlaying && Level(ShopIds.GoldenTruck) > 0)
         {
             deliveryPending = false;
             StartCoroutine(DroneDelivery());
@@ -59,6 +61,7 @@ public class GoldenTruckFx : MonoBehaviour
     {
         live.Remove(this);
         GameSession.UpgradeChanged -= OnUpgradeChanged;
+        BusinessUpgradeNet.Changed -= Apply;
     }
 
     void OnDestroy()
@@ -88,13 +91,13 @@ public class GoldenTruckFx : MonoBehaviour
         }
     }
 
-    static Paint Wanted()
+    Paint Wanted()
     {
-        if (UpgradeEffects.Level(ShopIds.GoldenTruck) > 0) return Paint.Golden;
-        if (UpgradeEffects.Level(ShopIds.TruckPaintChrome) > 0) return Paint.Chrome;
-        if (UpgradeEffects.Level(ShopIds.TruckPaintRaccoonCamo) > 0) return Paint.Camo;
-        if (UpgradeEffects.Level(ShopIds.TruckPaintFlames) > 0) return Paint.Flames;
-        if (UpgradeEffects.Level(ShopIds.TruckPaintPrimer) > 0) return Paint.Primer;
+        if (Level(ShopIds.GoldenTruck) > 0) return Paint.Golden;
+        if (Level(ShopIds.TruckPaintChrome) > 0) return Paint.Chrome;
+        if (Level(ShopIds.TruckPaintRaccoonCamo) > 0) return Paint.Camo;
+        if (Level(ShopIds.TruckPaintFlames) > 0) return Paint.Flames;
+        if (Level(ShopIds.TruckPaintPrimer) > 0) return Paint.Primer;
         return Paint.Stock;
     }
 
@@ -275,14 +278,14 @@ public class GoldenTruckFx : MonoBehaviour
                 GameHUD.FloatingText(Tp(new Vector3(0f, 6.6f, 2.8f)), "♪ TA-DA-DA-DAAAA ♪", Gold, 1.6f);
                 Fx.Burst(at, Gold, 18, 5f);
             }
-            else if (UpgradeEffects.Level(ShopIds.HornPackMusical) > 0)
+            else if (Level(ShopIds.HornPackMusical) > 0)
             {
                 nextHornAt = now + 2f;
                 StartCoroutine(Tune());
             }
         }
 
-        if (UpgradeEffects.Level(ShopIds.TrashFmRadio) > 0) Radio(now);
+        if (Level(ShopIds.TrashFmRadio) > 0) Radio(now);
     }
 
     Vector3 Tp(Vector3 m) => transform.position + transform.rotation * m;
@@ -335,7 +338,7 @@ public class GoldenTruckFx : MonoBehaviour
         "Traffic update: it's you. You're the traffic.",
         "Weather tonight: 100% chance of raccoons.",
         "This hour is brought to you by Scrapazon. Delivered in 0.3 seconds. Regrets delivered later.",
-        "Caller says her husband threw out a wedding ring. If you find it, uh... ebae, we guess.",
+        "Caller says her husband threw out a wedding ring. If you find it, uh... ebag, we guess.",
         "Now playing: the sound of your hopper. Beautiful. Haunting.",
         "TRASH FM: smooth sounds for smelly jobs.",
         "Reminder from Head Office: the bags go IN the truck.",

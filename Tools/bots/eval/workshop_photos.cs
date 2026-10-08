@@ -27,8 +27,19 @@ void Photo(string file, UnityEngine.Vector3 eye, UnityEngine.Vector3 look, float
     }
 }
 int lot = DepotRowWorld.Active ? DepotRowLayout.InteriorAt(PlayerController.Local.transform.position) : -1;
-var origin = WorkshopAnnex.Origin(lot);
-Photo("workshop-room.png", origin + new UnityEngine.Vector3(7.4f, 2.35f, -3.8f), origin + new UnityEngine.Vector3(10.8f, 1.05f, 1.5f), 80f);
-Photo("workshop-portal.png", origin + new UnityEngine.Vector3(2.6f, 2.05f, -.25f), origin + new UnityEngine.Vector3(9.3f, 1.1f, -.25f), 72f);
-Photo("workshop-bench.png", origin + new UnityEngine.Vector3(9.85f, 1.6f, .95f), origin + new UnityEngine.Vector3(12.45f, 1.05f, 1.6f), 72f);
+var origin = WorkshopWorld.Origin(lot);
+// garage-local views of the decor slots (WorkshopWorld.PlacementFor): the display line on the south wall, the break
+// corner by the office, and the whole room from the garage door
+Photo("workshop-displays.png", origin + new UnityEngine.Vector3(.2f, 2.4f, 1.6f), origin + new UnityEngine.Vector3(.6f, .9f, -4.6f), 70f);
+Photo("workshop-break-corner.png", origin + new UnityEngine.Vector3(1.2f, 2.3f, -.9f), origin + new UnityEngine.Vector3(6.2f, .9f, -.3f), 70f);
+Photo("workshop-room.png", origin + new UnityEngine.Vector3(-6.2f, 3.4f, -.4f), origin + new UnityEngine.Vector3(2.5f, .6f, -.6f), 78f);
+// the forecourt (door-local): sign and doorbell by the door, hoop and launcher, and the Monument on the other side
+int streetLot = UnityEngine.Mathf.Max(0, lot);
+if (DepotRowWorld.Active || DepotRowWorld.LegacyStreet)
+{
+    Photo("workshop-forecourt.png", DepotRowLayout.StreetPoint(streetLot, new UnityEngine.Vector3(0f, 5f, 26f)), DepotRowLayout.StreetPoint(streetLot, new UnityEngine.Vector3(0f, 2.5f, 0f)), 62f);
+    Photo("workshop-hoop.png", DepotRowLayout.StreetPoint(streetLot, new UnityEngine.Vector3(3f, 3f, 16f)), DepotRowLayout.StreetPoint(streetLot, new UnityEngine.Vector3(10.5f, 1.4f, 4f)), 60f);
+    var m = WorkshopWorld.MonumentLocal;
+    Photo("workshop-monument.png", DepotRowLayout.StreetPoint(streetLot, new UnityEngine.Vector3(m.x + 3f, 2.2f, m.z + 7f)), DepotRowLayout.StreetPoint(streetLot, new UnityEngine.Vector3(m.x, 1.4f, m.z)), 50f);
+}
 return new { root = SaveRoot.Path, lot };

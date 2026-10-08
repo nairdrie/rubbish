@@ -2,12 +2,17 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>A curb bag went into the truck (by hand, the side-loader arm, or Kevin's Crew). Raised by D.</summary>
+/// <summary>A curb bag was collected: into a truck by hand or the side-loader arm, or by a business's raccoon crew.
+/// Raised by D (CurbTrash) and by RaccoonCrew. A local fact: never replicated, never saved.</summary>
 public struct BagCollectedFact
 {
     public string bagId, stopId, districtId;
     public double ageHours;
-    public bool onTime, byArm, byKevin;
+    public bool onTime, byArm;
+    /// <summary>Collected by a business's chipped raccoon crew (RaccoonCrew), not by a player. Crew work: the bag earns
+    /// <see cref="RepValues.CrewShare"/> of its Rep with no floater, never counts toward a Work Order, and is a crew bag
+    /// (not a truck bag) in the day's stats. Night pay still applies to it like any other night pickup.</summary>
+    public bool byRaccoon;
     public float pay;
     public Vector3 pos;
 }
@@ -37,6 +42,8 @@ public enum NeighborIncidentKind : byte
     NoiseComplaint = 4,
     /// <summary>A resident handed their bag over (Rep +1; at most 10 a day).</summary>
     Neighborly = 5,
+    /// <summary>A burglar was seen at a house (Scavenger calling; Rep ScavengerTuning.BurglaryRep). Host-side fact, never on the wire.</summary>
+    Burglary = 6,
 }
 
 /// <summary>
@@ -53,7 +60,7 @@ public struct NeighborIncidentFact
 }
 
 /// <summary>D's midnight inspection results (per district id). Raised once per rollover, after D has paid bonuses,
-/// fines and Kevin's wage.</summary>
+/// fines.</summary>
 public sealed class MidnightReport
 {
     public int day;
@@ -72,7 +79,7 @@ public sealed class MidnightReport
 public static class ProgressionEvents
 {
     public static event Action<BagCollectedFact> BagCollected;
-    public static void RaiseBagCollected(BagCollectedFact f) => Invoke(BagCollected, f);                 // D (CurbTrash, KevinCrew)
+    public static void RaiseBagCollected(BagCollectedFact f) => Invoke(BagCollected, f);                 // D (CurbTrash), RaccoonCrew
 
     public static event Action<string, string, Vector3> CurbCleared;
     public static void RaiseCurbCleared(string stopId, string districtId, Vector3 pos)                   // D

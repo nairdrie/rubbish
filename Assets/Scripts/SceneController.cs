@@ -198,7 +198,9 @@ public class SceneController : MonoBehaviour
 
         // Wait for the load + respawn + truck (TruckRequester notifies), with a safety timeout.
         float waited = 0f;
-        while (waited < arrivalTimeout && !(arrivalNotified && SceneManager.GetActiveScene().name == sceneName))
+        // Arriving in the town in the legacy flow: also wait for Depot Row's street side (the shop you just drove out of).
+        while (waited < arrivalTimeout && !(arrivalNotified && SceneManager.GetActiveScene().name == sceneName
+                                            && !DepotRowWorld.LegacyStreetPending(sceneName)))
         {
             FlowCamera.SetCutMode(true); // catches the new scene's camera brain
             waited += Time.unscaledDeltaTime;

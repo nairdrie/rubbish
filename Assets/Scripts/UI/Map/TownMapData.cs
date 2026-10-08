@@ -34,11 +34,14 @@ public sealed class TownMapData : ScriptableObject
         /// <summary>World XZ rect (x = x0, y = z0).</summary>
         public Rect rect;
         public string name;
-        /// <summary>0 = runs along X (east–west), 1 = along Z (north–south), 2 = a square plaza / bulb.</summary>
+        /// <summary>0 = along X, 1 = along Z, 2 = a square plaza / bulb, 3 = sampled polyline.</summary>
         public byte axis;
         public string districtId;
         /// <summary>A town exit road (Old Highway, Interstate On-Ramp, Private Airport Rd).</summary>
         public bool exit;
+        /// <summary>Optional sampled centreline; when present the rect is broad-phase bounds only.</summary>
+        public Vector2[] points;
+        public float halfWidth;
     }
 
     [Serializable]
@@ -46,6 +49,9 @@ public sealed class TownMapData : ScriptableObject
     {
         public Rect rect;
         public MapAreaKind kind;
+        /// <summary>Optional polygon, or a stroked centreline when halfWidth is positive.</summary>
+        public Vector2[] points;
+        public float halfWidth;
     }
 
     [Serializable]
@@ -96,6 +102,7 @@ public sealed class TownMapData : ScriptableObject
     }
 
     public int schema = SchemaVersion;
+    public string layoutId = "";
     /// <summary>World XZ bounds of the map (x = x0, y = z0): the town's PlayBounds.</summary>
     public Rect bounds = new Rect(-60f, -40f, 500f, 680f);
     public float pxPerMeter = 2f;
@@ -170,7 +177,10 @@ public sealed class TownMapData : ScriptableObject
         for (int i = 0; i < roads.Count; i++)
         {
             var r = roads[i].rect;
-            var p = ClampInside(r, new Vector2(w.x, w.z), 1f);
+            var road = roads[i];
+            var p = road.points != null && road.points.Length >= 2
+                ? NearestOnStrip(road.points, Mathf.Max(0, road.halfWidth - 1f), new Vector2(w.x, w.z))
+                : ClampInside(r, new Vector2(w.x, w.z), 1f);
             float d = (p.x - w.x) * (p.x - w.x) + (p.y - w.z) * (p.y - w.z);
             if (d < best) { best = d; bi = i; onRoad = new Vector3(p.x, w.y, p.y); }
         }
@@ -188,7 +198,10 @@ public sealed class TownMapData : ScriptableObject
         for (int i = 0; i < areas.Count; i++)
         {
             if (areas[i].kind != kind) continue;
-            var q = ClampInside(areas[i].rect, new Vector2(w.x, w.z), 0.5f);
+            var area = areas[i];
+            var q = area.points != null && area.points.Length >= 2 && area.halfWidth > 0
+                ? NearestOnStrip(area.points, Mathf.Max(0, area.halfWidth - .5f), new Vector2(w.x, w.z))
+                : ClampInside(area.rect, new Vector2(w.x, w.z), 0.5f);
             float d = (q.x - w.x) * (q.x - w.x) + (q.y - w.z) * (q.y - w.z);
             if (d < best) { best = d; p = new Vector3(q.x, w.y, q.y); found = true; }
         }
@@ -199,6 +212,20 @@ public sealed class TownMapData : ScriptableObject
     {
         float ix = Mathf.Min(inset, r.width * 0.5f), iz = Mathf.Min(inset, r.height * 0.5f);
         return new Vector2(Mathf.Clamp(p.x, r.xMin + ix, r.xMax - ix), Mathf.Clamp(p.y, r.yMin + iz, r.yMax - iz));
+    }
+
+    public static Vector2 NearestOnStrip(Vector2[] points, float halfWidth, Vector2 p)
+    {
+        var nearest = p; float best = float.MaxValue;
+        for (int i = 1; i < points.Length; i++)
+        {
+            var d = points[i] - points[i - 1];
+            var centre = points[i - 1] + d * Mathf.Clamp01(Vector2.Dot(p - points[i - 1], d) / Mathf.Max(.00001f, d.sqrMagnitude));
+            var q = centre + Vector2.ClampMagnitude(p - centre, halfWidth);
+            float distance = (q - p).sqrMagnitude;
+            if (distance < best) { best = distance; nearest = q; }
+        }
+        return nearest;
     }
 
     /// <summary>The street at a position: the road under it, else the nearest road within <paramref name="maxDist"/> m.</summary>
@@ -213,6 +240,8 @@ public sealed class TownMapData : ScriptableObject
             float dx = Mathf.Max(0f, Mathf.Max(r.xMin - p.x, p.x - r.xMax));
             float dz = Mathf.Max(0f, Mathf.Max(r.yMin - p.y, p.y - r.yMax));
             float d = dx * dx + dz * dz;
+            if (roads[i].points != null && roads[i].points.Length >= 2)
+                d = (NearestOnStrip(roads[i].points, roads[i].halfWidth, p) - p).sqrMagnitude;
             // inside two roads (an intersection): prefer the one whose long axis we're further along
             if (d < best || (d == 0f && best == 0f && Inner(r, roads[i].axis, p) > 0f))
             {
@@ -333,7 +362,7 @@ public sealed class TownMapData : ScriptableObject
                 var b = WorldBounds(bc);
                 ground.Add(new Rect(b.min.x, b.min.z, b.size.x, b.size.z));
             }
-        foreach (var s in neighborhoodGen.GetComponentsInChildren<PickupStop>(true))
+        foreach (var s in TownAuthoringScope.Components<PickupStop>(neighborhoodGen))
             stops.Add(new KeyValuePair<string, Vector3>(s.stopId, s.transform.position));
         foreach (var gt in neighborhoodGen.GetComponentsInChildren<DistrictGate>(true))
         {

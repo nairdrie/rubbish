@@ -15,8 +15,9 @@ public static class UpgradeEffects
 
     // ------------------------------------------------------------------ TRUCK (§6.1)
 
-    /// <summary>Hopper kg by truck_capacity level 0..4.</summary>
-    public static readonly float[] CapacityKg = { 160, 200, 240, 280, 340 };
+    /// <summary>Hopper kg for an explicit business model and truck_capacity level. Upgrade bonuses transfer to a new chassis.</summary>
+    public static float CapacityKgFor(int model, int capacityLevel) => TruckProgression.CapacityKg(model, capacityLevel);
+    public static float CurrentTruckCapacityKg => CapacityKgFor(TruckProgression.CurrentModel, Level(ShopIds.TruckCapacity));
 
     public struct EngineTier { public float motorTorque, maxSpeed, steerAtMaxSpeed, brakeTorque, maxLateralAccel; }
 
@@ -31,15 +32,15 @@ public static class UpgradeEffects
     };
 
     /// <summary>Absolute engine values from truck_turbo 0..3; golden_truck lifts top speed to the 18 m/s hard cap.</summary>
-    public static EngineTier Engine
+    public static EngineTier Engine => EngineAtLevel(Level(ShopIds.TruckTurbo), Level(ShopIds.GoldenTruck) > 0);
+
+    /// <summary>Explicit owner levels for multiplayer trucks; driving someone else's truck does not change its engine.</summary>
+    public static EngineTier EngineAtLevel(int turbo, bool golden)
     {
-        get
-        {
-            var e = engineTiers[L(ShopIds.TruckTurbo, 3)];
-            if (Level(ShopIds.GoldenTruck) > 0) e.maxSpeed = HardSpeedCap;
-            e.maxSpeed = Mathf.Min(e.maxSpeed, HardSpeedCap);
-            return e;
-        }
+        var e = engineTiers[Mathf.Clamp(turbo, 0, engineTiers.Length - 1)];
+        if (golden) e.maxSpeed = HardSpeedCap;
+        e.maxSpeed = Mathf.Min(e.maxSpeed, HardSpeedCap);
+        return e;
     }
 
     public struct HandlingTier
@@ -58,7 +59,8 @@ public static class UpgradeEffects
 
     /// <summary>truck_handling 0..3. Stiffness values are multipliers on the stock friction curves; cogOffset is absolute;
     /// antiTipBelow = m/s under which the anti-tip assist acts (0 = off); unflip hold is the "Hold R" recovery time.</summary>
-    public static HandlingTier Handling => handlingTiers[L(ShopIds.TruckHandling, 3)];
+    public static HandlingTier Handling => HandlingAtLevel(Level(ShopIds.TruckHandling));
+    public static HandlingTier HandlingAtLevel(int level) => handlingTiers[Mathf.Clamp(level, 0, handlingTiers.Length - 1)];
 
     public struct ArmTier
     {
@@ -75,7 +77,8 @@ public static class UpgradeEffects
     };
 
     /// <summary>truck_arm 0..3 (side-loader). L1 is hold-X while stopped, right side only.</summary>
-    public static ArmTier Arm => armTiers[L(ShopIds.TruckArm, 3)];
+    public static ArmTier Arm => ArmAtLevel(Level(ShopIds.TruckArm));
+    public static ArmTier ArmAtLevel(int level) => armTiers[Mathf.Clamp(level, 0, armTiers.Length - 1)];
 
     static readonly float[] hornRadius = { 12f, 25f, 40f };
     /// <summary>Horn scare radius by air_horn 0..2: 12 / 25 / 40 m.</summary>
@@ -90,31 +93,23 @@ public static class UpgradeEffects
 
     // ------------------------------------------------------------------ GARAGE (§6.2)
 
+    /// <summary>Auto-Tipper (one level; sold in the truck department): the truck's own TIP IT dumps in 3 s instead of 10.</summary>
     public static bool AutoTipper => Level(ShopIds.AutoTipper) >= 1;
-    public static bool DirectFeed => Level(ShopIds.AutoTipper) >= 2;
-    /// <summary>TIP IT unload time: 10 s stock, 3 s with the auto-tipper.</summary>
-    public static float TipSeconds => AutoTipper ? 3f : 10f;
+    /// <summary>TIP IT (hold G in the driver's seat) dump time: 10 s stock, 3 s with the auto-tipper (DumpRules).</summary>
+    public static float TipSeconds => DumpRules.Seconds(Level(ShopIds.AutoTipper));
 
-    /// <summary>conveyor_belt level 0..3 (1 Bag Belt, 2 auto-slitter, 3 twin lanes).</summary>
+    /// <summary>conveyor_belt level 0..3 (1 Bag Belt: normal bags to the queue rack, 2 Heavy-Duty Motor: heavy bags too,
+    /// 3 Junk Diverter: small junk is shaken out into the compactor on the way). The belt never opens a bag (ConveyorRules).</summary>
     public static int Conveyor => L(ShopIds.ConveyorBelt, 3);
 
-    /// <summary>Per-item hand-sort time multiplier: table L1 ×0.95, conveyor L2 ×0.85, conveyor L3 ×0.80 (stacked).</summary>
-    public static float ItemTimeMult
-    {
-        get
-        {
-            float m = 1f;
-            if (Level(ShopIds.SortingTable) >= 1) m *= 0.95f;
-            int c = Conveyor;
-            if (c >= 2) m *= 0.85f;
-            if (c >= 3) m *= 0.80f;
-            return m;
-        }
-    }
+    /// <summary>Per-item hand-sort time multiplier: XL table ×0.95. (The conveyor no longer changes sorting time.)</summary>
+    public static float ItemTimeMult => Level(ShopIds.SortingTable) >= 1 ? 0.95f : 1f;
 
     /// <summary>SortingTable.maxItemsOnTable: 40 stock, 60 from sorting_table L1.</summary>
     public static int TableMaxItems => Level(ShopIds.SortingTable) >= 1 ? 60 : 40;
     public static bool MagnetStrip => Level(ShopIds.SortingTable) >= 2;
+    /// <summary>Sorting positions at the table: 1, or 2 with the Double-Wide table (sorting_table L2). See SortSeats.</summary>
+    public static int SortingSeats => SortSeats.Count(Level(ShopIds.SortingTable));
 
     /// <summary>compactor_mk2 level 0..3.</summary>
     public static int Compactor => L(ShopIds.CompactorMk2, 3);
@@ -169,15 +164,17 @@ public static class UpgradeEffects
     public static float ShowcaseRep(Rarity r) => showcaseRep[Mathf.Clamp((int)r, 0, showcaseRep.Length - 1)];
 
     // ------------------------------------------------------------------ MAGNUS (§6.3: a career path, see MagnusCareer)
-    // Step 1 "Magnus Gets a Job" is magnus_brain L1: it brings the rail branch to the sort table, taped kitchen tongs
-    // (5 kg) and Brain Module 1, so the first purchase puts him to work. Later steps each add one thing:
-    // rail motor (speed), lobster pincer = gripper L1 (25 kg + rips bags), googly eyes = vision L1 (treasure flags),
-    // brain L2 (treasure), monocle = vision L2, brain L3 (hazards), quad-claw = gripper L2 (speed), brain L4 (24 h).
+    // Step 1 "Magnus Gets a Job" is magnus_brain L1: it brings the rail to the sort table, taped kitchen tongs (5 kg) and
+    // Brain Module 1. From that first step he picks up bags within reach (MagnusReach: on or within 2 m of the table,
+    // which includes the Bag Belt's queue rack; never the dump pile), rips them and sorts recyclables + junk. Later steps
+    // each add one thing: rail motor (speed), lobster pincer = gripper L1 (25 kg items + HEAVY bags), googly eyes =
+    // vision L1 (treasure flags), brain L2 (treasure), monocle = vision L2, brain L3 (hazards), quad-claw = gripper L2
+    // (speed), brain L4 (24 h).
 
     public struct BrainTier
     {
         public float itemsPerMin, accuracy, startHour, endHour;
-        public bool recyclablesAndJunk, valuables, hazards, ripsBags;
+        public bool recyclablesAndJunk, valuables, hazards;
     }
 
     static readonly BrainTier[] brainTiers =
@@ -185,8 +182,8 @@ public static class UpgradeEffects
         new BrainTier(),
         new BrainTier { itemsPerMin = 8f,  accuracy = 0.85f,  startHour = 6f, endHour = 22f, recyclablesAndJunk = true },
         new BrainTier { itemsPerMin = 12f, accuracy = 0.92f,  startHour = 6f, endHour = 22f, recyclablesAndJunk = true, valuables = true },
-        new BrainTier { itemsPerMin = 18f, accuracy = 0.96f,  startHour = 6f, endHour = 22f, recyclablesAndJunk = true, valuables = true, hazards = true, ripsBags = true },
-        new BrainTier { itemsPerMin = 30f, accuracy = 0.995f, startHour = 0f, endHour = 24f, recyclablesAndJunk = true, valuables = true, hazards = true, ripsBags = true },
+        new BrainTier { itemsPerMin = 18f, accuracy = 0.96f,  startHour = 6f, endHour = 22f, recyclablesAndJunk = true, valuables = true, hazards = true },
+        new BrainTier { itemsPerMin = 30f, accuracy = 0.995f, startHour = 0f, endHour = 24f, recyclablesAndJunk = true, valuables = true, hazards = true },
     };
 
     /// <summary>magnus_brain 0..4 (0 = no job yet). Hours are in-game hours of day; 0..24 = around the clock.</summary>
@@ -195,7 +192,7 @@ public static class UpgradeEffects
     /// <summary>Brain tier for a given magnus_brain level (Scrapazon / career text).</summary>
     public static BrainTier BrainAt(int level) => brainTiers[Mathf.Clamp(level, 0, brainTiers.Length - 1)];
 
-    /// <summary>He has the job (magnus_brain L1): the rail branch to the Sort Stop, the tongs and a brain.</summary>
+    /// <summary>He has the job (magnus_brain L1): the rail to the Sort Stop, the tongs and a brain.</summary>
     public static bool MagnusEmployed => Level(ShopIds.MagnusBrain) >= 1;
 
     /// <summary>The rail branch to the sort station exists (it comes with the job).</summary>
@@ -205,29 +202,37 @@ public static class UpgradeEffects
     public const float RailMotorSpeed = 1.25f;
     /// <summary>Quad-claw (magnus_gripper L2) work-speed factor.</summary>
     public const float QuadClawSpeed = 1.4f;
-    /// <summary>Twin Turbo Belt (conveyor L3) work-speed factor for Magnus.</summary>
-    public const float TwinBeltMagnusSpeed = 1.3f;
 
-    /// <summary>Speed contract multiplier: rail motor ×1.25 × quad-claw (gripper L2) ×1.4 × conveyor L3 ×1.3.</summary>
-    public static float MagnusSpeedMult
+    /// <summary>Speed contract multiplier: rail motor ×1.25 × quad-claw (gripper L2) ×1.4. (The conveyor no longer speeds
+    /// him up: its old Twin Turbo level is the Junk Diverter now.)</summary>
+    public static float MagnusSpeedMult => MagnusSpeedMultAt(Level(ShopIds.MagnusRailMotor), Level(ShopIds.MagnusGripper));
+
+    public static float MagnusSpeedMultAt(int railMotor, int gripper)
     {
-        get
-        {
-            float m = 1f;
-            if (Level(ShopIds.MagnusRailMotor) >= 1) m *= RailMotorSpeed;
-            if (Level(ShopIds.MagnusGripper) >= 2) m *= QuadClawSpeed;
-            if (Conveyor >= 3) m *= TwinBeltMagnusSpeed;
-            return m;
-        }
+        float m = 1f;
+        if (railMotor >= 1) m *= RailMotorSpeed;
+        if (gripper >= 2) m *= QuadClawSpeed;
+        return m;
     }
 
     /// <summary>Heaviest table item Magnus can pick: 0 without the job, 5 kg with the job's kitchen tongs, 25 kg with the
     /// lobster pincer (gripper L1+). Heavier = LEFTOVERS.</summary>
-    public static float GripperMaxKg => !MagnusEmployed ? 0f : Level(ShopIds.MagnusGripper) >= 1 ? 25f : 5f;
+    public static float GripperMaxKg => GripperMaxKgAt(Level(ShopIds.MagnusBrain), Level(ShopIds.MagnusGripper));
+    public static float GripperMaxKgAt(int brain, int gripper) => brain < 1 ? 0f : gripper >= 1 ? 25f : 5f;
 
-    /// <summary>He fetches and rips bags himself (Bag Belt tray first, else the tipping pile): lobster pincer (gripper
-    /// L1+) or brain L3+. Before that, you rip bags onto the table and he sorts what lands.</summary>
-    public static bool MagnusRipsBags => MagnusEmployed && (Level(ShopIds.MagnusGripper) >= 1 || Brain.ripsBags);
+    /// <summary>From the job on he picks up bags within reach (MagnusReach) and rips them himself.</summary>
+    public static bool MagnusRipsBags => MagnusEmployed;
+
+    /// <summary>Heavy bags (the 2-person-lift tell) need the lobster pincer (gripper L1+); before it he leaves them for you.</summary>
+    public static bool MagnusHandlesHeavyBags => MagnusEmployed && Level(ShopIds.MagnusGripper) >= 1;
+
+    static readonly float[] railSpeed = { 0.7f, 1.4f };
+    /// <summary>Rail speed (m/s) by magnus_rail_motor 0..1.</summary>
+    public static float RailSpeedAt(int railMotor) => railSpeed[Mathf.Clamp(railMotor, 0, railSpeed.Length - 1)];
+    /// <summary>Share of treasure bags flagged by magnus_vision 0..2.</summary>
+    public static float VisionDetectAt(int vision) => visionDetect[Mathf.Clamp(vision, 0, visionDetect.Length - 1)];
+    /// <summary>ebag realised-price bonus from the Appraisal Monocle (magnus_vision L2).</summary>
+    public static float MonocleEbaeBonusAt(int vision) => vision >= 2 ? 0.03f : 0f;
 
     static readonly float[] visionDetect = { 0f, 0.6f, 1f };
     /// <summary>Share of treasure-bearing pile bags Magnus flags: 0 / 0.6 / 1.0 (roll with <see cref="DetectRoll"/>).</summary>
@@ -273,6 +278,25 @@ public static class UpgradeEffects
     public static ChessTier Chess(int tier) => chessTiers[Mathf.Clamp(tier, 0, chessTiers.Length - 1)];
 
     // ------------------------------------------------------------------ PERSONAL GEAR (§6.4)
+    // Printed in SolidWaste 3D's blueprint tree (CallingCatalog) since Oct 2026, no longer sold on Scrapazon. The ids,
+    // levels and numbers are unchanged: a built node raises the same upgrade level a purchase used to.
+
+    /// <summary>The top level this section has numbers for, per gear id (0 = not personal gear). The Callings tree may only
+    /// offer these levels as buildable (CallingsTests pins the two together); raise one here when a new level's effect ships.</summary>
+    public static int GearMaxLevel(string id)
+    {
+        switch (id)
+        {
+            case ShopIds.WorkGloves: return 3;
+            case ShopIds.WorkBoots: return 2;
+            case ShopIds.Headlamp: return 2;
+            case ShopIds.TreasureWand: return 2;
+            case ShopIds.RabiesVaccine: return 2;
+            case ShopIds.HardHat: return 1;
+            case ShopIds.GrabberPole: return 3; // 2-3: longer reach, the yank, two bags (HaulerTuning)
+            default: return 0;
+        }
+    }
 
     static readonly float[] carrySlow = { 1f, 0.5f, 0.5f, 0f };
     /// <summary>Multiplier on TrashCarrier.maxSlowdown (0.45): 1 / 0.5 / 0.5 / 0 by work_gloves.</summary>
@@ -305,35 +329,13 @@ public static class UpgradeEffects
     // ------------------------------------------------------------------ BUSINESS (§6.5)
 
     static readonly float[] ebaeFee = { Economy.EbaeFeeFraction, 0.05f, 0.03f, 0.01f };
-    /// <summary>ebae fee fraction: 0.08 / 0.05 / 0.03 / 0.01 by ebae_power_seller.</summary>
+    /// <summary>ebag fee fraction: 0.08 / 0.05 / 0.03 / 0.01 by ebae_power_seller.</summary>
     public static float EbaeFee => ebaeFee[L(ShopIds.EbaePowerSeller, 3)];
     public static int EbaeExtraBuyers => Level(ShopIds.EbaePowerSeller) >= 1 ? 1 : 0;
     /// <summary>Offer arrival speed multiplier: ×2 from L2.</summary>
     public static float EbaeOfferSpeed => Level(ShopIds.EbaePowerSeller) >= 2 ? 2f : 1f;
     /// <summary>Auto-accept offers at or above this fraction of appraisal (L3: 0.97); 0 = off.</summary>
     public static float EbaeAutoAccept => Level(ShopIds.EbaePowerSeller) >= 3 ? 0.97f : 0f;
-
-    static readonly float[] kevinWage = { 0f, 40f, 250f, 900f };
-    /// <summary>Kevin's Crew daily wage (charged at midnight): 0 / 40 / 250 / 900.</summary>
-    public static float KevinWage => kevinWage[L(ShopIds.HireKevin, 3)];
-    /// <summary>Kevin's daily wage at hire_kevin level 0..3 (the Scrapazon card shows the next level's).</summary>
-    public static float KevinWageAt(int level) => kevinWage[Mathf.Clamp(level, 0, 3)];
-
-    // [kevin level][district tier 1..4]
-    static readonly float[,] kevinCoverage =
-    {
-        { 0f, 0f,   0f,   0f },
-        { 0.6f, 0f, 0f,   0f },
-        { 1f,   0.5f, 0f, 0f },
-        { 1f,   1f, 0.4f, 0f },
-    };
-
-    /// <summary>Share of a district's subscribed houses Kevin serves (district tier 1..4; the Bluffs are never covered).</summary>
-    public static float KevinCoverage(int districtTier)
-    {
-        if (districtTier < 1 || districtTier > 4) return 0f;
-        return kevinCoverage[L(ShopIds.HireKevin, 3), districtTier - 1];
-    }
 
     // ------------------------------------------------------------------ CONSUMABLES (§6.6)
 

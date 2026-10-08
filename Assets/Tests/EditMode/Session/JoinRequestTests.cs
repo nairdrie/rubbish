@@ -47,6 +47,7 @@ public class JoinRequestTests
         Assert.AreEqual(r.companyGuid, d.companyGuid);
         Assert.AreEqual(42L, d.companyVersion);
         CollectionAssert.AreEqual(r.blobHash, d.blobHash);
+        CollectionAssert.AreEqual(r.worldSignature, d.worldSignature);
         Assert.AreEqual(3, d.flags);
     }
 
@@ -54,7 +55,7 @@ public class JoinRequestTests
     public void MinimalDevRequestRoundTrips()
     {
         byte[] data = JoinRequest.ForThisBuild(PlayerKey.Dev("bot-2")).Encode();
-        Assert.Less(data.Length, 64);
+        Assert.Less(data.Length, 96);
         Assert.IsTrue(JoinRequest.TryDecode(data, out var d, out _));
         Assert.AreEqual("dev:bot-2", d.playerKey);
         Assert.AreEqual(0, d.authTicket.Length);
@@ -93,6 +94,9 @@ public class JoinRequestTests
         Assert.Throws<ArgumentException>(() => r.Encode());
         r.blobHash = null;
         r.authTicket = new byte[JoinRequest.MaxTicketBytes + 1];
+        Assert.Throws<ArgumentException>(() => r.Encode());
+        r.authTicket = null;
+        r.worldSignature = new byte[31];
         Assert.Throws<ArgumentException>(() => r.Encode());
     }
 

@@ -86,6 +86,7 @@ public static class Probe
     public static void Main(string[] args)
     {
         CheckInvariance();
+        PartRates();
         int loads = args.Length > 0 ? int.Parse(args[0]) : 4000;
         Console.WriteLine("Normal-loot variety by rarity: " + string.Join(" / ", Enumerable.Range(0,5).Select(r=>ItemCatalog.All.Count(d=>d.category==ItemCategory.Valuable && (int)d.rarity==r && ItemCatalog.TierOf(d)<=4 && !d.id.StartsWith("big_cleanup_")))));
         for (int tier=1; tier<=4; tier++)
@@ -113,6 +114,34 @@ public static class Probe
                 if(low>=2)two++; if(low==0)zero++;
             }
             Console.WriteLine($"tier={tier} trucks={loads} meanKg={kg/loads:F2} bags/load={bags/(double)loads:F2} C/U/R/E/L={string.Join("/",counts.Select(c=>(c/(double)loads).ToString("F3")))} low>=2={two*100.0/loads:F1}% low=0={zero*100.0/loads:F1}%");
+        }
+    }
+
+    /// <summary>
+    /// Parts (ItemCatalog.Parts.cs): how often each one turns up in a fully collected day of its district (35 bags in the
+    /// Acres, 30 in the Meadows, Docs/Progression.md 5.1), and what the bag is made of by category. Run it before and after
+    /// touching a part's weight: the category mix must not move, and every part should land between about 0.8 and 2 a day.
+    /// </summary>
+    static void PartRates()
+    {
+        const int days = 3000;
+        foreach (int tier in new[] { 1, 2 })
+        {
+            var profile = Profile(tier); int bagsPerDay = tier == 1 ? 35 : 30;
+            var counts = new Dictionary<string, long>(); var byCategory = new long[7]; long items = 0; double kg = 0;
+            for (int day = 0; day < days; day++) for (int b = 0; b < bagsPerDay; b++)
+            {
+                var bag = ItemCatalog.RollBag("parts/" + tier + "/" + day + "/" + b, unchecked(9901 + day * 7919 + b * 104729 + tier * 10000019), (b % 5) * .25f, "audit", profile, .6f);
+                kg += bag.TotalMassKg;
+                foreach (var item in bag.items) { items++; byCategory[(int)item.Def.category]++; counts.TryGetValue(item.defId, out long n); counts[item.defId] = n + 1; }
+            }
+            Console.WriteLine($"tier={tier} days={days} bags/day={bagsPerDay} meanBagKg={kg / (days * bagsPerDay):F2} items/bag={items / (double)(days * bagsPerDay):F2} share J/PL/GL/ME/PA/HZ/V=" +
+                string.Join("/", byCategory.Select(c => (c * 100.0 / items).ToString("F2"))));
+            var parts = ItemCatalog.All.Where(d => d.visual != null && d.visual.StartsWith("part_") && ItemCatalog.TierOf(d) <= tier).ToList();
+            Console.WriteLine("  parts per fully collected day: " + string.Join(", ", parts.Select(d => d.id + " " + ((counts.TryGetValue(d.id, out long n) ? n : 0) / (double)days).ToString("F2"))));
+            foreach (string id in new[] { "soda_can", "lone_sock", "water_bottle", "beer_bottle", "newspaper", "aa_battery", "duct_tape", "bike_chain", "trampoline_spring" })
+                Console.Write("  " + id + " " + ((counts.TryGetValue(id, out long n) ? n : 0) / (double)days).ToString("F2"));
+            Console.WriteLine();
         }
     }
 

@@ -99,6 +99,12 @@ public static class SessionApproval
             Reject(res, id, why, why == JoinReject.ProtocolMismatch ? $"their protocol {r.proto}, ours {NetVersion.Protocol}" : "undecodable");
             return;
         }
+        why = PublishedTownSignature.CheckCompatibility(r, PublishedTownSignature.CurrentBytes);
+        if (why != JoinReject.None)
+        {
+            Reject(res, id, why, "published town compatibility failed");
+            return;
+        }
         if (!PlayerKey.TryParse(r.playerKey, out var key)) { Reject(res, id, JoinReject.BadRequest, "bad player key"); return; }
         if (key.IsDev && SessionService.RejectDevKeys) { Reject(res, id, JoinReject.DevKeyNotAllowed, key.ToString()); return; }
         if (SessionService.IsBanned(key)) { Reject(res, id, JoinReject.Banned, key.ToString()); return; }

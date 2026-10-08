@@ -179,7 +179,7 @@ public class TruckHopper : MonoBehaviour, ICarryReceiver, ICarryReceiverFeedback
         if (!Fits(item.MassKg))
         {
             TruckLoad(out float kg, out float cap);
-            reason = $"Truck's full! ({kg:0}/{cap:0} kg) — go dump it";
+            reason = $"Truck's full! ({kg:0}/{cap:0} kg) — go tip it at the depot";
             return false;
         }
         return true;
@@ -307,7 +307,7 @@ public class TruckHopper : MonoBehaviour, ICarryReceiver, ICarryReceiverFeedback
             GameHUD.Toast($"Truck's nearly full ({fill * capAfter:0}/{capAfter:0} kg)", ToastStyle.Info);
         else if ((guest || localActor) && fillBefore < 0.999f && fill >= 0.999f)
         {
-            GameHUD.Toast("Truck's FULL — back to the depot to dump it!", ToastStyle.Bad, 3f);
+            GameHUD.Toast($"Truck's FULL — back to the depot, then hold {TruckTipper.KeyLabel} to tip it!", ToastStyle.Bad, 3f);
             Sfx.Play("horn", mouth, 0.6f, 1.2f);
         }
     }

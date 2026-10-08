@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SolidWaste 3D: the print app on the shop laptop (instanced inside Assets/UI/ebae/ebae.uxml as "solidWastePage").
+     Static skeleton only; the blueprint tree, the inspector and every number are built by SolidWasteApp.cs. -->
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+  <ui:Style src="solidwaste.uss" />
+  <ui:VisualElement name="swPage" class="sw-page">
+
+    <!-- title bar: logo, pretend menus, what is on the parts shelf, the printer -->
+    <ui:VisualElement name="swBar" class="sw-bar">
+      <ui:VisualElement name="swLogo" class="sw-logo">
+        <ui:VisualElement name="swLogoMark" class="sw-logo-mark" picking-mode="Ignore" />
+        <ui:Label text="SolidWaste" class="sw-logo-word" picking-mode="Ignore" />
+        <ui:Label text="3D" class="sw-logo-3d" picking-mode="Ignore" />
+        <ui:Label text="'97" class="sw-logo-year" picking-mode="Ignore" />
+      </ui:VisualElement>
+      <ui:VisualElement name="swMenus" class="sw-menus" />
+      <ui:VisualElement class="sw-bar-spacer" />
+      <ui:VisualElement name="swShelf" class="sw-shelf" />
+      <ui:VisualElement name="swPrinter" class="sw-printer">
+        <ui:VisualElement name="swPrinterLamp" class="sw-printer-lamp" picking-mode="Ignore" />
+        <ui:Label name="swPrinterLabel" text="PRINTER IDLE" class="sw-printer-label" picking-mode="Ignore" />
+      </ui:VisualElement>
+    </ui:VisualElement>
+
+    <ui:VisualElement class="sw-body">
+      <!-- the build plate: a blueprint sheet with the honeycomb on it -->
+      <ui:VisualElement name="swViewport" class="sw-viewport">
+        <ui:VisualElement name="swCanvas" class="sw-canvas" />
+        <ui:VisualElement name="swLegend" class="sw-legend" picking-mode="Ignore" />
+        <ui:VisualElement name="swZoom" class="sw-zoom" />
+        <ui:Label name="swPlateLabel" text="BUILD PLATE 1 / 1" class="sw-plate-label" picking-mode="Ignore" />
+      </ui:VisualElement>
+      <!-- the selected blueprint -->
+      <ui:ScrollView name="swInspector" class="sw-inspector" />
+    </ui:VisualElement>
+
+    <ui:VisualElement class="sw-status">
+      <ui:Label name="swStatusLeft" text="Ready." class="sw-status-text" />
+      <ui:VisualElement class="sw-bar-spacer" />
+      <ui:Label name="swStatusRight" text="" class="sw-status-text sw-status-text--right" />
+    </ui:VisualElement>
+  </ui:VisualElement>
+</ui:UXML>

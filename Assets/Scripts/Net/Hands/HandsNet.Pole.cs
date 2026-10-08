@@ -33,7 +33,7 @@ public partial class HandsNet
     {
         if (!IsServer || !HostPlayerPos(client, out var feet)) return;
         if (!BusinessUpgradeNet.HasGrabberPoleForClient(client))
-        { HostLose(client, id, curbKey, "You need a grabber pole. If you just bought it, try again in a moment."); return; }
+        { HostLose(client, id, curbKey, "You need a Grabby Hand. If you just built it, try again in a moment."); return; }
         float now = Time.unscaledTime;
         if (poleAt.TryGetValue(client, out var used) && now - used < GrabberPole.Cooldown - 0.08f) return;
         var player = PlayerBody.For(client);
@@ -51,11 +51,15 @@ public partial class HandsNet
         }
         if (nc == null || nc.Item == null) return;
         Vector3 hand = feet + Vector3.up * 1.1f;
-        float reach = nc.St.Phase == HandsPhase.Held || nc.St.Phase == HandsPhase.Tug ? GrabberPole.SnatchRange : GrabberPole.ReachGrab;
+        // Bag reach grows with the actor's own Grabby Hand level (read on the host); snatching a held bag does not.
+        float reach = nc.St.Phase == HandsPhase.Held || nc.St.Phase == HandsPhase.Tug ? GrabberPole.SnatchRange
+            : GrabberPole.ReachFor(Mathf.Max(1, HaulerLevel(client, CallingIds.GrabberPole)));
         if (!PoleTargeting.WithinReach(hand, nc.Item.WorldCenter, reach + 0.6f) ||
             !PoleTargeting.ClearPath(hand, nc.Item.WorldCenter, player.transform, nc.Item.transform))
-        { HostLose(client, nc.Id, curbKey, "Pole can't reach through that wall."); return; }
+        { HostLose(client, nc.Id, curbKey, "The Grabby Hand can't reach that."); return; }
         poleAt[client] = now;
-        HostGrab(client, nc.Id, null, ServerNow, nc.Item.transform.position);
+        // The ordinary grab checks arm's reach from the player: stand the claim at the end of the pole (within ClaimSlack).
+        Vector3 itemAt = nc.Item.transform.position;
+        HostGrab(client, nc.Id, null, ServerNow, itemAt, Vector3.MoveTowards(feet, itemAt, HandsTuning.ClaimSlack - 0.5f));
     }
 }

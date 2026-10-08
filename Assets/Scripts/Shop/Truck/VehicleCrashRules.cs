@@ -25,23 +25,27 @@ public static class VehicleCrashRules
     }
 
     public static bool TrucksNear(Vector3 a, Quaternion ar, Vector3 b, Quaternion br, float slack)
+        => TrucksNearBounds(a, ar, TruckControllerV2.BodyBoxMetres, b, br, TruckControllerV2.BodyBoxMetres, slack);
+
+    public static bool TrucksNearBounds(Vector3 a, Quaternion ar, Bounds aBox, Vector3 b, Quaternion br, Bounds bBox, float slack)
     {
         if (!Finite(a) || !Finite(b)) return false;
-        var box = TruckControllerV2.BodyBoxMetres;
-        Vector3 ac = a + ar * box.center, bc = b + br * box.center;
-        if (Mathf.Abs(ac.y - bc.y) > box.size.y + slack) return false;
+        Vector3 ac = a + ar * aBox.center, bc = b + br * bBox.center;
+        if (Mathf.Abs(ac.y - bc.y) > aBox.extents.y + bBox.extents.y + slack) return false;
         Vector3 d = bc - ac;
         Vector3 ax = ar * Vector3.right, az = ar * Vector3.forward, bx = br * Vector3.right, bz = br * Vector3.forward;
-        return !Separated(ax, d, ax, az, bx, bz, box.extents, slack) &&
-               !Separated(az, d, ax, az, bx, bz, box.extents, slack) &&
-               !Separated(bx, d, ax, az, bx, bz, box.extents, slack) &&
-               !Separated(bz, d, ax, az, bx, bz, box.extents, slack);
+        return !Separated(ax, d, ax, az, bx, bz, aBox.extents, bBox.extents, slack) &&
+               !Separated(az, d, ax, az, bx, bz, aBox.extents, bBox.extents, slack) &&
+               !Separated(bx, d, ax, az, bx, bz, aBox.extents, bBox.extents, slack) &&
+               !Separated(bz, d, ax, az, bx, bz, aBox.extents, bBox.extents, slack);
     }
 
     public static bool CarNearTruck(Vector3 car, Vector3 halfExtents, Vector3 truck, Quaternion rotation)
+        => CarNearTruckBounds(car, halfExtents, truck, rotation, TruckControllerV2.BodyBoxMetres);
+
+    public static bool CarNearTruckBounds(Vector3 car, Vector3 halfExtents, Vector3 truck, Quaternion rotation, Bounds box)
     {
         if (!Finite(car) || !Finite(halfExtents) || !Finite(truck)) return false;
-        var box = TruckControllerV2.BodyBoxMetres;
         Vector3 p = Quaternion.Inverse(rotation) * (car + Vector3.up * halfExtents.y - truck) - box.center;
         // Rounded car footprint plus bounded interpolation slack; height rejects separate storeys/interior copies.
         float radius = Mathf.Min(2.8f, new Vector2(halfExtents.x, halfExtents.z).magnitude);
@@ -49,13 +53,13 @@ public static class VehicleCrashRules
                Mathf.Abs(p.y) <= box.extents.y + halfExtents.y + .5f;
     }
 
-    static bool Separated(Vector3 axis, Vector3 d, Vector3 ax, Vector3 az, Vector3 bx, Vector3 bz, Vector3 e, float slack)
+    static bool Separated(Vector3 axis, Vector3 d, Vector3 ax, Vector3 az, Vector3 bx, Vector3 bz, Vector3 ae, Vector3 be, float slack)
     {
         axis.y = 0f;
         if (axis.sqrMagnitude < .01f) return false;
         axis.Normalize();
-        float radius = e.x * (Mathf.Abs(Vector3.Dot(axis, ax)) + Mathf.Abs(Vector3.Dot(axis, bx))) +
-                       e.z * (Mathf.Abs(Vector3.Dot(axis, az)) + Mathf.Abs(Vector3.Dot(axis, bz)));
+        float radius = ae.x * Mathf.Abs(Vector3.Dot(axis, ax)) + be.x * Mathf.Abs(Vector3.Dot(axis, bx)) +
+                       ae.z * Mathf.Abs(Vector3.Dot(axis, az)) + be.z * Mathf.Abs(Vector3.Dot(axis, bz));
         return Mathf.Abs(Vector3.Dot(d, axis)) > radius + slack;
     }
 

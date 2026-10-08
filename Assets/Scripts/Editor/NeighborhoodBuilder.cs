@@ -49,7 +49,7 @@ using Object = UnityEngine.Object;
 /// (hard, sunny picket pens with KidPen placement data) for the kids who cheer the truck. No RNG and built after the graph, so
 /// the HouseDirectory and StreetGraph.asset are untouched by it.
 /// </summary>
-public static class NeighborhoodBuilder
+public static partial class NeighborhoodBuilder
 {
     public const string DefaultScenePath = "Assets/Scenes/Neighborhood.unity";
     public const int DefaultSeed = 1234;
@@ -334,7 +334,9 @@ public static class NeighborhoodBuilder
             c.graph = BuildStreetGraph(c);
             // ---- WorldLife kids (§12.K): fenced pens, AFTER the graph and with no RNG, so nothing above changes ----
             BuildKidPens(c);
-            report = Validate(c);
+            // The original seeded lot recipes retain stop identities and their authored detail. The city pass
+            // places those lots on shared road anchors, then derives navigation/map data from the same blueprint.
+            report = ApplyCoastalPlan(c);
             string graphPath = graphAssetPath ?? (scenePath == DefaultScenePath ? StreetGraph.AssetPath : null);
             if (graphPath != null)
             {
@@ -354,9 +356,12 @@ public static class NeighborhoodBuilder
                 report += "[NeighborhoodBuilder] town map: NOT re-baked (SkipTownMapBake): run Rubbish/Setup/Town Map (Setup_TownMap) next\n";
             else if (scenePath == DefaultScenePath)
             {
-                try { var mapLog = new StringBuilder(); Setup_TownMap.Bake(mapLog); report += "[NeighborhoodBuilder] town map: " + mapLog.ToString().Replace("\n", " ") + "\n"; }
-                catch (Exception mapEx) { report += "[NeighborhoodBuilder] town map bake failed: " + mapEx.Message + "\n"; }
+                var mapLog = new StringBuilder();
+                if (!Setup_TownMap.Bake(mapLog)) throw new InvalidOperationException("Town map bake failed: " + mapLog);
+                report += "[NeighborhoodBuilder] town map: " + mapLog.ToString().Replace("\n", " ") + "\n";
             }
+            if (scenePath == DefaultScenePath && !SkipTownMapBake)
+                report += "[NeighborhoodBuilder] published town signature " + TownWorldSignatureBuilder.Publish() + "\n";
             ok = true;
         }
         catch (Exception e)
@@ -3279,8 +3284,11 @@ public static class NeighborhoodBuilder
         foreach (var f in AllFrontages(c))
         {
             if (IsBulbFrontage(f)) continue;
+            // These recipes still run in the legacy layout before coastal relocation. New city bounds cannot
+            // classify the old coordinates (and could yield new district indices outside this four-recipe pass).
+            int district = WorldLifeIds.DistrictIndex(f.district != null ? f.district.id : Districts.MildlyPleasant);
             for (float s = f.furn0 + 14f; s <= f.furn1 - 14f; s += 3f)
-                if (RoadWorkSpotOk(c, f, s)) cands[DistrictByte(f.P(s, RoadWorkD, 0f))].Add((f, s));
+                if (RoadWorkSpotOk(c, f, s)) cands[district].Add((f, s));
         }
         int sites = 0;
         for (int d = 0; d < 4; d++)
@@ -3573,7 +3581,11 @@ public static class NeighborhoodBuilder
     /// district, rest colliders (enabled primitives) and renderers (TMP text included).</summary>
     static void FinishKnockables(Ctx c)
     {
-        ushort id = 0;
+        int id = 0;
+        var reserved = new HashSet<ushort>();
+        var authored = TownAuthoringScope.AuthoredRoot(c.root);
+        if (authored != null)
+            foreach (var prop in authored.GetComponentsInChildren<Knockable>(true)) reserved.Add(prop.id);
         int dropped = 0;
         var cols = new List<Collider>();
         foreach (var k in c.knock)
@@ -3584,7 +3596,9 @@ public static class NeighborhoodBuilder
                 if (col.enabled && !col.isTrigger && !(col is MeshCollider)) cols.Add(col);
             var kn = k.go.GetComponent<Knockable>();
             if (kn == null) kn = k.go.AddComponent<Knockable>();
-            kn.id = id++;
+            while (id <= ushort.MaxValue && reserved.Contains((ushort)id)) id++;
+            if (id > ushort.MaxValue) throw new InvalidOperationException("City has no free knockable IDs.");
+            kn.id = (ushort)id++;
             kn.kind = k.kind;
             kn.proxyKey = k.proxyKey;
             kn.stopId = k.stopId ?? "";
@@ -3614,7 +3628,14 @@ public static class NeighborhoodBuilder
     static StreetGraph BuildStreetGraph(Ctx c)
     {
         Physics.SyncTransforms();
-        var b = new StreetGraphBuilder { builderSeed = c.seed, districtAt = DistrictByte };
+        // This temporary graph extracts authored garden/driveway metadata BEFORE coastal placement.
+        // Classify it against the original recipe bounds, not the new runtime city bounds.
+        var b = new StreetGraphBuilder { builderSeed = c.seed, districtAt = p =>
+        {
+            foreach (var district in c.districts)
+                if (district.bounds.Contains(p.x, p.z)) return WorldLifeIds.DistrictIndex(district.id);
+            return WorldLifeIds.DistrictIndex(Districts.MildlyPleasant);
+        } };
         foreach (var rw in c.roadWorks) b.jaywalkKeepOut.Add((rw, 11f));                        // cones in the road
         foreach (var st in c.stops) b.jaywalkKeepOut.Add((st.transform.position, 4.5f));       // curb slots + the wheelie bin
         const float W = StreetGraph.WalkOffset, Ring = MMBulbHalf + StreetGraphBuilder.BulbWalkMargin;
@@ -4520,6 +4541,7 @@ public static class NeighborhoodBuilder
     {
         var t = new GameObject(name).transform;
         t.SetParent(parent, false);
+        CityEditTransaction.RegisterCreated(t.gameObject);
         return t;
     }
 

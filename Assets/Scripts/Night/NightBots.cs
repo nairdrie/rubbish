@@ -80,7 +80,7 @@ public static class NightBots
     static void Register() => BotBrains.Register("night", () => new NightBrain());
 
     static Vector3 Arena => DepotRowWorld.Active
-        ? new Vector3(DepotRowLayout.LotCenterX(1), 0f, DepotRowLayout.RoadZ + 1f)
+        ? DepotRowLayout.RoadPoint(1) + DepotRowLayout.StreetFacing * Vector3.forward
         : Vector3.zero;
 
     static void Log(string phase, Dictionary<string, object> d = null)

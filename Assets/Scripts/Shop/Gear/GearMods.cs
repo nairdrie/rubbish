@@ -22,7 +22,7 @@ public class GearMods : MonoBehaviour
         pc = GetComponent<PlayerController>();
         carrier = GetComponent<TrashCarrier>();
         Ensure<BootsMods>();
-        Ensure<BackSack>();
+        // (The Back Sack is retired: the gloves' back slots ride in the Compactor Pack's host-tracked inventory now.)
         Ensure<TreasureWand>();
         Ensure<UvLamp>();
         Ensure<GarbageJuice>();

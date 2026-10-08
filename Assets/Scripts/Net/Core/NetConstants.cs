@@ -27,9 +27,9 @@ public static class NetConstants
 public static class NetVersion
 {
     /// <summary>Bump when messages, RPCs or replicated state change shape.</summary>
-    public const ushort Protocol = 6;
-    /// <summary>Bump with balance patches (prices, rolls) so mismatched content never shares a Town.</summary>
-    public const ushort Content = 5;
+    public const ushort Protocol = 17; // + SolidWaste 3D: the workbench is gone and printing moved to the laptop: build action 8 (Monument load; 7 "build sculpture" is dead), WorkshopShopEventRpc / WorkshopDiskDropRpc (the floppy disk), WorkshopState.monument / fed / disk / diskBags / diskDrops; was 16: + specific-parts crafting: WorkshopBuildRpc / WorkshopBuildReplyRpc (kept items pay for callings and sculptures), workshop command actions 5-7, WorkshopState.pins, the donate RPC removed; was 15: + DepotTruckCargoNet: TipRpc(truck, lot) -> DumpRpc(truck) + DumpFxRpc, fullLots removed (TruckTipper: TIP IT on the truck); was 14: + Raccoon RPCs on NightNet (RaccoonAsk/Fx/Tell), trap act 2, WorkshopState.hutch; was 13: Scavenger RPCs on HandsNet (x-ray, call it, burglary, fence); was 12:  Hauler: backpack list (PackNet) and its RPCs on HandsNet
+    /// <summary>Content diagnostic version; cosmetic mismatches remain allowed. Published map identity is checked separately.</summary>
+    public const ushort Content = 10; // compact coastal blocks, cohesive yards and decorative frontage
 }
 
 /// <summary>Which transport a session runs on (D6).</summary>

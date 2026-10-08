@@ -5,7 +5,7 @@ grab the trash bags and chuck them in the truck. Back at the shop you tip the lo
 open on the sorting table and dig through the gunk: recyclables go in the recycling bins for cash,
 junk goes in the compactor, batteries go in the hazard barrel (or they explode in the compactor),
 and every now and then you find something *amazing* — somebody's wedding ring — which you keep and
-sell on **ebae**, the online pawn shop on the shop laptop.
+sell on **ebag**, the online pawn shop on the shop laptop.
 
 **Feel target:** every action has a punchy reaction. Squash/stretch, pops, dings, floating
 "+$0.42", combo counters, camera shake on slams, sparkles + slow-mo on rare finds, dumb sound
@@ -26,7 +26,7 @@ when `!GameSession.IsGuest`; no new scene-name checks or static `Current` single
 
 1. **Garage (ShopScene)** — start of day. Truck parked in the bay facing the garage door.
    Walk to the truck → **E Enter Truck**. Drive at the door (or look at it) → **E Drive Out**.
-2. **Neighborhood** — arrive in the truck on the depot driveway. HUD shows route progress and the
+2. **Neighborhood** — arrive in the truck on your shop's apron on Depot Row (lot 1; `Multiplayer.md` §13.4). HUD shows route progress and the
    nearest uncollected stop. Houses on the route have 1–4 black sacks at the curb, beside a bin,
    with a floating marker. Stop the truck next to the curb → **E Exit Truck**.
 3. **Pickup** — walk up to a bag → **E Grab (6.2 kg)**. Carrying slows you a bit (heavier = slower).
@@ -39,10 +39,12 @@ when `!GameSession.IsGuest`; no new scene-name checks or static `Current` single
 4. **Truck mass** — the truck holds `GameSession.TruckCapacityKg` (160 kg to start). A bag that
    would overflow bounces off the hopper: "Truck's full! Go dump it." Plan: some routes take two
    trips.
-5. **Back to garage** — drive into the depot's garage door → **E Drive into Garage**. You arrive in
-   the bay. Walk to the **TIP IT** lever by the truck's rear → bags cascade out of the hopper onto
-   the tipping floor behind the truck.
-6. **Sorting** — grab a bag from the pile, toss it onto the **sorting table** → it rips open,
+5. **Back to garage** — drive up to your shop's roller door on Depot Row → **E Drive into the garage** (on foot: **Enter your shop**). You arrive in
+   the bay. Still in the driver's seat, **hold G** (pad: hold B) to **TIP IT** → bags cascade out of the hopper onto
+   the tipping floor behind the truck (10 s; 3 s with the Auto-Tipper). There is no floor lever. TIP IT works anywhere
+   the truck is stopped: outdoors the load lands on the street as litter (`Progression.md` §6.1).
+6. **Sorting** — carry a bag from the pile to the **sorting table** (there is no "next bag" key; the Bag Belt upgrade
+   carries bags to a queue rack beside the table) and toss it on, or step up with it and slam it → it rips open,
    items spill out on the table and *reveal* (name, category-colored outline; rares sparkle with a
    big "RARE FIND!" card + slow-mo). Grab items and toss them into:
    - **Recycling bins** (Metal / Plastic / Glass / Paper) — instant `$` by weight × rate, with a
@@ -52,16 +54,18 @@ when `!GameSession.IsGuest`; no new scene-name checks or static `Current` single
      bags can go straight in without ripping them first. The press slams (shake, crunch), pays by
      weight, and the ordinary bale floats away and disappears. Hazard effects do not charge a fine.
    - **Hazard barrel** — batteries, spray cans, paint.
-   - **Keep crate** — valuables go to your inventory (`GameSession.Inventory`).
+   - **Keep crate** — takes anything: it goes to your inventory (`GameSession.Inventory`). A valuable is a treasure (ebag,
+     displays, Rep); anything else is a part for SolidWaste 3D, the laptop's print tab (blueprint recipes, the Monument; `Progression.md` §6.9).
+     Somewhere in your first ten bags is a floppy disk: KEEP it and that tab appears (`Progression.md` §6.9.0).
    Quick-clear option: **BULK COMPACT SHOP** gathers eligible loose trash and unopened bags from this
    shop's tipping floor, table and compactor drop zone. It never reaches into a truck, another
    depot, a player's hands, saved inventory or displays. It uses the same per-kg payout as the chamber,
    with no hazard or landfill fees. Hazards are consumed once; L2 dampens their comic bangs. Recycling
    still pays more; the main cost is destroying undiscovered treasures (unless the L3 grate rescues
    them at 30% value). Compacted players retain their temporary cartoon-cube gag, not ordinary bale cleanup.
-7. **ebae** — shop laptop. Inventory list → list an item at a price (Lowball / Fair / Greedy
+7. **ebag** — shop laptop. Inventory list → list an item at a price (Lowball / Fair / Greedy
    presets or custom). Over real time, derpy buyers send offers with dumb messages; accept/decline.
-   Or **Pawn now** for 45%. Sold → cash (minus 8% ebae fee). Offers ping a toast even when the
+   Or **Pawn now** for 45%. Sold → cash (minus 8% ebag fee). Offers ping a toast even when the
    laptop is closed.
 8. **Next day** — when the route was completed and the truck is empty, driving/walking out of
    the garage starts the next day: fresh trash at the curbs (new rolls).
@@ -79,7 +83,7 @@ when `!GameSession.IsGuest`; no new scene-name checks or static `Current` single
 | Compaction, chamber or bulk | $0.20/kg stock; $0.25 / $0.30 / $0.35 at compactor L1 / L2 / L3 |
 | Compaction downside | Lower pay than recycling; valuables destroyed (L3 grate saves them at 30% value). No hazard or landfill fees. |
 | Combo | +10% per consecutive correct sort within 2.5 s, cap ×2 |
-| Pawn | 45% of value; ebae fee 8% |
+| Pawn | 45% of value; ebag fee 8% |
 
 Valuable drop chance per item ≈ 2% + 4% × house wealth (tuned in ItemCatalog loot tables),
 rarity weighted Uncommon ≫ Rare > Epic > Legendary.
@@ -193,9 +197,9 @@ public static class Setup_<System>
 The lead runs them in this order: Items → Pickup → Feel → Flow → Sorting → Ebae → Neighborhood → WorldLife
 (`Setup_WorldLife`: Graph check → Knock → Residents → Traffic → Rules → Kids → Polish, each package's setup if it exists) → Coop
 (`Setup_Coop`: the NetSession prefab from every `[NetSessionComponent]`, player/truck network flags; re-run it whenever a new
-`[NetSessionComponent]` lands) → DepotRow (`Setup_DepotRow`: builds `DepotRow.unity`, the co-op Depot Row shops and their
-pocket interiors copied from ShopScene; re-run it after any ShopScene setup: SortingStation, GarageUpgrades, GarageDisplays,
-Shop, Ebae) → Windows Playtest (`Setup_WindowsPlaytest`).
+`[NetSessionComponent]` lands) → DepotRow (`Setup_DepotRow`: builds `DepotRow.unity`, the Depot Row shops (solo uses lot 1's street side as its depot) and their
+pocket interiors copied from ShopScene; re-run it after any ShopScene setup: SortingStation, MagnusRail, GarageUpgrades,
+GarageDisplays, Shop, Ebae) → Windows Playtest (`Setup_WindowsPlaytest`).
 Rules for setup code:
 - **Never save `Bootstrap.unity`** (it may hold Nick's unsaved changes). Networking is configured at runtime by `NetBoot`
   instead. If a setup script dirties Bootstrap, reload it from disk rather than saving. Don't use
@@ -223,9 +227,10 @@ the same eval call; eval runs atomically on the main thread).
   `GarageDoorController` + child `Interactable` BoxCollider (layer Interactable).
 - `TruckSpawner` (tag TruckSpawner) at (-0.11, 0, -2.47), rot Y 270 (truck faces the door, -X).
   Truck is ~2.6 w × 3.3 h × 6 m; pivot ≈ center; rear bumper ≈ x 2.1.
-- Magnus robot-arm rail at x 2.8–3.7, z -3..1.1 (don't touch Magnus / chess / office).
+- Magnus's chess stop at (3.275, 0.72) with a short siding (don't touch Magnus / chess / office; `Setup_MagnusRail` owns his cart and track).
 - Office/chess/laptop: x 3..7, z 0..5. Laptop (`LaptopController`) at (5.2, 1.3, 3.0).
-- **Tipping floor (dump pile)**: x 4.2–6.8, z -4.6..-1.6 (free floor behind the truck & rail).
+- **Tipping floor (dump pile)**: x 4.2–6.8, z -4.6..-1.6 (free floor behind the truck). Magnus's rail no longer runs
+  here: his track is one line from the chess stop (3.275, 0.72) to the Sort Stop (-3.4, 1.2).
 - **Sorting station**: x -6.5..-1.5, z 1.5..4.8 (free, north-west quadrant). Keep z -1.2..1.5 as a
   walkway.
 - Default `PlayerSpawner` (tag PlayerSpawner) at (-0.51, 0, 1.86) — Flow may move it to
@@ -236,10 +241,12 @@ the same eval call; eval runs atomically on the main thread).
 **Neighborhood** — rebuilt by NeighborhoodBuilder (old content disabled, not deleted). Must provide:
 `SpawnPoint_FromGarage` (on foot, beside the depot door), `SpawnPoint_FromGarage_Truck` (in front
 of the depot door, facing out along the driveway), a `PlayerSpawner`-tagged object (= on-foot
-spawn) and a `TruckSpawner`-tagged object (depot driveway), a depot garage door with
-`GarageDoorController` (target `ShopScene`, spawns `SpawnPoint_FromNeighborhood` /
-`SpawnPoint_FromNeighborhood_Truck`, prompts "Enter Garage" / "Drive into Garage") plus an
-`InteractionZone` (Either) in front of it, `PickupStop`s on route houses, one `TrashRoute`.
+spawn) and a `TruckSpawner`-tagged object (depot driveway), `PickupStop`s on route houses, one `TrashRoute`.
+**The coastal town has no depot building or garage door of its own.** The shop is Depot Row's lot 1 in
+`DepotRow.unity`, which the solo host loads next to the town; its street `GarageDoorController` (depotLot 0) plus
+`InteractionZone` is the door into `ShopScene` (`SpawnPoint_FromNeighborhood` / `_Truck`). The two `SpawnPoint_FromGarage*`
+markers are only a fallback: arrivals use `DepotRowLayout.StreetOnFoot(0)` / `StreetTruck(0)` (`DepotFlowRules`,
+`Multiplayer.md` §13.4).
 
 **Player prefab** `Assets/Prefabs/Player.prefab`: CharacterController (h 1.8, r 0.28), pivot at
 feet, layer Interactable, MoveSpeed 3, Sprint 5.3, has PlayerController, ThirdPersonController,

@@ -7,7 +7,7 @@ using UnityEngine.UIElements;
 /// derpy props. Every element scales to its layout box. Also the review stars, the logo smile arrow and the
 /// little header icons.
 /// </summary>
-public static class ScrapazonArt
+public static partial class ScrapazonArt
 {
     public static readonly Color Ink = new Color32(0x23, 0x1F, 0x35, 0xFF);
     public static readonly Color Orange = new Color32(0xFF, 0x99, 0x00, 0xFF);
@@ -28,9 +28,6 @@ public static class ScrapazonArt
 
     /// <summary>The flying delivery box in the hero banner.</summary>
     public static VisualElement HeroBox() => Canvas("sz-hero-box", 240f, 140f, DrawHeroBox);
-
-    /// <summary>A small smiling delivery box (drop-in purchase animation).</summary>
-    public static VisualElement Box() => Canvas("sz-drop-box", 100f, 90f, DrawBox);
 
     /// <summary>Five stars, rating 0..5 (rounded to halves). Size comes from USS (class "sz-stars").</summary>
     public static VisualElement Stars(float rating, string extraClass = null)
@@ -101,6 +98,7 @@ public static class ScrapazonArt
         {
             case ShopIds.RabiesShot: Syringe(pen); break;
             case ShopIds.Repellent: SprayBottle(pen); break;
+            case ShopIds.TruckModel: Truck(pen, false, false); break;
             case ShopIds.TruckCapacity: Truck(pen, true, false); break;
             case ShopIds.TruckTurbo: Truck(pen, false, true); break;
             case ShopIds.AirHorn: AirHorn(pen); break;
@@ -110,7 +108,7 @@ public static class ScrapazonArt
             case ShopIds.TruckHandling: Tire(pen); break;
             case ShopIds.TruckArm: GrabbyArm(pen); break;
             case ShopIds.TruckHeadlights: Headlights(pen); break;
-            case ShopIds.AutoTipper: Lever(pen); break;
+            case ShopIds.AutoTipper: Tipper(pen); break;
             case ShopIds.SortingTable: Table(pen); break;
             case ShopIds.CompactorMk2: Compactor(pen); break;
             case ShopIds.RecyclingContracts: RecycleBin(pen); break;
@@ -131,10 +129,11 @@ public static class ScrapazonArt
             case ShopIds.BagCannon: BagCannonArt(pen); break;
             case ShopIds.GrabberPole: GrabberPoleArt(pen); break;
             case ShopIds.PermitMinivanMeadows: Permit(pen, new Color32(0x9B, 0xD8, 0xF5, 0xFF), "MM"); break;
+            case ShopIds.PermitCouponCommons: Permit(pen, new Color32(0xF4, 0xC8, 0x82, 0xFF), "CC"); break;
             case ShopIds.PermitSnootingtonHills: Permit(pen, new Color32(0xC9, 0xE8, 0xB0, 0xFF), "SH"); break;
+            case ShopIds.PermitStackingtonHeights: Permit(pen, new Color32(0xA5, 0xD8, 0xE7, 0xFF), "ST"); break;
             case ShopIds.PermitBillionaireBluffs: Permit(pen, new Color32(0xFF, 0xE0, 0x7A, 0xFF), "BB"); break;
             case ShopIds.EbaePowerSeller: Rosette(pen); break;
-            case ShopIds.HireKevin: Kevin(pen); break;
             case ShopIds.GoldenTruck: GoldenTruck(pen); break;
             case ShopIds.GarbageJuice: JuiceCan(pen); break;
             case ShopIds.LuckyGnome: Gnome(pen, new Color32(0xE5, 0x32, 0x38, 0xFF), false); break;
@@ -147,7 +146,7 @@ public static class ScrapazonArt
             case ShopIds.TrashFmRadio: Radio(pen); break;
             case ShopIds.GarageDiscoBall: DiscoBall(pen); break;
             case ShopIds.FranchiseMode: ForSale(pen); break;
-            default: DrawBox(pen); break;
+            default: if (!DrawDecor(id, pen)) DrawBox(pen); break; // workshop decor: ScrapazonArt.Decor.cs
         }
     }
 
@@ -208,17 +207,24 @@ public static class ScrapazonArt
         pen.Line(186f, 52f, 192f, 44f, Ink, 2.5f);
     }
 
-    static void Lever(Pen pen)
+    /// <summary>Auto-Tipper: the truck itself tips, and the bags fly out of the back.</summary>
+    static void Tipper(Pen pen)
     {
-        pen.RoundRect(100f, 116f, 120f, 16f, 4f, 0f, new Color32(0x8A, 0x8F, 0xA0, 0xFF), 3f);
-        pen.Line(100f, 112f, 136f, 36f, Steel, 9f);
-        pen.Line(100f, 112f, 136f, 36f, Ink, 2f);
-        pen.Circle(138f, 32f, 14f, Red, 3f);
-        pen.Eyes(138f, 30f, 5f, -0.5f, 0.3f);
-        // tiny ghost hand pulling it, creepily
-        pen.Ellipse(156f, 44f, 10f, 7f, new Color(1f, 1f, 1f, 0.75f), 2f);
-        pen.Line(52f, 60f, 70f, 60f, new Color32(0xB8, 0xBE, 0xC8, 0xFF), 3f);
-        pen.Line(46f, 74f, 64f, 74f, new Color32(0xB8, 0xBE, 0xC8, 0xFF), 3f);
+        var bag = new Color32(0x2B, 0x2B, 0x33, 0xFF);
+        var grey = new Color32(0xB8, 0xBE, 0xC8, 0xFF);
+        // whoosh lines and three bags tumbling out behind the hopper
+        pen.Line(14f, 52f, 40f, 58f, grey, 3f);
+        pen.Line(8f, 72f, 34f, 74f, grey, 3f);
+        pen.Circle(30f, 96f, 12f, bag, 2.5f);
+        pen.Circle(16f, 116f, 11f, bag, 2.5f);
+        pen.Circle(40f, 118f, 13f, bag, 2.5f);
+        pen.Line(30f, 84f, 28f, 79f, bag, 3f);
+        pen.Rotate(new Vector2(150f, 112f), 6f);
+        TruckBody(pen, TruckGreen, new Color32(0x4E, 0x80, 0x2E, 0xFF));
+        // the hydraulic ram under the hopper
+        pen.Line(96f, 104f, 76f, 82f, Steel, 6f);
+        pen.Line(96f, 104f, 76f, 82f, Ink, 1.5f);
+        pen.ResetRotation();
     }
 
     static void Table(Pen pen)
@@ -582,25 +588,6 @@ public static class ScrapazonArt
         pen.Circle(100f, 62f, 24f, White, 2.5f);
         pen.Star(100f, 62f, 18f, 1f);
         Sparkle(pen, 160f, 26f, 7f);
-    }
-
-    static void Kevin(Pen pen)
-    {
-        var vest = new Color32(0xFF, 0x8A, 0x00, 0xFF);
-        pen.RoundRect(100f, 96f, 44f, 50f, 12f, 0f, vest, 3.5f);
-        pen.Line(88f, 74f, 88f, 120f, new Color32(0xF1, 0xF1, 0x60, 0xFF), 3f);
-        pen.Line(112f, 74f, 112f, 120f, new Color32(0xF1, 0xF1, 0x60, 0xFF), 3f);
-        pen.Circle(100f, 50f, 20f, new Color32(0xF6, 0xCF, 0xA8, 0xFF), 3f);
-        pen.Eyes(100f, 48f, 6f, -0.7f, 0.5f);
-        pen.ArcStroke(100f, 58f, 7f, 20f, 160f, Ink, 2.5f);
-        pen.RoundRect(100f, 30f, 42f, 10f, 4f, -8f, new Color32(0x3B, 0x8E, 0xF0, 0xFF), 2.5f);
-        pen.Line(90f, 120f, 86f, 134f, Ink, 5f);
-        pen.Line(110f, 120f, 114f, 134f, Ink, 5f);
-        pen.RoundRect(82f, 136f, 14f, 6f, 2f, 0f, Rubber, 2f); // one shoe
-        pen.Ellipse(118f, 136f, 5f, 3f, new Color32(0xF6, 0xCF, 0xA8, 0xFF), 2f); // one sock
-        // the lost shoe, far away
-        pen.RoundRect(168f, 120f, 16f, 7f, 2f, 20f, Rubber, 2f);
-        pen.Line(150f, 112f, 160f, 116f, new Color32(0xB8, 0xBE, 0xC8, 0xFF), 2f);
     }
 
     static void GoldenTruck(Pen pen)

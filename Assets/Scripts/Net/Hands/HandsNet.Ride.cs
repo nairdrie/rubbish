@@ -248,7 +248,7 @@ public partial class HandsNet
                         truckPos = rt.transform.position;
                         truckRot = rt.transform.rotation;
                     }
-                    Vector3 expected = truckPos + truckRot * RideHolds.FeetMetres(hold) + Vector3.up * 0.15f;
+                    Vector3 expected = truckPos + truckRot * TruckModelVisuals.MapMetres(rt.transform, RideHolds.FeetMetres(hold)) + Vector3.up * 0.15f;
                     if (!RideFinite(worldStart) || Vector3.Distance(worldStart, expected) > 3f)
                     {
                         worldStart = expected;

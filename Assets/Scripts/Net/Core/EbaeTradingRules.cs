@@ -1,7 +1,7 @@
 using System;
 using System.Globalization;
 
-/// <summary>Whether a seller's local ebae listing has reached the Town board.</summary>
+/// <summary>Whether a seller's local ebag listing has reached the Town board.</summary>
 public enum EbaePublicationState { Publishing, Live, Rejected }
 
 /// <summary>Host-confirmed publication state and a reason when it was rejected.</summary>
@@ -17,7 +17,7 @@ public readonly struct EbaePublicationStatus
     }
 }
 
-/// <summary>Shared ebae limits used by the laptop and the Town authority.</summary>
+/// <summary>Shared ebag limits used by the laptop and the Town authority.</summary>
 public static class EbaeTradingRules
 {
     public const long MinPriceCents = 50;
@@ -71,7 +71,7 @@ public static class EbaeTradingRules
         return true;
     }
 
-    /// <summary>Validate prices supplied by preset buttons, which already come rounded by ebae.</summary>
+    /// <summary>Validate prices supplied by preset buttons, which already come rounded by ebag.</summary>
     public static bool TryPriceCents(float dollars, out long cents, out string error)
     {
         cents = 0;

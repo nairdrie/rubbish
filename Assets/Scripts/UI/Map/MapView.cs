@@ -50,6 +50,7 @@ public sealed class MapView
         public Vector2 xz;
         public float heading;
         public bool upright;
+        public int lot = -1;
     }
 
     readonly List<Pip> pips = new List<Pip>(96);
@@ -58,7 +59,8 @@ public sealed class MapView
     int dotCount;
     readonly List<Vector2> routePts = new List<Vector2>(64);
     readonly List<Icon> gates = new List<Icon>(4), exits = new List<Icon>(4), hatches = new List<Icon>(4);
-    Icon depot, ring, chevron, youCone, youOutline, you;
+    readonly List<Icon> depots = new List<Icon>(4);
+    Icon ring, chevron, youCone, youOutline, you;
     readonly List<Icon> beacons = new List<Icon>(8);
     readonly List<(TextMeshProUGUI t, Vector2 xz, float angle, float size, MapLabelKind kind)> labels = new List<(TextMeshProUGUI, Vector2, float, float, MapLabelKind)>(64);
 
@@ -186,7 +188,8 @@ public sealed class MapView
         foreach (var i in hatches) FeelRunner.SafeDestroy(i.rt.gameObject);
         foreach (var l in labels) FeelRunner.SafeDestroy(l.t.gameObject);
         gates.Clear(); exits.Clear(); hatches.Clear(); labels.Clear();
-        if (depot != null) { FeelRunner.SafeDestroy(depot.rt.gameObject); depot = null; }
+        foreach (var depot in depots) FeelRunner.SafeDestroy(depot.rt.gameObject);
+        depots.Clear();
         if (data == null) return;
 
         foreach (var dist in data.districts)
@@ -208,6 +211,7 @@ public sealed class MapView
                 gates.Add(g);
             }
         }
+        bool lotPois = DepotMapLocations.HasLotPois(data);
         foreach (var p in data.pois)
         {
             if (p.kind == MapPoiKind.Gate)
@@ -228,14 +232,17 @@ public sealed class MapView
                 Backing(e, minimap ? 24f : 32f);
                 exits.Add(e);
             }
-            else if (p.kind == MapPoiKind.GarageDoor && depot == null)
+            else if (p.kind == MapPoiKind.GarageDoor &&
+                (lotPois ? DepotMapLocations.LotFromId(p.id) >= 0 : depots.Count == 0))
             {
-                depot = NewIcon(iconRoot, "Depot", FeelUi.Rounded, MapBeacon.TruckOlive, new Vector2(minimap ? 28f : 34f, minimap ? 28f : 34f), true);
+                var depot = NewIcon(iconRoot, "Depot " + p.id, FeelUi.Rounded, MapBeacon.TruckOlive, new Vector2(minimap ? 28f : 34f, minimap ? 28f : 34f), true);
                 depot.img.type = Image.Type.Sliced;
                 depot.img.pixelsPerUnitMultiplier = 3f;
                 depot.xz = p.pos;
+                depot.lot = DepotMapLocations.LotFromId(p.id);
                 depot.text = FeelUi.Text(depot.rt, "R", minimap ? 22f : 26f, Color.white, TextAlignmentOptions.Center);
-                depot.text.text = "R";
+                depot.text.text = depot.lot >= 0 ? (depot.lot + 1).ToString() : "R";
+                depots.Add(depot);
             }
         }
         if (!minimap)
@@ -322,7 +329,7 @@ public sealed class MapView
         }
         foreach (var g in gates) g.rt.anchoredPosition = ToPan(g.xz);
         foreach (var e in exits) e.rt.anchoredPosition = ToPan(e.xz);
-        if (depot != null) depot.rt.anchoredPosition = ToPan(depot.xz);
+        foreach (var depot in depots) depot.rt.anchoredPosition = ToPan(depot.xz);
         foreach (var l in labels)
         {
             l.t.rectTransform.anchoredPosition = ToPan(l.xz);
@@ -375,7 +382,15 @@ public sealed class MapView
         // counter-rotate upright things so they read at any heading
         var counter = Quaternion.Euler(0f, 0f, -rotation);
         foreach (var g in gates) g.rt.localRotation = counter;
-        if (depot != null) depot.rt.localRotation = counter;
+        int localDepot = DepotMapLocations.LocalLot;
+        if (localDepot < 0) localDepot = 0;
+        foreach (var depot in depots)
+        {
+            depot.rt.localRotation = counter;
+            bool selected = depot.lot < 0 || depot.lot == localDepot;
+            depot.img.color = selected ? MapBeacon.TruckOlive : new Color(.38f, .40f, .43f, .9f);
+            depot.rt.localScale = Vector3.one * (selected ? 1.12f : .86f);
+        }
         foreach (var e in exits) e.rt.localRotation = Quaternion.Euler(0f, 0f, -e.heading);
         if (GameSettings.ColorblindMarkers || !Application.isPlaying)
             for (int i = 0; i < pipCount; i++) pips[i].rt.localRotation = counter;
@@ -422,9 +437,9 @@ public sealed class MapView
             DistrictDef d;
             if (live)
             {
-                if (!Progression.IsSubscribed(h.stopId)) continue;
+                if (!Progression.IsTownSubscribed(h.stopId)) continue;
                 d = Districts.ForStopId(h.stopId);
-                if (!Districts.IsUnlocked(d)) continue;
+                if (!DistrictAccess.LocalCanEnter(d)) continue;
                 var st = FeelWorld.At(h.stopId);
                 bags = st.bags;
                 age = st.oldestAge;

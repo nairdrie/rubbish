@@ -156,6 +156,16 @@ public static class Unstuck
     static bool TrySidewalk(PlayerController me, CharacterController cc, Vector3 from, out Vector3 to)
     {
         to = from;
+        var map = TownMapData.Load();
+        if (map != null && map.layoutId == CoastalCityLayout.LayoutId)
+        {
+            // Coastal sidewalks are concave ribbon meshes. Collider.ClosestPoint does not support them, and
+            // the middle of a curved ribbon's world AABB can be a lawn, building or river rather than a sidewalk.
+            foreach (var candidate in CoastalCandidates(map, from))
+                if (SnapToGround(candidate, out var grounded) && IsSafe(me, cc, grounded))
+                { to = grounded; return true; }
+            return false;
+        }
         float best = float.MaxValue;
         bool found = false;
         int n = Physics.OverlapSphereNonAlloc(from, SidewalkSearchRadius, nearby, GroundMask, QueryTriggerInteraction.Ignore);
@@ -163,6 +173,7 @@ public static class Unstuck
         {
             var c = nearby[i];
             if (c == null || !c.name.StartsWith("Sidewalk", StringComparison.Ordinal)) continue;
+            if (c is MeshCollider mesh && !mesh.convex) continue;
             Vector3 p = c.ClosestPoint(from);
             Vector3 inward = c.bounds.center - p; inward.y = 0f;
             if (inward.sqrMagnitude > 0.01f) p += inward.normalized * Mathf.Min(0.8f, inward.magnitude);
@@ -171,6 +182,26 @@ public static class Unstuck
             if (d < best) { best = d; to = p; found = true; }
         }
         return found;
+    }
+
+    /// <summary>Pure coastal recovery candidates, sidewalk first then road. Physics still verifies ground and
+    /// player clearance before any teleport. Keeps the old 80m search limit and works when the player fell below town.</summary>
+    public static Vector3[] CoastalCandidates(TownMapData map, Vector3 from)
+    {
+        if (map == null || map.layoutId != CoastalCityLayout.LayoutId) return Array.Empty<Vector3>();
+        var candidates = new System.Collections.Generic.List<Vector3>(2);
+        void Add(Vector3 point)
+        {
+            float dx = point.x - from.x, dz = point.z - from.z;
+            if (dx * dx + dz * dz > SidewalkSearchRadius * SidewalkSearchRadius) return;
+            // TownMap is XZ data and coastal streets are level. Raycast from the street datum, not from under it.
+            point.y = 0f;
+            foreach (var existing in candidates) if ((existing - point).sqrMagnitude < .01f) return;
+            candidates.Add(point);
+        }
+        if (map.TryNearestArea(from, MapAreaKind.Sidewalk, out var sidewalk)) Add(sidewalk);
+        if (map.TryNearestRoad(from, out var road, out _)) Add(road);
+        return candidates.ToArray();
     }
 
     static bool TrySpawn(out Vector3 to)

@@ -332,6 +332,7 @@ public class Raccoon : Critter
     void Provoke(ulong by, Vector3 from)
     {
         if (NetPuppet || Despawning) return;
+        if (Friendly(by)) return; // Raccoon calling: no grudges against family
         if (!Angry) { bites = 0; attackStartedAt = 0f; }
         angryAt = by;
         angryUntil = Time.time + RaccoonTemper.AngerSeconds;
@@ -520,6 +521,7 @@ public class Raccoon : Critter
         if (stateT >= stateDur)
         {
             if (!playerOnFoot || playerDist > 2.4f || NightShift.CritterImmune(target.client) || Time.time < nextBiteAt) { Enter(State.Attack); return; }
+            if (Friendly(target.client)) { Enter(State.Sniff); return; }
             if (target.local && CritterRepellent.TryProtect()) { Enter(State.Sniff); return; }
             Enter(State.Lunge);
         }
@@ -564,7 +566,7 @@ public class Raccoon : Critter
     }
 
     /// <summary>Is the target protected by repellent (theirs, wherever they play)?</summary>
-    bool TargetRepelled => target.local ? CritterRepellent.IsActive : NightNet.IsRepelled(target.client);
+    bool TargetRepelled => Friendly(target.client) || (target.local ? CritterRepellent.IsActive : NightNet.IsRepelled(target.client));
 
     void TickRetreat(float dt)
     {
@@ -594,10 +596,11 @@ public class Raccoon : Critter
         if (stateT >= stateDur)
         {
             Vector3 head = Rig.head.position;
-            GameHUD.FloatingText(head + Vector3.up * 0.45f, EwWords[Random.Range(0, EwWords.Length)], new Color(0.6f, 1f, 0.4f), 1.1f);
-            Sfx.Play("buzz", head, 0.4f, 1.6f);
+            bool pal = Friendly(target.client); // Raccoon calling: it backs off out of respect, not disgust
+            GameHUD.FloatingText(head + Vector3.up * 0.45f, pal ? PalWords[Random.Range(0, PalWords.Length)] : EwWords[Random.Range(0, EwWords.Length)], new Color(0.6f, 1f, 0.4f), 1.1f);
+            Sfx.Play(pal ? "chitter" : "buzz", head, 0.4f, 1.6f);
             Juice.Squash(Rig.juice, -0.25f, 0.25f);
-            if (target.local) CritterRepellent.TryProtect(); // "it's working" toast (rate-limited)
+            if (target.local && !pal) CritterRepellent.TryProtect(); // "it's working" toast (rate-limited)
             threat = playerFeet;
             Enter(State.Flee);
         }
@@ -626,6 +629,29 @@ public class Raccoon : Critter
         var pc = by != null ? by.GetComponent<PlayerController>() : target.pc;
         Provoke(pc != null ? NightPlayers.ClientOf(pc) : ulong.MaxValue, by != null ? by.transform.position : playerFeet);
         if (Current != State.Stunned) Enter(TargetRepelled ? State.Sniff : State.Alert);
+    }
+
+    // ---------------------------------------------------------------- Raccoon calling: friends of the family
+
+    float friendUntil;
+    static readonly string[] PalWords = { "oh. it's you", "*respectful nod*", "boss.", "one of us" };
+
+    /// <summary>Wild raccoons hold nothing against this player (feral, an Alpha) or anybody while charmed.</summary>
+    bool Friendly(ulong client) => Time.time < friendUntil || RaccoonStanding.Protects(client);
+
+    /// <summary>Host (Fully Feral's pounce, an Alpha's pack): calm down, give back what it stole and bite nobody for
+    /// <paramref name="seconds"/>. <paramref name="backOff"/> also sends it running.</summary>
+    public void Befriend(Vector3 from, float seconds, ulong by, bool backOff)
+    {
+        if (NetPuppet || Despawning || Current == State.Latched || Current == State.Stowaway || Current == State.Lured || Current == State.Leaving) return;
+        if (backOff && Time.time < friendUntil) return; // already backing off
+        friendUntil = Mathf.Max(friendUntil, Time.time + seconds);
+        angryUntil = 0f;
+        angryAt = ulong.MaxValue;
+        if (Loot != null) DropLoot(Vector3.up * 2.5f, "befriended", by);
+        threat = from;
+        if (backOff) Enter(State.Flee);
+        else if (Current == State.Attack || Current == State.Windup || Current == State.Lunge || Current == State.Retreat || Current == State.Heist) Enter(State.Alert);
     }
 
     public override void Scare(Vector3 from, bool horn)
@@ -969,7 +995,7 @@ public class Raccoon : Critter
     {
         if ((!Rabid && !Angry && !forceLatch) || NetPuppet || !playerOnFoot || target.pc == null || Time.time < nextBiteAt) return false;
         if (NightShift.CritterImmune(target.client) || NightLatch.IsLatched(target.client)) return false;
-        if (target.local ? CritterRepellent.IsActive : NightNet.IsRepelled(target.client)) return false;
+        if (TargetRepelled) return false;
         if (!forceLatch && !NightDice.Host.Chance(RaccoonTemper.LatchChance(Rabid))) return false;
         LatchVictim = target.client;
         latchPc = target.pc;

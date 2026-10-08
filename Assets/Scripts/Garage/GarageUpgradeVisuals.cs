@@ -27,15 +27,19 @@ public class GarageUpgradeVisuals : MonoBehaviour
 
         public bool Wanted(Func<string, int> levelFor)
         {
-            int lvl = levelFor(id);
+            int lvl = levelFor(CurrentId(id));
             if (lvl < minLevel || lvl > maxLevel) return false;
             if (string.IsNullOrEmpty(andId)) return true;
-            int l2 = levelFor(andId);
+            int l2 = levelFor(CurrentId(andId));
             return l2 >= andMinLevel && l2 <= andMaxLevel;
         }
     }
 
     public Entry[] entries = new Entry[0];
+
+    /// <summary>The upgrade an authored gate answers to today. Scene copies built before save v6 gate the delivery chute on
+    /// the removed Kevin's Crew upgrade; the chute belongs to the raccoon crew now, so it shows with the Collar Chip.</summary>
+    public static string CurrentId(string authoredId) => authoredId == KevinSeverance.LegacyUpgradeId ? CallingIds.CollarChip : authoredId;
 
     bool applied;
 

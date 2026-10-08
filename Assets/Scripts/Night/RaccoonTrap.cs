@@ -173,7 +173,7 @@ public class TrapActionTarget : MonoBehaviour, IInteractable
     public string GetInteractionPrompt()
     {
         var t = action.trap;
-        if (action.act == 1) return "Keep it as a shop pet";
+        if (action.act == 1) return Hutch.LocalHasRoom ? "Send it to your hutch" : "Keep it as a shop pet"; // Raccoon calling
         if (!t.Caught) return "Pick up your trap";
         float bounty = NightTraps.BountyFor(t.State);
         return $"Call Animal Control (+{Economy.Money(bounty)} bounty)";
@@ -183,7 +183,8 @@ public class TrapActionTarget : MonoBehaviour, IInteractable
     {
         if (!CanInteract()) return;
         Sfx.Play("click", action.trap.transform.position, 0.8f, 1.1f);
-        NightTraps.RequestAct(action.trap.Id, action.act);
+        // A hutch owner with a free bunk sends the catch home on F (act 2); the pet stays reachable from the hutch (Retire).
+        NightTraps.RequestAct(action.trap.Id, action.act == 1 && Hutch.LocalHasRoom ? (byte)2 : action.act);
     }
 
     public void Highlight(bool highlight) { }
@@ -324,7 +325,7 @@ public static class NightTraps
     /// <summary>Host: someone pressed E (0: bounty / pick up) or F (1: keep as a pet) on trap <paramref name="id"/>.</summary>
     public static void HostAct(ulong client, int id, byte act)
     {
-        if (act > 1) return;
+        if (act > 2) return;
         var list = Current();
         int i = list.FindIndex(t => t.id == id);
         if (i < 0) return;
@@ -345,6 +346,12 @@ public static class NightTraps
             using (Ledger.ToBusiness(BusinessOf(client)))
                 Ledger.Credit(bounty, t.state == TrapNet.CaughtRabid ? "Animal Control bounty (rabid!)" : "Animal Control bounty", NightShift.LedgerBounty, t.pos);
             NightNet.Say(t.pos + Vector3.up * 1.4f, $"+{Economy.Money(bounty)} Animal Control!", 4);
+        }
+        else if (act == 2)
+        {
+            // Raccoon calling: into the catcher's Critter Hutch (host-validated: they need one with a free bunk).
+            if (!Hutch.HostSendFromTrap(client, t.state == TrapNet.CaughtRabid, t.pos)) return;
+            op = "hutch";
         }
         else
         {

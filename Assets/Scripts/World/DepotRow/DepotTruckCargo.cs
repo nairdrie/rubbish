@@ -10,8 +10,8 @@ using UnityEngine;
 /// PlayerKey, so every machine agrees), so pickups pay the business whose truck took the bag: a guest's truck pays the
 /// guest's business, and an employee driving the boss's truck pays the boss.</item>
 /// <item><b>Cargo:</b> the host's own truck keeps its bags in <see cref="GameSession.TruckBags"/> on the host; every other
-/// business's bags stay on the host (<see cref="Businesses.HostCargo"/>). Guests request the host's
-/// <see cref="TruckUnloader"/>; each bag leaves authoritative cargo only when there is depot space to spawn it.</item>
+/// business's bags stay on the host (<see cref="Businesses.HostCargo"/>). A guest driver asks the host's
+/// <see cref="TruckTipper"/> to tip; indoors each bag leaves authoritative cargo only when there is depot space to spawn it.</item>
 /// </list>
 /// Outside the one world (solo, legacy) the resolver answers nothing and all cargo is local, exactly as before.
 /// </summary>
@@ -64,6 +64,14 @@ public static class DepotTruckCargo
     }
 
     public static bool HasCargo(TruckControllerV2 t) => IsLocal(t) ? GameSession.TruckBags.Count > 0 : LoadKg(t) > 0.01f;
+
+    /// <summary>Host-only: how many cargo entries (bags and loose piles) this truck carries.</summary>
+    public static int Count(TruckControllerV2 t)
+    {
+        if (!Businesses.IsAuthority) return 0;
+        var cargo = IsLocal(t) ? GameSession.TruckBags : Businesses.HostCargo(BusinessOf(t));
+        return cargo != null ? cargo.Count : 0;
+    }
 
     /// <summary>Host-only next bag, without removing it. Used for the atomic capacity check.</summary>
     public static BagContents Peek(TruckControllerV2 t)

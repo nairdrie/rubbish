@@ -13,11 +13,10 @@ if (depot == null || depot.interior == null || !depot.interior.activeSelf || oth
     throw new System.InvalidOperationException("Claim two depots and enter the target depot before preparing this fixture.");
 var compactor = depot.interior.GetComponentInChildren<Compactor>(true);
 var table = depot.interior.GetComponentInChildren<SortingTable>(true);
-var tip = depot.interior.GetComponentInChildren<TruckUnloader>(true);
+var tip = depot.interior.GetComponentInChildren<TippingFloor>(true);
 if (compactor == null || table == null || tip == null || compactor.Busy || table.IsRipping || tip.Busy)
-    throw new System.InvalidOperationException("Target depot needs an idle table, tip lever and compactor.");
+    throw new System.InvalidOperationException("Target depot needs an idle table, tipping floor and compactor.");
 foreach (var sorter in UnityEngine.Object.FindObjectsByType<MagnusSorter>(UnityEngine.FindObjectsSortMode.None)) sorter.enabled = false;
-foreach (var autoTip in UnityEngine.Object.FindObjectsByType<AutoTipper>(UnityEngine.FindObjectsSortMode.None)) autoTip.enabled = false;
 foreach (var strip in UnityEngine.Object.FindObjectsByType<MagnetStrip>(UnityEngine.FindObjectsInactive.Include, UnityEngine.FindObjectsSortMode.None)) { strip.StopAllCoroutines(); strip.enabled = false; }
 foreach (var feeder in UnityEngine.Object.FindObjectsByType<ConveyorFeeder>(UnityEngine.FindObjectsInactive.Include, UnityEngine.FindObjectsSortMode.None)) { feeder.StopAllCoroutines(); feeder.enabled = false; }
 foreach (var line in UnityEngine.Object.FindObjectsByType<ConveyorLine>(UnityEngine.FindObjectsInactive.Include, UnityEngine.FindObjectsSortMode.None)) { line.StopAllCoroutines(); line.enabled = false; }

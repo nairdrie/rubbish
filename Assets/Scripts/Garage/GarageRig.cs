@@ -2,7 +2,7 @@ using UnityEngine;
 
 /// <summary>
 /// The garage upgrades' wiring board (on the GarageUpgrades root that Setup_GarageUpgrades builds in ShopScene). It holds
-/// references to the existing garage machines (sort station, table, compactor, TIP IT lever, Magnus) so the upgrade
+/// references to the existing garage machines (sort station, table, compactor, tipping floor, Magnus) so the upgrade
 /// components never search the world for them (Docs/Multiplayer.md §9 rule 3). Setup wires them; if one is missing
 /// (e.g. Setup_SortingStation rebuilt its root after this was wired) it is re-resolved from the same scene's roots,
 /// or strictly from this DepotLot's Interior in DepotRow.
@@ -13,7 +13,9 @@ public class GarageRig : MonoBehaviour
     public SortStation station;
     public SortingTable table;
     public Compactor compactor;
-    public TruckUnloader unloader;
+    public TippingFloor tippingFloor;
+    [Tooltip("The second sorting position (sorting_table L2); null in older scene copies.")]
+    public SortStation secondStation;
     public MagnusTrack track;
     public MagnusArm arm;
     public MagnusChessBot chessBot;
@@ -45,7 +47,8 @@ public class GarageRig : MonoBehaviour
                 station = null;
                 table = null;
                 compactor = null;
-                unloader = null;
+                tippingFloor = null;
+                secondStation = null;
                 track = null;
                 arm = null;
                 chessBot = null;
@@ -58,7 +61,8 @@ public class GarageRig : MonoBehaviour
             if (!Inside(station, scope)) station = null;
             if (!Inside(table, scope)) table = null;
             if (!Inside(compactor, scope)) compactor = null;
-            if (!Inside(unloader, scope)) unloader = null;
+            if (!Inside(tippingFloor, scope)) tippingFloor = null;
+            if (!Inside(secondStation, scope)) secondStation = null;
             if (!Inside(track, scope)) track = null;
             if (!Inside(arm, scope)) arm = null;
             if (!Inside(chessBot, scope)) chessBot = null;
@@ -66,10 +70,11 @@ public class GarageRig : MonoBehaviour
             if (tableLeaf != null && !tableLeaf.transform.IsChildOf(scope)) tableLeaf = null;
             if (sortStop != null && !sortStop.IsChildOf(scope)) sortStop = null;
 
-            if (!station) station = scope.GetComponentInChildren<SortStation>(true);
+            if (!station) station = PrimaryStation(scope);
+            if (!secondStation) secondStation = SecondStation(scope);
             if (!table) table = scope.GetComponentInChildren<SortingTable>(true);
             if (!compactor) compactor = scope.GetComponentInChildren<Compactor>(true);
-            if (!unloader) unloader = scope.GetComponentInChildren<TruckUnloader>(true);
+            if (!tippingFloor) tippingFloor = scope.GetComponentInChildren<TippingFloor>(true);
             if (!track) track = scope.GetComponentInChildren<MagnusTrack>(true);
             if (!arm) arm = scope.GetComponentInChildren<MagnusArm>(true);
             if (!chessBot) chessBot = scope.GetComponentInChildren<MagnusChessBot>(true);
@@ -81,17 +86,18 @@ public class GarageRig : MonoBehaviour
             return;
         }
 
-        if (resolved && station && table && compactor && unloader && track && arm) { HandOver(); return; }
+        if (resolved && station && table && compactor && tippingFloor && track && arm) { HandOver(); return; }
         resolved = true;
         var scene = gameObject.scene;
         if (scene.IsValid())
         {
             foreach (var root in scene.GetRootGameObjects())
             {
-                if (!station) station = root.GetComponentInChildren<SortStation>(true);
+                if (!station) station = PrimaryStation(root.transform);
+                if (!secondStation) secondStation = SecondStation(root.transform);
                 if (!table) table = root.GetComponentInChildren<SortingTable>(true);
                 if (!compactor) compactor = root.GetComponentInChildren<Compactor>(true);
-                if (!unloader) unloader = root.GetComponentInChildren<TruckUnloader>(true);
+                if (!tippingFloor) tippingFloor = root.GetComponentInChildren<TippingFloor>(true);
                 if (!track) track = root.GetComponentInChildren<MagnusTrack>(true);
                 if (!arm) arm = root.GetComponentInChildren<MagnusArm>(true);
                 if (!chessBot) chessBot = root.GetComponentInChildren<MagnusChessBot>(true);
@@ -108,6 +114,19 @@ public class GarageRig : MonoBehaviour
 
     static bool Inside(Component component, Transform scope) => component != null && component.transform.IsChildOf(scope);
 
+    /// <summary>Sorting position 1 (the original one; Magnus parks there) and position 2 (sorting_table L2), by seat index.</summary>
+    static SortStation PrimaryStation(Transform scope)
+    {
+        foreach (var s in scope.GetComponentsInChildren<SortStation>(true)) if (s.seat == 0) return s;
+        return null;
+    }
+
+    static SortStation SecondStation(Transform scope)
+    {
+        foreach (var s in scope.GetComponentsInChildren<SortStation>(true)) if (s.seat == 1) return s;
+        return null;
+    }
+
     void HandOver()
     {
         // Migrate the authored solo/four-lot copies before their conveyors start feeding. All machine references,
@@ -122,6 +141,11 @@ public class GarageRig : MonoBehaviour
             table.ApplyUpgrades();
         }
         if (track != null && sortStop != null && track.SortStop != sortStop) track.SortStop = sortStop;
+        if (station != null && secondStation != null)
+        {
+            station.partner = secondStation;
+            secondStation.partner = station;
+        }
     }
 
     /// <summary>The SortBin for a category in the station (null if none).</summary>

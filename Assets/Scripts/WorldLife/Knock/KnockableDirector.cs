@@ -650,11 +650,11 @@ public sealed class KnockableDirector : WorldLifeDirector, ITruckSensorClient
         if (trucks.Count == 0 || p.colliders.Length == 0 || p.colliders[0] == null) return false;
         Bounds pb = p.colliders[0].bounds;
         float r = pb.extents.magnitude + 0.5f;
-        Bounds box = TruckControllerV2.BodyBoxMetres;
         for (int i = 0; i < trucks.Count; i++)
         {
             var t = trucks[i];
             if (t == null) continue;
+            Bounds box = t.ModelBodyBoxMetres;
             Vector3 l = Quaternion.Inverse(t.transform.rotation) * (pb.center - t.transform.position);
             if (Mathf.Abs(l.x) <= box.extents.x + r && l.z >= box.min.z - r && l.z <= box.max.z + r && l.y <= box.max.y + r) return true;
         }
@@ -702,7 +702,7 @@ public sealed class KnockableDirector : WorldLifeDirector, ITruckSensorClient
         float x = (LifeHash.Float01(h >> 11) - 0.5f) * 1.6f;
         p.stuckTo = truck;
         p.stuckUntil = now + WorldLifeTuning.Props.ConeStickSeconds;
-        p.stuckOffset = new Vector3(x, 0.95f, TruckControllerV2.BodyBoxMetres.max.z + 0.2f);
+        p.stuckOffset = new Vector3(x, 0.95f, truck.ModelBodyBoxMetres.max.z + 0.2f);
         p.stuckRot = Quaternion.Euler(80f + 20f * LifeHash.Float01(h >> 21), 15f * (LifeHash.Float01(h >> 25) - 0.5f), 0f);
         stuck.Add(p);
         GameHUD.FloatingText(p.t.position + Vector3.up, "hood ornament!", KnockFx.ColorFor(KnockKind.Cone), 0.8f);

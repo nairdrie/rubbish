@@ -12,8 +12,8 @@ using UnityEngine.SceneManagement;
 /// runs from a throwaway object's Start in the freshly loaded scene (after its load callbacks, so particles
 /// aren't cleared by the scene change). In-memory only, like the truck's cargo.
 /// Curb bags that still belong to a PickupStop are skipped: the stop re-spawns uncollected bags itself.
-/// Bags riding the garage conveyor (Bag Belt, tray, Direct Feed chute: scripted carriers up in the air) come back on the
-/// tipping floor instead (ConveyorFeeder.Rehome), so nothing drops from 3.3 m on the way back in.
+/// Bags riding the garage conveyor (the Bag Belt, or hopping into its queue rack: scripted carriers up in the air) come
+/// back on the tipping floor instead (ConveyorFeeder.Rehome), so nothing drops from 3.7 m on the way back in.
 /// </summary>
 public class SceneTrashKeeper : MonoBehaviour
 {

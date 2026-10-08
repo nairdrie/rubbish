@@ -513,7 +513,7 @@ public class CritterSpawner : MonoBehaviour
     {
         yield return new WaitForSecondsRealtime(1.5f);
         autoShot = null;
-        if (!GameSession.HasRabies || GameSession.GetConsumable(RabiesShotId) <= 0) yield break;
+        if (!GameSession.HasRabies || GameSession.GetConsumable(RabiesShotId) <= 0 || !FeralStatus.LocalAutoShot) yield break; // Embrace It: you choose
         GameSession.AddConsumable(RabiesShotId, -1);
         GameHUD.Toast("Good thing you packed a Rabies Shot!", ToastStyle.Good, 2.5f);
         RabiesStatus.CureWithShot();

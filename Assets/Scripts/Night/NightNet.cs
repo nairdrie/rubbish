@@ -726,7 +726,7 @@ public partial class NightNet : NetworkBehaviour
 
     // ==================================================================================== a friend's Rabies Shot
 
-    /// <summary>Host/solo: cure an already paid-for patient. Guest: request a host-verified kiosk purchase.</summary>
+    /// <summary>Host/solo: cure an already paid-for patient. Guest: request a host-verified, host-charged shot (RabiesJab).</summary>
     public static void ShotFor(ulong target)
     {
         var n = Instance;
@@ -745,8 +745,8 @@ public partial class NightNet : NetworkBehaviour
         if (!SessionService.GuardFor(MsgShot).Allow(sender, 8, Time.realtimeSinceStartupAsDouble)) return;
         var payer = NightPlayers.ForClient(sender);
         if (payer == null || payer.IsDriving || payer.IsPlayingChess) return;
-        bool atKiosk = RabiesShotKiosk.ContainsAny(payer.transform.position);
-        if (!atKiosk || InfectedAt(target) < 0 || (shotPendingUntil.TryGetValue(target, out float until) && Time.unscaledTime < until)) return;
+        // No first-aid shelf any more: a jab happens where the patient lies (carried, or down within reach of the payer).
+        if (InfectedAt(target) < 0 || (shotPendingUntil.TryGetValue(target, out float until) && Time.unscaledTime < until)) return;
         if (target != sender)
         {
             var hands = HandsNet.Instance;
@@ -767,7 +767,7 @@ public partial class NightNet : NetworkBehaviour
             return;
         }
         shotPendingUntil[target] = Time.unscaledTime + 2f;
-        NightAudit.Event("kiosk", new Dictionary<string, object> { { "for", (long)target }, { "self", target == sender } });
+        NightAudit.Event("jab", new Dictionary<string, object> { { "for", (long)target }, { "self", target == sender } });
         NightAudit.Event("shot", new Dictionary<string, object> { { "by", (long)sender }, { "for", (long)target } });
         if (target == LocalId) RabiesStatus.CureWithShot();
         else CureRpc(target != sender, RpcTarget.Single(target, RpcTargetUse.Temp));

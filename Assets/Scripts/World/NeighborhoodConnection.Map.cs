@@ -7,6 +7,7 @@ public sealed partial class NeighborhoodConnection
     public static TownMapData WithConnection(TownMapData source, bool renderTexture = true)
     {
         if (source == null) return null;
+        if (source.layoutId == "coastal-v4") return source;
         foreach (var road in source.roads) if (road.name == RoadName) return source;
         bool originalGate = false;
         foreach (var district in source.districts)

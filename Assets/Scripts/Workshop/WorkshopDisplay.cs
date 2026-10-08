@@ -1,7 +1,8 @@
 using UnityEngine;
 
-/// <summary>Read-only copies of owned keepsakes. A display is never another pickable/sellable item.</summary>
-public sealed class WorkshopDisplay : MonoBehaviour
+/// <summary>Read-only copies of owned keepsakes. A display is never another pickable/sellable item. The owner presses E at
+/// the piece to choose which valuable it shows (<see cref="WorkshopDisplayPicker"/>).</summary>
+public sealed class WorkshopDisplay : MonoBehaviour, IInteractable
 {
     WorkshopModel model;
     GameObject shown;
@@ -13,8 +14,21 @@ public sealed class WorkshopDisplay : MonoBehaviour
     {
         if (m == null || !(m.recipeId == "bottle_cabinet" || m.recipeId == "rotating_pedestal" ||
             m.recipeId == "wall_display" || m.recipeId == "grand_display") || m.GetComponent<WorkshopDisplay>() != null) return;
-        m.gameObject.AddComponent<WorkshopDisplay>().model = m;
+        var display = m.gameObject.AddComponent<WorkshopDisplay>(); display.model = m;
+        var action = m.Anchor("Action") ?? m.transform;
+        var zone = action.gameObject.AddComponent<InteractionZone>();
+        zone.center = Vector3.up * .9f; zone.size = new Vector3(2.2f, 2.8f, 2.2f);
+        zone.mode = ZoneMode.OnFoot; zone.score = 2.3f; zone.targetOverride = display;
     }
+    public bool CanInteract() => model != null && isActiveAndEnabled && !PlayerController.IsUIBlocking && Workshop.CanManage(model.lot);
+    public string GetInteractionPrompt()
+    {
+        var item = Workshop.Snapshot(model.lot)?.Display(model.recipeId);
+        string piece = WorkshopCatalog.Get(model.recipeId)?.name ?? "display";
+        return item?.Def != null ? $"{piece}: showing {item.Def.name} (change)" : $"{piece}: choose a find to show";
+    }
+    public void OnInteract(GameObject interactor) { if (CanInteract()) WorkshopDisplayPicker.Show(model.lot, model.recipeId); }
+    public void Highlight(bool on) { }
     void OnEnable() { Workshop.Changed += Refresh; Refresh(); }
     void OnDisable() => Workshop.Changed -= Refresh;
     void Start() => Refresh();

@@ -2,34 +2,51 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// The existing garage's wall-mounted bag route. Applies to the authored solo garage and each translated depot copy,
-/// without rebuilding the room, moving a machine, changing upgrade gates or replacing conveyor behaviour references.
+/// The existing garage's wall-mounted bag route (one belt). Applies to the authored solo garage and each translated depot
+/// copy, without rebuilding the room, moving a machine, changing upgrade gates or replacing conveyor behaviour references.
+/// Setup_GarageUpgrades builds the same geometry from <see cref="Route()"/>; this also migrates older scene copies at
+/// runtime (their retired twin lane is left alone: it never runs and its visuals stay hidden).
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class GarageConveyorLayout : MonoBehaviour
 {
     public const float BeltHeight = 3.7f;
     public static readonly Vector3 Elevator = new Vector3(6.25f, 0f, -2.55f);
-    public static readonly Vector3 DirectFeed = new Vector3(5.35f, 0f, -3.95f);
-    public static readonly Vector3 KevinChute = new Vector3(5.55f, 3f, -4.56f);
+    /// <summary>The Junk Diverter's grate on the north-wall run (conveyor L3), and the spout over the compactor it feeds.</summary>
+    public static readonly Vector3 Grate = new Vector3(2.4f, BeltHeight, 4.4f);
+    public static readonly Vector3 JunkSpout = new Vector3(-4.78f, 1.85f, 2.3f);   // just right of the COMPACTOR sign, by the hopper rim
+    public static readonly Vector3 DeliveryChute = new Vector3(5.55f, 3f, -4.56f);
+    /// <summary>The crew delivery chute's node under the rig. Scene copies authored before save v6 still call it by its
+    /// first owner's name; both are the same chute.</summary>
+    public const string DeliveryChuteName = "DeliveryChute", AuthoredDeliveryChuteName = "KevinChute";
     public static Quaternion WallFacing => Quaternion.Euler(0f, 90f, 0f);
     public bool Applied { get; private set; }
 
-    /// <summary>Metres above the garage floor. The two lanes never cross, including their elevator exit turns.</summary>
-    public static Vector3[] Route(int lane) => lane == 0 ? new[]
+    /// <summary>The belt's path, metres above the garage floor: elevator, east wall, north wall, slide to the queue rack.</summary>
+    public static Vector3[] Route() => new[]
     {
         new Vector3(6.25f, .25f, -2.35f), new Vector3(6.25f, BeltHeight, -2.35f),
         new Vector3(6.15f, BeltHeight, -1.9f), new Vector3(6.15f, BeltHeight, 4.4f),
         new Vector3(1.6f, BeltHeight, 4.4f), new Vector3(1.2f, BeltHeight, 3.9f),
         new Vector3(-.65f, 1.9f, 3.9f), new Vector3(-1.15f, 1.5f, 3.5f), new Vector3(-1.2f, 1.2f, 2.95f),
-    } : new[]
-    {
-        new Vector3(6.25f, .25f, -2.75f), new Vector3(6.25f, BeltHeight, -2.75f),
-        new Vector3(5.5f, BeltHeight, -2.75f), new Vector3(5.5f, BeltHeight, 3.7f),
-        new Vector3(2.1f, BeltHeight, 3.7f), new Vector3(1.7f, BeltHeight, 3.25f),
-        new Vector3(.8f, BeltHeight - .1f, 3.25f), new Vector3(-.2f, 2.2f, 3.25f),
-        new Vector3(-.55f, 1.5f, 3.05f), new Vector3(-.6f, 1.2f, 2.95f),
     };
+
+    /// <summary>Metres along <see cref="Route()"/> to the point nearest the grate (ConveyorLine.divertAt).</summary>
+    public static float DivertDistance()
+    {
+        var route = Route();
+        float best = float.MaxValue, at = 0f, run = 0f;
+        for (int i = 1; i < route.Length; i++)
+        {
+            Vector3 a = route[i - 1], ab = route[i] - a;
+            float len = ab.magnitude;
+            float t = len > 1e-4f ? Mathf.Clamp01(Vector3.Dot(Grate - a, ab) / (len * len)) : 0f;
+            float d = Vector3.Distance(Grate, a + ab * t);
+            if (d < best) { best = d; at = run + len * t; }
+            run += len;
+        }
+        return at;
+    }
 
     public static GarageConveyorLayout Ensure(GarageRig rig)
     {
@@ -39,10 +56,9 @@ public sealed class GarageConveyorLayout : MonoBehaviour
         var conveyor = rig.transform.Find("Conveyor");
         if (conveyor == null) return null; // Not an authored upgrade rig; never search another business for one.
         var feeder = conveyor.GetComponent<ConveyorFeeder>();
-        if (feeder == null || feeder.lanes == null || feeder.lanes.Length != 2 ||
-            feeder.lanes[0] == null || feeder.lanes[1] == null) return null;
+        if (feeder == null || feeder.lanes == null || feeder.lanes.Length < 1 || feeder.lanes[0] == null) return null;
         foreach (var line in feeder.lanes)
-            if (!line.transform.IsChildOf(conveyor) || line.transform.Find("Visual") == null) return null;
+            if (line != null && (!line.transform.IsChildOf(conveyor) || line.transform.Find("Visual") == null)) return null;
         if (layout == null) layout = rig.gameObject.AddComponent<GarageConveyorLayout>();
         layout.Apply(rig, conveyor, feeder);
         return layout;
@@ -50,20 +66,26 @@ public sealed class GarageConveyorLayout : MonoBehaviour
 
     void Apply(GarageRig rig, Transform conveyor, ConveyorFeeder feeder)
     {
-        float floor = rig.table != null ? rig.transform.InverseTransformPoint(rig.table.transform.position).y : WorkshopAnnex.FloorY;
+        float floor = rig.table != null ? rig.transform.InverseTransformPoint(rig.table.transform.position).y : WorkshopWorld.FloorY;
         Vector3 World(Vector3 p) => rig.transform.TransformPoint(p + Vector3.up * floor);
         var elevator = conveyor.Find("BagOVator");
         if (elevator != null) elevator.SetPositionAndRotation(World(Elevator), rig.transform.rotation * WallFacing);
-        var directFeed = conveyor.Find("DirectFeedChute");
-        if (directFeed != null) directFeed.SetPositionAndRotation(World(DirectFeed), rig.transform.rotation * Quaternion.Euler(0f, 180f, 0f));
-        var kevin = rig.transform.Find("KevinChute");
-        if (kevin != null) kevin.SetPositionAndRotation(World(KevinChute), rig.transform.rotation * WallFacing);
+        // Retired pieces in older scene copies (the Tip-O-Matic chute, the auto-slitter): never shown again.
+        foreach (string gone in new[] { "DirectFeedChute", "Slitter" })
+        {
+            var old = conveyor.Find(gone);
+            if (old != null) old.gameObject.SetActive(false);
+        }
+        var delivery = rig.transform.Find(DeliveryChuteName);
+        if (delivery == null) delivery = rig.transform.Find(AuthoredDeliveryChuteName);
+        if (delivery != null) delivery.SetPositionAndRotation(World(DeliveryChute), rig.transform.rotation * WallFacing);
 
         // Keep the gated Visual objects themselves: GarageUpgradeVisuals still owns their active state.
         var materials = new Materials(rig);
         foreach (var line in feeder.lanes)
         {
-            Vector3[] route = Route(line.lane);
+            if (line == null || line.lane != 0) continue;   // the old twin lane is retired: it keeps its hidden visuals
+            Vector3[] route = Route();
             var points = new Transform[route.Length];
             for (int i = 0; i < route.Length; i++)
             {
@@ -89,6 +111,7 @@ public sealed class GarageConveyorLayout : MonoBehaviour
                 else Trough(visual, "Slide", a, b, materials.steel, materials.yellow);
             }
             line.rollers = rollers.ToArray();
+            line.divertAt = DivertDistance();
         }
         Applied = true;
     }

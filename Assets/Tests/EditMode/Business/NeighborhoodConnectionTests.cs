@@ -39,6 +39,13 @@ public class NeighborhoodConnectionTests
     {
         var source = (ScriptableObject)Resources.Load("TownMap", Runtime("TownMapData"));
         Assert.NotNull(source);
+        if ((string)Get(source, "layoutId") == "coastal-v4")
+        {
+            Assert.AreSame(source, Runtime("NeighborhoodConnection").GetMethod("WithConnection", Static,
+                null, new[] { Runtime("TownMapData"), typeof(bool) }, null).Invoke(null, new object[] { source, false }),
+                "The legacy fixed-coordinate footprint must not be inserted into the new town");
+            return;
+        }
         foreach (string field in new[] { "EastRoad", "WestRoad", "SouthRoad" })
         {
             var road = (Rect)Runtime("NeighborhoodConnection").GetField(field, Static).GetValue(null);
@@ -52,7 +59,7 @@ public class NeighborhoodConnectionTests
     public void MapExtensionIsCopiedConnectedAndKeepsTheExistingDistrictPermit()
     {
         var type = Runtime("TownMapData");
-        var source = (ScriptableObject)Resources.Load("TownMap", type);
+        var source = LegacyMap();
         Assert.NotNull(source);
         int roadsBefore = ((IList)Get(source, "roads")).Count, poisBefore = ((IList)Get(source, "pois")).Count;
         var copy = (ScriptableObject)Runtime("NeighborhoodConnection").GetMethod("WithConnection", Static,
@@ -75,7 +82,7 @@ public class NeighborhoodConnectionTests
     public void NavigationAddsBothLanesAndFootpathWithoutChangingExistingNodesOrBypassingPermit()
     {
         var type = Runtime("StreetGraph");
-        var source = (ScriptableObject)Resources.Load("StreetGraph", type);
+        var source = LegacyGraph();
         Assert.NotNull(source);
         var oldNodes = (Array)Get(source, "nodes"); var oldEdges = (Array)Get(source, "edges"); var oldGates = (Array)Get(source, "gates");
         var graph = (ScriptableObject)Runtime("NeighborhoodConnection").GetMethod("WithConnection", Static,
@@ -100,6 +107,33 @@ public class NeighborhoodConnectionTests
         Assert.AreEqual(3, crossings); Assert.AreEqual(2, roads); Assert.AreEqual(1, walks);
         Assert.AreSame(graph, Runtime("NeighborhoodConnection").GetMethod("WithConnection", Static,
             null, new[] { type }, null).Invoke(null, new object[] { graph }));
+    }
+
+    ScriptableObject LegacyMap()
+    {
+        var type = Runtime("TownMapData"); var data = ScriptableObject.CreateInstance(type); owned.Add(data);
+        var texture = new Texture2D(2, 2); owned.Add(texture); Set(data, "texture", texture);
+        var district = Activator.CreateInstance(type.GetNestedType("District"));
+        Set(district, "id", "minivan_meadows"); Set(district, "hasGate", true);
+        ((IList)Get(data, "districts")).Add(district);
+        var poi = Activator.CreateInstance(type.GetNestedType("Poi")); Set(poi, "id", "minivan_meadows");
+        Set(poi, "kind", Enum.Parse(Runtime("MapPoiKind"), "Gate")); ((IList)Get(data, "pois")).Add(poi);
+        return data;
+    }
+
+    ScriptableObject LegacyGraph()
+    {
+        var type = Runtime("StreetGraph"); var data = ScriptableObject.CreateInstance(type); owned.Add(data);
+        var nodeType = type.GetNestedType("Node"); var kindType = type.GetNestedType("NodeKind");
+        var points = new[] { new Vector3(150,0,167.5f), new Vector3(150,0,172.5f), new Vector3(237.5f,0,140),
+            new Vector3(242.5f,0,140), new Vector3(167.4f,.15f,177.4f), new Vector3(232.6f,.15f,140) };
+        var nodes = Array.CreateInstance(nodeType, points.Length);
+        for (int i = 0; i < points.Length; i++)
+        {
+            var node = Activator.CreateInstance(nodeType); Set(node, "pos", points[i]); Set(node, "gate", ushort.MaxValue);
+            Set(node, "kind", Enum.Parse(kindType, i < 4 ? "Lane" : "Walk")); nodes.SetValue(node, i);
+        }
+        Set(data, "nodes", nodes); return data;
     }
 
     GameObject Cube(string name, Transform parent, Vector3 at, Vector3 size, int layer = 6)

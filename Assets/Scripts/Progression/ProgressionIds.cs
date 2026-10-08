@@ -37,7 +37,7 @@ public static class RepValues
     public const float ChessWin = 25f;              // × max(1, chess tier); once per in-game day
     public const float TrophyShelfL1 = 40f;         // per midnight with trophy_shelf L1
     public const float TrophyShelfL2 = 160f;        // per midnight with trophy_shelf L2 (museum wing)
-    public const float KevinShare = 0.5f;           // Kevin's bags earn half of bag_ontime / bag_late
+    public const float CrewShare = 0.5f;            // a raccoon crew's bags earn half of bag_ontime / bag_late
 
     // WorldLife (Docs/WorldLife.md §9.1). Base values: Ledger.Rep applies the district multiplier; never escalated.
     public const float NeighborFlattened = -4f;     // a resident / pedestrian flattened by your truck
@@ -55,7 +55,7 @@ public static class LedgerIds
     public const string PickupFee = "pickup_fee", CurbBonus = "curb_bonus", Recycle = "recycle",
         Hazard = "hazard", Scrap = "scrap", LazyCrush = "lazy_crush", Contamination = "contamination",
         HazardFine = "hazard_fine", CleanStreets = "clean_streets", NeglectFine = "neglect_fine", Landfill = "landfill",
-        KevinFees = "kevin_fees", KevinWage = "kevin_wage", WorkOrder = "work_order", Ebae = "ebae", Pawn = "pawn",
+        WorkOrder = "work_order", Ebae = "ebae", Pawn = "pawn",
         Hospital = "hospital", Tow = "tow", Style = "style", Purchase = "purchase";
 
     // WorldLife (Docs/WorldLife.md §9.1): flattened residents / shunted cars, and the nightly City Works invoice for props.

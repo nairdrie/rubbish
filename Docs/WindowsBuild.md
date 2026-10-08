@@ -309,7 +309,7 @@ Write down roughly when anything odd happens and who saw it.
 ## 7. Known limitations of this build (co-op N1–N5, 2 Oct 2026)
 
 - **What's in:** every player runs their own business on Depot Row (4 lots, 4 colours), shared curb trash and pay by truck owner,
-  free roam (no host-driven scene changes in co-op), hiring with hourly wages, ebae between players, and the chaos verbs (grab races,
+  free roam (no host-driven scene changes in co-op), hiring with hourly wages, ebag between players, and the chaos verbs (grab races,
   throw, pass, bonk, shove, carry flopped friends, rear-step hitching, rhythm tug). Details: `Multiplayer.md` §13.
 - **4 players per world.** A 5th gets "Town is full (4/4)".
 - **Not yet:** rear-step grip/fling, lag compensation for fast trucks, voice chat, night-shift co-op critters. A guest who crashes

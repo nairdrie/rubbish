@@ -332,9 +332,7 @@ public sealed class Minimap
         int hi = data.HouseIndex(nextStop);
         Rim(rimStop, hi >= 0, hi >= 0 ? data.houses[hi].curb : c, c, k, innerR, null);
         // depot (the garage door)
-        bool depotKnown = false;
-        Vector2 depotXZ = c;
-        foreach (var p in data.pois) if (p.kind == MapPoiKind.GarageDoor) { depotKnown = true; depotXZ = p.pos; break; }
+        bool depotKnown = DepotMapLocations.TryLocalPosition(data, out var depotXZ);
         Rim(rimDepot, depotKnown, depotXZ, c, k, innerR, "Depot");
         // the truck: only while on foot and more than 40 m away (MP §2.5's "arrow to the truck")
         bool truckOn = false;

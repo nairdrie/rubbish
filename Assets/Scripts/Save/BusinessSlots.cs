@@ -11,7 +11,7 @@ using UnityEngine;
 /// <item><b>Slots.</b> The <b>main</b> business is today's save pair (<c>rubbish_save.json</c> + <c>ebae_save.json</c>, which
 /// now carry a business id and name). More businesses live in
 /// <c>&lt;data root&gt;/accounts/&lt;player&gt;/businesses/&lt;id&gt;.json</c> (a <see cref="Blob"/>: the same GameSession and
-/// ebae JSON, side by side). Every slot can be selected for solo, hosting or visiting a friend; no save promotion is needed.</item>
+/// ebag JSON, side by side). Every slot can be selected for solo, hosting or visiting a friend; no save promotion is needed.</item>
 /// <item><b>Joining.</b> When the Town's <see cref="BusinessRegistry"/> reaches a guest, the guest picks one of its businesses
 /// or starts a new one (<see cref="BusinessPicker"/>; bots: <c>-botbusiness main|new|&lt;id&gt;</c>). The pick is loaded into
 /// GameSession (the world half is kept) and declared to the host, who owns its cash from then on.</item>
@@ -46,7 +46,7 @@ public static partial class BusinessSlots
         public long cashCents;
         /// <summary>The GameSession save JSON (what <c>rubbish_save.json</c> holds).</summary>
         public string game;
-        /// <summary>The ebae save JSON (what <c>ebae_save.json</c> holds).</summary>
+        /// <summary>The ebag save JSON (what <c>ebae_save.json</c> holds).</summary>
         public string ebae;
     }
 

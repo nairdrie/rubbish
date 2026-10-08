@@ -38,6 +38,25 @@ public sealed class EbaeItemThumbnails : IDisposable
         return picture;
     }
 
+    /// <summary>The photo of a def as a texture, for uGUI callers (the Callings shopping list): cached, rendered now when
+    /// it is not in the album yet. Null when the def is unknown or cannot be photographed. Works in an edit-mode preview.</summary>
+    public Texture2D PhotoNow(string defId)
+    {
+        if (string.IsNullOrEmpty(defId) || ItemCatalog.Get(defId) == null) return null;
+        if (photos.TryGetValue(defId, out var photo)) return photo;
+        try { photo = Photograph(ItemCatalog.Get(defId)); }
+        catch (Exception e)
+        {
+            if (!warned) Debug.LogWarning("[ebag] Item photograph unavailable: " + e.Message);
+            warned = true;
+        }
+        photos[defId] = photo;
+        return photo;
+    }
+
+    /// <summary>True when <see cref="PhotoNow"/> would not have to render (already in the album).</summary>
+    public bool HasPhoto(string defId) => defId != null && photos.ContainsKey(defId);
+
     public void Tick()
     {
         for (int i = 0; i < 2 && queue.Count > 0; i++)
@@ -47,7 +66,7 @@ public sealed class EbaeItemThumbnails : IDisposable
             try { photo = Photograph(ItemCatalog.Get(id)); }
             catch (Exception e)
             {
-                if (!warned) Debug.LogWarning("[eBae] Item photograph unavailable: " + e.Message);
+                if (!warned) Debug.LogWarning("[ebag] Item photograph unavailable: " + e.Message);
                 warned = true;
             }
             photos[id] = photo;
@@ -59,7 +78,7 @@ public sealed class EbaeItemThumbnails : IDisposable
     void EnsureStudio()
     {
         if (studio != null) { studio.SetActive(true); return; }
-        studio = new GameObject("eBae photo studio (visuals only)") { hideFlags = HideFlags.HideAndDontSave, layer = PreviewLayer };
+        studio = new GameObject("ebag photo studio (visuals only)") { hideFlags = HideFlags.HideAndDontSave, layer = PreviewLayer };
         // Outside the playable town and every gameplay camera's far clip. Layer isolation prevents
         // the product lamps lighting the world; no shared RenderSettings/camera state is changed.
         studio.transform.position = new Vector3(0f, -10000f, 0f);
@@ -125,7 +144,7 @@ public sealed class EbaeItemThumbnails : IDisposable
             else throw new InvalidOperationException("The active render pipeline cannot render product photos.");
             RenderTexture.active = target;
             pixels = new Texture2D(Resolution, Resolution, TextureFormat.RGBA32, false)
-                { name = "eBae photo: " + def.id, hideFlags = HideFlags.DontSave, filterMode = FilterMode.Bilinear };
+                { name = "ebag photo: " + def.id, hideFlags = HideFlags.DontSave, filterMode = FilterMode.Bilinear };
             pixels.ReadPixels(new Rect(0, 0, Resolution, Resolution), 0, 0);
             pixels.Apply(false, true);
             return pixels;

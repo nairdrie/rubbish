@@ -44,3 +44,6 @@
 *.zip filter=lfs diff=lfs merge=lfs -text
 **/LightingData.asset filter=lfs diff=lfs merge=lfs -text
 **/Terrain*Demo.asset filter=lfs diff=lfs merge=lfs -text
+# Baked TownLife mesh containers: machine-generated, never hand-merged, and large enough to hit GitHub's 100 MB limit.
+Assets/Materials/Generated/TownLife/Ground/*.asset filter=lfs diff=lfs merge=lfs -text
+Assets/Materials/Generated/TownLife/Props/*.asset filter=lfs diff=lfs merge=lfs -text

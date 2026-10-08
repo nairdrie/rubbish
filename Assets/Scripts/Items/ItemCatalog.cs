@@ -47,6 +47,8 @@ public static partial class ItemCatalog
         BuildDefs();
         BuildEventDefs();
         BuildCollectibleDefs(); // append only: DailyStats persists existing catalog indices
+        BuildPartDefs();        // (ItemCatalog.Parts.cs) after the collectibles: the same append-only rule
+        BuildStoryDefs();       // (ItemCatalog.Story.cs) always last
         byId = new Dictionary<string, ItemDef>();
         foreach (var d in all) byId[d.id] = d;
     }

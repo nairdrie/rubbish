@@ -149,6 +149,7 @@ public sealed class ScrapazonCareer
     {
         var card = Section("sz-cr-col");
         card.Add(H("Today's Work Orders"));
+        card.Add(StarterContractRow());
         var wos = WorkOrders.Today;
         if (wos.Count == 0) { card.Add(L("New Work Orders arrive at midnight.", "sz-cr-muted")); return card; }
         card.Add(L($"Each pays {Economy.Money(WorkOrders.Pay)} + {Mathf.RoundToInt(WorkOrders.RepReward)} Rep", "sz-cr-sub"));
@@ -170,11 +171,31 @@ public sealed class ScrapazonCareer
         return card;
     }
 
+    static VisualElement StarterContractRow()
+    {
+        int progress = StarterCollectionContract.LocalProgress;
+        bool complete = StarterCollectionContract.Complete;
+        var row = V("sz-cr-wo" + (complete ? " sz-cr-wo--done" : ""));
+        var top = V("sz-cr-wo-top");
+        top.Add(L("Starter collection contract", "sz-cr-wo-text"));
+        top.Add(L(StarterCollectionContract.ProgressText(progress), "sz-cr-wo-status"));
+        row.Add(top);
+        var bar = V("sz-cr-minibar");
+        var fill = V("sz-cr-minibar-fill");
+        fill.style.width = Length.Percent(progress * 100f / StarterCollectionContract.RequiredBags);
+        bar.Add(fill);
+        row.Add(bar);
+        if (!complete)
+            row.Add(L("Get paid for 8 curb bags collected into your business's truck. Crew collections count for the truck's owner. One-time $100 bonus; no treasure sales needed. No deadline.", "sz-cr-muted"));
+        else row.Add(L("COMPLETE · one-time starter contract", "sz-cr-wo-stamp"));
+        return row;
+    }
+
     VisualElement DistrictsCard()
     {
         var card = Section("sz-cr-wide");
         card.Add(H("Districts"));
-        foreach (var d in Districts.All)
+        foreach (var d in Districts.ProgressionOrder)
         {
             bool open = Districts.IsUnlocked(d);
             var row = V("sz-cr-district" + (open ? "" : " sz-cr-district--locked"));

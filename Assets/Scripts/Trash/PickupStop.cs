@@ -77,9 +77,9 @@ public class PickupStop : MonoBehaviour
     /// <summary>This house's district (its windows, pay and loot). Never null.</summary>
     public DistrictDef District => !string.IsNullOrEmpty(districtId) ? Districts.Get(districtId) : Districts.ForStopId(stopId);
     /// <summary>The district is open to the company (permit owned, or the starter suburb).</summary>
-    public bool DistrictUnlocked => Districts.IsUnlocked(District);
+    public bool DistrictUnlocked => DistrictAccess.LocalCanEnter(District);
     /// <summary>The house subscribes to Rubbish Co. right now (Trust-driven; locked districts never do).</summary>
-    public bool IsSubscribed => Progression.IsSubscribed(stopId);
+    public bool IsSubscribed => Progression.IsTownSubscribed(stopId);
 
     /// <summary>Bags this house has out that haven't reached the truck (or burst) yet — including one you're carrying.</summary>
     public int BagsRemaining => CurbTrash.StatsFor(stopId).bags;
@@ -161,7 +161,7 @@ public class PickupStop : MonoBehaviour
 
     /// <summary>
     /// Spawn the real TrashBag for one of this house's records and stop presenting it (idempotent: returns the existing
-    /// bag if it already has one; null if the record is gone — Kevin's sweep, a debug clear, another player).
+    /// bag if it already has one; null if the record is gone — a raccoon crew's sweep, a debug clear, another player).
     /// <paramref name="at"/> null = in its curb slot (no drop-in pop; the marker bumps and "Fresh trash!" floats);
     /// otherwise at that world point with velocity <paramref name="vel"/> (a flattened resident's bag flying out of their
     /// arms). <paramref name="intoHands"/>: spawned still and quiet at <paramref name="at"/> (or the pile) for the caller to

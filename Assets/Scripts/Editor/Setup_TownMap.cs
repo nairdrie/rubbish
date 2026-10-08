@@ -25,7 +25,7 @@ using UnityEngine.SceneManagement;
 /// Interstate On-Ramp each get their own name. Run after the living-world Neighborhood changes and after any
 /// NeighborhoodBuilder run (it hooks in at the end of Build).
 /// </summary>
-public static class Setup_TownMap
+public static partial class Setup_TownMap
 {
     public const string ScenePath = "Assets/Scenes/Neighborhood.unity";
     public const string AnchorName = "[TownMapAnchor]";
@@ -97,7 +97,7 @@ public static class Setup_TownMap
                 CopyInto(data, asset);
                 EditorUtility.SetDirty(asset);
             }
-            AssetDatabase.SaveAssets();
+            AssetDatabase.SaveAssetIfDirty(asset);
             TownMapData.Unload();
             UnityEngine.Object.DestroyImmediate(data);
 
@@ -189,6 +189,7 @@ public static class Setup_TownMap
     static void CopyInto(TownMapData src, TownMapData dst)
     {
         dst.schema = TownMapData.SchemaVersion;
+        dst.layoutId = src.layoutId;
         dst.bounds = src.bounds;
         dst.pxPerMeter = src.pxPerMeter;
         dst.width = src.width;
@@ -261,6 +262,7 @@ public static class Setup_TownMap
 
     static TownMapData Scan(Transform gen, StringBuilder log)
     {
+        if (CoastalCityLayout.IsCoastal(gen)) return ScanCoastal(gen, log);
         var d = ScriptableObject.CreateInstance<TownMapData>();
         d.hideFlags = HideFlags.DontSave;
         d.bounds = Bounds;

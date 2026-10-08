@@ -26,12 +26,15 @@ public struct JoinRequest
     /// <summary>32 bytes (SHA-256 of the company blob) or empty.</summary>
     public byte[] blobHash;
     public byte flags;
+    /// <summary>32-byte published-town SHA-256. All-zero means unpublished and cannot join multiplayer.</summary>
+    public byte[] worldSignature;
 
     /// <summary>A request stamped with this build's versions.</summary>
     public static JoinRequest ForThisBuild(PlayerKey key) => new JoinRequest
     {
         proto = NetVersion.Protocol, content = NetVersion.Content, playerKey = key.Value,
         authTicket = Array.Empty<byte>(), loadout = Array.Empty<byte>(), blobHash = Array.Empty<byte>(),
+        worldSignature = PublishedTownSignature.CurrentBytes,
     };
 
     /// <summary>Throws ArgumentException when a field is over its cap or the result exceeds JoinRequestMaxBytes.</summary>
@@ -42,11 +45,13 @@ public struct JoinRequest
         byte[] ticket = authTicket ?? Array.Empty<byte>();
         byte[] look = loadout ?? Array.Empty<byte>();
         byte[] hash = blobHash ?? Array.Empty<byte>();
+        byte[] world = worldSignature ?? new byte[PublishedTownSignature.ByteCount];
         if (key.Length > MaxKeyBytes) throw new ArgumentException("playerKey over 64 bytes");
         if (guid.Length > MaxGuidBytes) throw new ArgumentException("companyGuid over 64 bytes");
         if (ticket.Length > MaxTicketBytes) throw new ArgumentException("authTicket over 1024 bytes");
         if (look.Length > MaxLoadoutBytes) throw new ArgumentException("loadout over 64 bytes");
         if (hash.Length != 0 && hash.Length != HashBytes) throw new ArgumentException("blobHash must be empty or 32 bytes");
+        if (world.Length != PublishedTownSignature.ByteCount) throw new ArgumentException("worldSignature must be 32 bytes");
 
         using (var ms = new MemoryStream(256))
         using (var w = new BinaryWriter(ms))
@@ -62,6 +67,7 @@ public struct JoinRequest
             w.Write(companyVersion);
             w.Write((byte)hash.Length); w.Write(hash);
             w.Write(flags);
+            w.Write(world);
             w.Flush();
             if (ms.Length > NetConstants.JoinRequestMaxBytes)
                 throw new ArgumentException($"join request is {ms.Length} B (max {NetConstants.JoinRequestMaxBytes})");
@@ -105,6 +111,7 @@ public struct JoinRequest
             if (hashLen != 0 && hashLen != HashBytes) return false;
             r.blobHash = ReadBytes(data, ref p, hashLen);
             r.flags = ReadU8(data, ref p);
+            r.worldSignature = ReadBytes(data, ref p, PublishedTownSignature.ByteCount);
             if (p != data.Length) return false; // trailing bytes
             why = JoinReject.None;
             return true;

@@ -14,7 +14,7 @@ public sealed class HeadOfficeLetter
 }
 
 /// <summary>
-/// Head Office letters (Docs/Progression.md §4.4, §4.6, §2.2): promotions, dirty-district complaints, the Kevin nudge,
+/// Head Office letters (Docs/Progression.md §4.4, §4.6, §2.2): promotions, dirty-district complaints, the raccoon-crew nudge,
 /// the Key to the City. The HUD slides each one in as a memo card; the Career page keeps the latest few as an inbox.
 /// Presentation only (no money, no Rep), so it never needs to be networked: every machine can show its own.
 /// </summary>

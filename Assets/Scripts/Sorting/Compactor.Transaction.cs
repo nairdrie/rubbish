@@ -97,8 +97,8 @@ public partial class Compactor
         int lot = DepotMachineContext.LotOf(this);
         if (table != null && table.IsRipping || SortingTableCapacityNet.PendingForLot(lot) > 0) return true;
         var root = GetComponentInParent<DepotLot>();
-        var tip = root != null ? root.GetComponentInChildren<TruckUnloader>(true)
-            : transform.parent != null ? transform.parent.GetComponentInChildren<TruckUnloader>(true) : null;
+        var tip = root != null ? root.GetComponentInChildren<TippingFloor>(true)
+            : transform.parent != null ? transform.parent.GetComponentInChildren<TippingFloor>(true) : null;
         return tip != null && tip.Busy;
     }
 
@@ -137,7 +137,7 @@ public partial class Compactor
         if (!Businesses.IsAuthority) return;
         if (Busy) { Notice(actor, bulk, false, "Compactor busy — hold on."); return; }
         if (!Permissions.CanWorkIn(actor, DepotMachineContext.LotOf(this))) { Notice(actor, bulk, false, Permissions.NotYourShop); return; }
-        // Arm even while an existing rip settles, otherwise a fast slitter can start the next bag before the retry.
+        // Arm even while an existing rip settles, otherwise Magnus can start the next bag before the retry.
         if (bulk) HoldBulkConfirmation(Time.unscaledTime);
         if (bulk && WorkSettling()) { Notice(actor, true, false, "Wait for the current bag or unloading to finish, then bulk compact."); return; }
         var stock = CollectForCompact(bulk);
@@ -224,6 +224,9 @@ public partial class Compactor
     {
         var def = item?.Def;
         if (def == null) return;
+        // the SolidWaste floppy is never inventory: crushed it is just gone (another turns up), a grate saves it into
+        // the laptop (BeginHostCompact)
+        if (DiskItem.Is(item)) { if (GrateKeepHere <= 0f) receipt.lost.Add(def.name); return; }
         if (def.category == ItemCategory.Valuable)
         {
             if (GrateKeepHere > 0f) receipt.rescued.Add(Dent(item, GrateKeepHere));
@@ -250,8 +253,10 @@ public partial class Compactor
         CompactorNet.Instance?.ShowStart(DepotMachineContext.LotOf(this), bulk, ids);
         StartVisualIntake(bulk, stock);
         if (bulk) suctionSequence = CompactorCube.BeginSuction(this, CompactorCube.PlayersInShop(this, new List<PlayerTells>()), CompactorFx.SuctionDuration);
+        bool savedDisk = false;
         foreach (var c in stock)
         {
+            if (GrateKeepHere > 0f && c is LooseItem floppy && DiskItem.Is(floppy.Item)) savedDisk = true;
             if (bulk && c is TrashBag beltBag) ConveyorStock.Detach(beltBag);
             if (c is LooseItem li)
             {
@@ -264,6 +269,7 @@ public partial class Compactor
         foreach (var item in receipt.rescued)
             if (!BusinessUpgradeNet.KeepRobotItem(DepotMachineContext.LotOf(this), item))
             { GameSession.AddToInventory(item); ProgressionEvents.RaiseTreasureKept(item, false); }
+        if (savedDisk) DiskItem.Kept(DepotMachineContext.LotOf(this), TossTargetPosition);
         CompactorNet.Instance?.RecordLoad(DepotMachineContext.LotOf(this), receipt.bags, receipt.kg, receipt.lost.Count, bulk);
         if (CompactorNet.Instance == null && bulk) ProgressionEvents.RaiseLoadCrushed(receipt.bags, receipt.kg, receipt.lost.Count);
         string lost = receipt.lost.Count == 0 ? "" : receipt.lost.Count == 1 ? $" RIP {receipt.lost[0]} — treasure crushed." : $" {receipt.lost.Count} treasures crushed.";

@@ -142,7 +142,7 @@ public static class RideHolds
             Vector3.Dot(toward.normalized, viewForwardMetres.normalized) >= BoardingFacingDot;
     }
 
-    public static Vector3 Point(Transform truck, Vector3 metres) => truck.position + truck.rotation * metres;
+    public static Vector3 Point(Transform truck, Vector3 metres) => ShopModKit.TruckPoint(truck, metres);
 
     public static Pose PoseOn(Transform truck, int hold)
     {

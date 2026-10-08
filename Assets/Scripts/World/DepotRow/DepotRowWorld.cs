@@ -10,7 +10,9 @@ using UnityEngine.SceneManagement;
 /// loaded together for everyone, and doors move only the player who uses them.
 /// <list type="bullet">
 /// <item><b>Which flow:</b> a co-op host (anything but Play Solo) turns the one world on (<see cref="HostWantsOneWorld"/>,
-/// then <see cref="DepotRowNet.ServerBeginOneWorld"/>). Solo keeps the legacy ShopScene ⇄ Neighborhood swap.</item>
+/// then <see cref="DepotRowNet.ServerBeginOneWorld"/>). Solo keeps the legacy ShopScene ⇄ Neighborhood swap, but the town
+/// still gets its depot: the host loads <c>DepotRow</c> next to the town (<see cref="LegacyStreet"/>), lot 1 is presented as
+/// the player's shop and its roller door is the one way into ShopScene (<see cref="DepotFlowRules"/>).</item>
 /// <item><b>Doors:</b> <see cref="UseDoor"/>: on foot a short local fade + teleport; driving, the truck (with you in it) is
 /// teleported through. Nothing is sent to anyone: player and truck poses ride the owner-authoritative NetworkTransforms.</item>
 /// <item><b>Where am I:</b> <see cref="LocalInterior"/> (the pocket interior the local player is in, or −1) replaces the
@@ -21,6 +23,37 @@ public static class DepotRowWorld
 {
     /// <summary>Host: set when a co-op (non-solo) session starts; the session object then loads the one world.</summary>
     public static bool HostWantsOneWorld { get; private set; }
+
+    /// <summary>Host: <see cref="NetSession.HostStarted"/> has run, so <see cref="HostWantsOneWorld"/> is final for this session.</summary>
+    public static bool HostFlowDecided { get; private set; }
+
+    /// <summary>Host: this session keeps the legacy scene flow (solo, or the <c>-depotrow-off</c> hatch).</summary>
+    public static bool HostWantsLegacyStreet => HostFlowDecided && !HostWantsOneWorld;
+
+    /// <summary>
+    /// True on every machine of a session that runs the legacy scene flow. While the town is up, <c>DepotRow</c> is loaded
+    /// beside it only for its street side: lot <see cref="DepotFlowRules.LegacyShopLot"/> is the shop, the pocket interiors
+    /// stay off (the garage is ShopScene).
+    /// </summary>
+    public static bool LegacyStreet
+    {
+        get
+        {
+            var n = DepotRowNet.Instance;
+            return n != null && n.IsSpawned && !n.OneWorld;
+        }
+    }
+
+    /// <summary>The lot whose street door is the legacy garage door on this machine, or −1 (one world / no session).</summary>
+    public static int LegacyShopLot => LegacyStreet ? DepotFlowRules.LegacyShopLot : -1;
+
+    /// <summary>
+    /// Host: the legacy flow is arriving in <paramref name="sceneName"/> (the town) and Depot Row's street side is not up
+    /// yet. SceneController keeps the screen black until it is, so the shop never pops in next to the player.
+    /// </summary>
+    public static bool LegacyStreetPending(string sceneName) =>
+        HostWantsLegacyStreet && sceneName == TownSceneName && !IsSceneLoaded(DepotRowLayout.SceneName) &&
+        Application.CanStreamedLevelBeLoaded(DepotRowLayout.SceneName);
 
     /// <summary>True on every machine while the one world is on.</summary>
     public static bool Active
@@ -286,6 +319,7 @@ public static class DepotRowWorld
     static void ResetStatics()
     {
         HostWantsOneWorld = false;
+        HostFlowDecided = false;
         Transitioning = false;
         PendingInterior = -1;
         townScene = null;
@@ -304,7 +338,9 @@ public static class DepotRowWorld
     static void OnHostStarted(HostOptions o, string joinCode)
     {
         // Solo keeps today's garage ⇄ town scene flow (§13.4: "Solo keeps today's scene flow until the one world is proven").
-        HostWantsOneWorld = o != null && o.mode != NetMode.Offline && !ForceLegacy;
+        // DepotRowNet then loads Depot Row's street side next to the town so the shop still stands on lot 1.
+        HostWantsOneWorld = o != null && DepotFlowRules.FlowFor(o.mode == NetMode.Offline, ForceLegacy) == DepotFlow.OneWorld;
+        HostFlowDecided = true;
         if (!HostWantsOneWorld) return;
         Debug.Log("[DepotRow] Co-op host: starting the one world (town + Depot Row).");
         var net = DepotRowNet.Instance;
@@ -317,6 +353,7 @@ public static class DepotRowWorld
         if (s == NetSessionState.Idle || s == NetSessionState.Failed || s == NetSessionState.Leaving)
         {
             HostWantsOneWorld = false;
+            HostFlowDecided = false;
             Transitioning = false;
             PendingInterior = -1;
         }

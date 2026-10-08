@@ -22,7 +22,10 @@ public partial class BusinessRegistry
 {
     NetworkList<WorkshopNetState> workshopStates;
     readonly Dictionary<string, WorkshopState> workshopCache = new Dictionary<string, WorkshopState>(StringComparer.Ordinal);
-    float nextWorkshopTick, nextWorkshopUpload;
+    /// <summary>Host: every item uid a build has consumed this session, per business. An owner removes those items when
+    /// the build is confirmed; this stops a replayed or doctored request paying with the same item twice.</summary>
+    readonly HashSet<string> workshopSpentUids = new HashSet<string>(StringComparer.Ordinal);
+    float nextWorkshopTick, nextWorkshopUpload, nextDecorAsk;
     string workshopMirroredJson;
     bool workshopHooked;
 
@@ -32,9 +35,11 @@ public partial class BusinessRegistry
         if (IsServer) {
             SessionService.SetGuard("rb.workshop.upload", new NetGuard(1f, 3, 4300));
             SessionService.SetGuard("rb.workshop.command", new NetGuard(4f, 8, 1024));
-            SessionService.SetGuard("rb.workshop.donate", new NetGuard(8f, 12, 48));
+            // 3 a second: a Monument load is a chain of 100-piece requests, 0.4 s apart (Workshop.FeedSpacing)
+            SessionService.SetGuard("rb.workshop.build", new NetGuard(3f, 4, Workshop.MaxOfferChars * 3 + 256));
             SessionService.SetGuard("rb.workshop.gadget", new NetGuard(6f, 10, 96));
             SessionService.SetGuard("rb.workshop.gadget.sync", new NetGuard(16f, 32, 96));
+            SessionService.SetGuard("rb.workshop.event", new NetGuard(4f, 12, 32));
         }
         workshopStates.OnListChanged += WorkshopListChanged;
         Closing += CloseWorkshop; workshopHooked = true;
@@ -44,11 +49,26 @@ public partial class BusinessRegistry
     void UnhookWorkshop()
     {
         if (workshopHooked) { workshopStates.OnListChanged -= WorkshopListChanged; Closing -= CloseWorkshop; workshopHooked = false; }
-        workshopCache.Clear(); workshopMirroredJson = null; nextWorkshopTick = nextWorkshopUpload = 0f;
+        workshopCache.Clear(); workshopSpentUids.Clear(); workshopMirroredJson = null; nextWorkshopTick = nextWorkshopUpload = nextDecorAsk = 0f;
     }
     int WorkshopIndex(string id)
     { for (int i = 0; i < workshopStates.Count; i++) if (workshopStates[i].businessId.ToString() == id) return i; return -1; }
     public WorkshopState WorkshopSnapshot(string businessId) => !string.IsNullOrEmpty(businessId) && workshopCache.TryGetValue(businessId, out var state) ? state.Clone() : null;
+    /// <summary>A business's built level of one Callings node from the replicated state, without cloning it (0 if unknown).</summary>
+    public int WorkshopCallingLevel(string businessId, int nodeIndex) =>
+        !string.IsNullOrEmpty(businessId) && workshopCache.TryGetValue(businessId, out var state) ? state.CallingLevelAt(nodeIndex) : 0;
+    /// <summary>A business is hunting for this catalog number (its wanted-part pins), from the replicated state.</summary>
+    public bool WorkshopWants(string businessId, int catalogNumber) =>
+        !string.IsNullOrEmpty(businessId) && workshopCache.TryGetValue(businessId, out var state) && state.IsPinned(catalogNumber);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+    /// <summary>Debug/QA (Workshop.DebugEdit): the host replaces its OWN business's workshop state. Not an RPC.</summary>
+    internal bool WorkshopDebugPublish(WorkshopState state, out string why)
+    {
+        why = "";
+        if (!IsServer || !Businesses.TryGetForClient(NetworkManager.LocalClientId, out var business)) { why = "Host only."; return false; }
+        PublishWorkshop(business, state); return true;
+    }
+#endif
     void WorkshopListChanged(NetworkListEvent<WorkshopNetState> change) => RefreshWorkshopCache();
     void RefreshWorkshopCache()
     {
@@ -93,7 +113,13 @@ public partial class BusinessRegistry
             var item = Workshop.OwnedItem(pin.uid);
             if (item != null && item.defId == pin.defId) continue;
             if (IsServer) { snapshot.Pin(pin.recipeId, null); PublishWorkshop(business, snapshot); break; }
-            WorkshopCommandRpc(business.lot, 3, WorkshopKey(pin.recipeId), 0, default); // clearing a stale display is allowed away from the shop
+            WorkshopCommandRpc(business.lot, Workshop.ActionPinDisplay, WorkshopKey(pin.recipeId), 0, default); // clearing a stale display is allowed away from the shop
+        }
+        // Decor is bought on Scrapazon (the owner's upgrade level) and installed here (the completed bit). If the two ever
+        // disagree (a lost message, a purchase made while the workshop was still syncing), ask again, gently.
+        if (Time.unscaledTime >= nextDecorAsk) {
+            var missing = snapshot.DecorToInstall(GameSession.GetUpgradeLevel);
+            if (missing.Count > 0) { nextDecorAsk = Time.unscaledTime + 3f; WorkshopCommand(business.lot, Workshop.ActionInstallDecor, missing[0], 0, null); }
         }
     }
     static void PruneLocalDisplays(WorkshopState state) => state.displays.RemoveAll(pin => {
@@ -126,10 +152,10 @@ public partial class BusinessRegistry
     {
         ulong sender = rpc.Receive.SenderClientId;
         if (!Allowed("rb.workshop.upload", sender, json.Length + 80) || !Businesses.TryGetForClient(sender, out var business)) return;
-        // Exactly once per accepted ownership. Retried/replayed uploads NEVER reset host-owned materials or projects.
+        // Exactly once per accepted ownership. Retried/replayed uploads NEVER reset host-owned workshop state.
         if (!MayInitializeWorkshop(business, sender, id.ToString(), WorkshopIndex(business.Id) >= 0)) return;
         var state = ParseWorkshop(json.ToString());
-        if (state == null) { WorkshopReply(sender, false, "Workshop save was invalid; building is unavailable until it is repaired."); return; }
+        if (state == null) { WorkshopReply(sender, false, "Your shop save was invalid; printing is unavailable until it is repaired."); return; }
         PublishWorkshop(business, state);
     }
     static bool MayInitializeWorkshop(BusinessInfo business, ulong sender, string claimedBusiness, bool alreadyInitialized) =>
@@ -157,10 +183,10 @@ public partial class BusinessRegistry
     void HostWorkshopCommand(ulong client, int lot, byte action, string recipe, int color, WorkshopDisplayData display)
     {
         if (!IsServer || !Workshop.TryBusinessAt(lot, out var business) || business.ownerClientId != client) {
-            WorkshopReply(client, false, "Only the owner can manage this workshop."); return;
+            WorkshopReply(client, false, "Only the owner can manage this shop."); return;
         }
-        if (!(action == 3 && display == null) && !Workshop.InsideShop(client, lot)) {
-            WorkshopReply(client, false, "Visit your workshop to build or customise."); return;
+        if (!Workshop.AllowedAway(action, display) && !Workshop.InsideShop(client, lot)) {
+            WorkshopReply(client, false, "You have to be in your shop for that."); return;
         }
         if (display != null && client == NetworkManager.LocalClientId) {
             var actual = Workshop.OwnedItem(display.uid);
@@ -168,59 +194,103 @@ public partial class BusinessRegistry
             display = WorkshopDisplayData.From(recipe, actual);
         }
         var state = WorkshopSnapshot(business.Id);
-        if (state == null) { WorkshopReply(client, false, "Workshop is still syncing. Try again in a moment."); return; }
+        if (state == null) { WorkshopReply(client, false, "The shop is still syncing. Try again in a moment."); return; }
         if (!Workshop.ApplyCommand(state, action, recipe, color, display, out string why)) { WorkshopReply(client, false, why); return; }
         PublishWorkshop(business, state); WorkshopReply(client, true, why);
     }
 
-    public void WorkshopDonate(int lot, LooseItem item)
+    // ------------------------------------------------------------------ prints: a blueprint level or a Monument load, paid in kept items
+
+    /// <summary>Owner's machine: ask for a print with the instances it picked. The answer comes back as
+    /// <see cref="Workshop.OnBuildReply"/>; only a yes removes the items.</summary>
+    public void WorkshopBuild(int lot, byte action, string id, uint request, List<ItemInstance> offer)
     {
-        var hands = HandsNet.Instance;
-        if (hands != null && hands.Active) {
-            if (IsServer && item.NetId == 0) hands.HostPublishNow(item);
-            var netItem = hands.Get(item.NetId);
-            if (netItem == null || netItem.PendingGrab || !netItem.HeldBy(NetworkManager.LocalClientId)) { Workshop.Notice(false, "Wait until the item is firmly in your hands."); return; }
-            if (IsServer) HostWorkshopDonate(NetworkManager.LocalClientId, lot, netItem.Id, netItem.St.seq);
-            else WorkshopDonateRpc(lot, netItem.Id, netItem.St.seq);
-        }
-        else if (IsServer) HostWorkshopDonate(NetworkManager.LocalClientId, lot, 0, 0);
-        else Workshop.Notice(false, "Workshop is still syncing. Try again in a moment.");
+        if (IsServer) { HostWorkshopBuild(NetworkManager.LocalClientId, lot, action, id, request, offer); return; }
+        string wire = Workshop.EncodeOffer(offer);
+        if (wire == null) { Workshop.OnBuildReply(request, false, "Those parts can't be sent. Try again."); return; }
+        WorkshopBuildRpc(lot, action, WorkshopKey(id), request, wire);
     }
     [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
-    void WorkshopDonateRpc(int lot, uint item, uint sequence, RpcParams rpc = default)
+    void WorkshopBuildRpc(int lot, byte action, FixedString64Bytes id, uint request, string offer, RpcParams rpc = default)
     {
         ulong sender = rpc.Receive.SenderClientId;
-        if (!Allowed("rb.workshop.donate", sender, 32)) return;
-        HostWorkshopDonate(sender, lot, item, sequence);
+        if (!Allowed("rb.workshop.build", sender, (offer != null ? offer.Length * 3 : 0) + 96)) return;
+        if (offer != null && offer.Length > Workshop.MaxOfferChars || !Workshop.TryDecodeOffer(offer, out var items)) { BuildReply(sender, request, false, "Those parts didn't arrive in one piece."); return; }
+        HostWorkshopBuild(sender, lot, action, id.ToString(), request, items);
     }
-    void HostWorkshopDonate(ulong client, int lot, uint itemId, uint sequence)
+    void HostWorkshopBuild(ulong client, int lot, byte action, string id, uint request, List<ItemInstance> offer)
     {
-        if (!IsServer || !Workshop.TryBusinessAt(lot, out var business) || !Workshop.MayDonate(client, business) || !Workshop.InsideShop(client, lot)) {
-            WorkshopReply(client, false, "Donate inside your own shop or your employer's shop."); return;
+        if (!IsServer || !Workshop.TryBusinessAt(lot, out var business) || business.ownerClientId != client) {
+            BuildReply(client, request, false, "Only the owner can print here. Your own blueprints are printed on your own laptop."); return;
         }
+        if (!Workshop.InsideShop(client, lot)) { BuildReply(client, request, false, "Use the laptop in your own shop to print."); return; }
         var state = WorkshopSnapshot(business.Id);
-        if (state == null) { WorkshopReply(client, false, "Workshop is still syncing. Try again in a moment."); return; }
-        var hands = HandsNet.Instance;
-        LooseItem item;
-        if (hands != null && hands.Active) {
-            if (!hands.TryWorkshopHeld(client, itemId, sequence, out item)) { WorkshopReply(client, false, "That item is no longer safely in your hands."); return; }
-        } else {
-            if (client != NetworkManager.LocalClientId || !(TrashCarrier.Local?.Held is LooseItem local)) return;
-            item = local;
+        if (state == null) { BuildReply(client, request, false, "The print shop is still syncing. Try again in a moment."); return; }
+        offer ??= new List<ItemInstance>();
+        foreach (var item in offer)
+            if (item == null || string.IsNullOrEmpty(item.uid) || workshopSpentUids.Contains(business.Id + "/" + item.uid)) {
+                BuildReply(client, request, false, "One of those parts was already used. Check your inventory."); return;
+            }
+        if (client == NetworkManager.LocalClientId) { // the host's own inventory is right here: check it for real
+            var stock = Workshop.StockFor(state);
+            foreach (var item in offer) {
+                bool mine = false;
+                if (stock.free.TryGetValue(item.defId ?? "", out var free)) foreach (var owned in free) if (owned.uid == item.uid) { mine = true; break; }
+                if (!mine) { BuildReply(client, request, false, "One of those parts is no longer free in your inventory."); return; }
+            }
         }
-        if (!item.Revealed || item.State == CarryState.Consumed || !WorkshopCatalog.TryGrams(item.Item, out var material, out int grams)) {
-            WorkshopReply(client, false, "Only revealed metal, plastic, glass and paper become building materials."); return;
-        }
-        ushort completedBefore = state.completed;
-        if (!state.Donate(material, grams, out string why)) { WorkshopReply(client, false, why); return; }
-        // Main-thread, non-yielding transaction. Consume publishes Gone and frees held ownership before publishing credit.
-        item.Consume(); PublishWorkshop(business, state);
-        WorkshopReply(client, true, state.completed != completedBefore ? "Project complete! Installed in the workshop." :
-            $"Saved {grams / 1000f:0.###} kg {material.ToString().ToLowerInvariant()} for building.");
+        if (!Workshop.ApplyBuild(state, action, id, offer, out string why)) { BuildReply(client, request, false, why); return; }
+        foreach (var item in offer) workshopSpentUids.Add(business.Id + "/" + item.uid);
+        PublishWorkshop(business, state); BuildReply(client, request, true, why);
     }
-    void WorkshopReply(ulong client, bool ok, string message)
+    void BuildReply(ulong client, uint request, bool ok, string message)
     {
         if (!IsSpawned) return;
+        if (client == NetworkManager.LocalClientId) { Workshop.OnBuildReply(request, ok, message); return; }
+        var text = new FixedString512Bytes(); text.CopyFromTruncated(message ?? "");
+        WorkshopBuildReplyRpc(request, ok, text, RpcTarget.Single(client, RpcTargetUse.Temp));
+    }
+    [Rpc(SendTo.SpecifiedInParams)]
+    void WorkshopBuildReplyRpc(uint request, bool ok, FixedString512Bytes text, RpcParams rpc = default) => Workshop.OnBuildReply(request, ok, text.ToString());
+
+    // ------------------------------------------------------------------ shop events: the SolidWaste 3D disk
+
+    /// <summary>The machine that ripped a bag / kept the disk in the shop on <paramref name="lot"/> reports it.</summary>
+    public void WorkshopShopEvent(int lot, byte kind)
+    {
+        if (IsServer) HostShopEvent(NetworkManager.LocalClientId, lot, kind, true);
+        else WorkshopShopEventRpc(lot, kind);
+    }
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
+    void WorkshopShopEventRpc(int lot, byte kind, RpcParams rpc = default)
+    {
+        ulong sender = rpc.Receive.SenderClientId;
+        if (Allowed("rb.workshop.event", sender, 16)) HostShopEvent(sender, lot, kind);
+    }
+    /// <summary>A guest's report counts when they may work in the shop (owner, hired crew) and are standing in it. The
+    /// host's own machine (<paramref name="local"/>) is believed as it is: it also reports for the robots it simulates
+    /// (Magnus, the chute, the compactor's grate) in any shop, wherever its player happens to be. The disk is the lot owner's.</summary>
+    void HostShopEvent(ulong client, int lot, byte kind, bool local = false)
+    {
+        if (!IsServer || !Workshop.TryBusinessAt(lot, out var business)) return;
+        if (!local && (!Permissions.CanWorkIn(client, lot) || !Workshop.InsideShop(client, lot))) return;
+        var state = WorkshopSnapshot(business.Id);
+        if (state == null) return;
+        if (!Workshop.ApplyShopEvent(state, kind, Workshop.DiskRoll(business.Id, state), Workshop.DiskIsOut(lot), out bool drop)) return;
+        PublishWorkshop(business, state);
+        if (kind == Workshop.EventDiskKept && client != business.ownerClientId)
+            WorkshopReply(client, true, $"Disk kept. It went into {business.Name}'s laptop.");
+        if (!drop) return;
+        Workshop.NoteDiskIssued(lot);
+        if (client == NetworkManager.LocalClientId) Workshop.OnDiskDrop(lot);
+        else WorkshopDiskDropRpc(lot, RpcTarget.Single(client, RpcTargetUse.Temp));
+    }
+    [Rpc(SendTo.SpecifiedInParams)]
+    void WorkshopDiskDropRpc(int lot, RpcParams rpc = default) => Workshop.OnDiskDrop(lot);
+
+    void WorkshopReply(ulong client, bool ok, string message)
+    {
+        if (!IsSpawned || string.IsNullOrEmpty(message)) return;
         var text = new FixedString512Bytes(); text.CopyFromTruncated(message);
         WorkshopNoticeRpc(ok, text, RpcTarget.Single(client, RpcTargetUse.Temp));
     }

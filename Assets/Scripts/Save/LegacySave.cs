@@ -9,7 +9,7 @@ using UnityEngine.SceneManagement;
 /// (EbaeMarket), until M1 folds them into a company record (hotfix L0; Docs/Accounts.md §5.1, red-team R1, R3, R4).
 /// <list type="bullet">
 /// <item><b>Writes:</b> <see cref="WriteBoth"/> writes both files with the same <c>gen</c>, at most once per 2 s (a dirty flag is
-/// flushed by the runner), and on quit, pause and scene change unless the state equals what the main files already hold (ebae
+/// flushed by the runner), and on quit, pause and scene change unless the state equals what the main files already hold (ebag
 /// offer timers aside). Atomic, with time-tiered generations (<see cref="SafeFile"/>).
 /// Refused while <see cref="SaveGuard"/> is latched, when either file failed to load, and in edit mode (unless a test data
 /// root is pushed).</item>
@@ -46,7 +46,7 @@ internal static class LegacySave
     static int lastWriteFrame = -1;
     static Resolution stash;
     static bool hasStash;
-    // W2: what the MAIN files hold right now, gen-free (and ebae offer timers ignored); null = unknown, so the next flush writes.
+    // W2: what the MAIN files hold right now, gen-free (and ebag offer timers ignored); null = unknown, so the next flush writes.
     // A quit/pause flush with nothing dirty and nothing changed skips the write, so a guest's files (and an idle quit) stay
     // byte-identical (M0 gate 4) instead of being rewritten under a new gen.
     static string canonGs, canonEbae;
@@ -108,7 +108,7 @@ internal static class LegacySave
         return ebae ? TimerField.Replace(s, "\"remaining\":0") : s;
     }
 
-    /// <summary>Both main files already hold the current state (ignoring gen and ebae offer timers).</summary>
+    /// <summary>Both main files already hold the current state (ignoring gen and ebag offer timers).</summary>
     static bool Unchanged()
     {
         if (canonGs == null || canonEbae == null) return false;
@@ -245,7 +245,7 @@ internal static class LegacySave
     // ------------------------------------------------------------------ load
 
     /// <summary>
-    /// Load one half of the pair. <see cref="Part.GameSession"/> always resolves the pair afresh from disk and keeps the ebae half
+    /// Load one half of the pair. <see cref="Part.GameSession"/> always resolves the pair afresh from disk and keeps the ebag half
     /// for <see cref="Part.Ebae"/> (which resolves afresh only when called on its own). <paramref name="apply"/> gets the chosen
     /// JSON (null-free; not called when there's no file). Returns true when that half loaded cleanly.
     /// </summary>

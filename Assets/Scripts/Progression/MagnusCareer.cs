@@ -3,9 +3,10 @@ using UnityEngine;
 
 /// <summary>
 /// Magnus's career path (Docs/Progression.md §6.3): the Magnus department read as ONE ordered path instead of four loose
-/// upgrade lines. Step 1, "Magnus Gets a Job" (magnus_brain L1), bundles the rail branch to your sort table, taped
-/// kitchen tongs and Brain Module 1, so the very first purchase puts him to work; every later step adds exactly one thing
-/// (speed, heavier items + ripping bags, treasure flags, treasure, hazards, the night shift). Prerequisites live in the
+/// upgrade lines. Step 1, "Magnus Gets a Job" (magnus_brain L1), bundles the rail to your sort table, taped kitchen tongs
+/// and Brain Module 1: he moves from the chess board to the sort station, picks up bags within reach, rips them and sorts
+/// them, with or without a conveyor. Every later step adds exactly one thing (speed, heavier items + heavy bags, treasure
+/// flags, treasure, hazards, the night shift); <see cref="Capabilities"/> proves no step is a dead purchase. Prerequisites live in the
 /// catalog (ScrapazonCatalog) and are checked by <see cref="Progression.CanBuy"/>; this class only names the steps, says
 /// where you are on the path and what Magnus can do right now. Pure reads (no state, co-op safe).
 /// </summary>
@@ -17,7 +18,7 @@ public static class MagnusCareer
         public readonly int level;
         /// <summary>Short step name ("Lobster Pincer").</summary>
         public readonly string name;
-        /// <summary>What this step adds, finishing the sentence "Magnus ..." ("rips bags open himself").</summary>
+        /// <summary>What this step adds, finishing the sentence "Magnus ..." ("lifts items up to 25 kg").</summary>
         public readonly string adds;
 
         public Step(string id, int level, string name, string adds)
@@ -43,12 +44,12 @@ public static class MagnusCareer
     /// <summary>The path, in order. Levels per id must stay increasing (the store sells the next level only).</summary>
     public static readonly Step[] Steps =
     {
-        new Step(ShopIds.MagnusBrain, 1, "Magnus Gets a Job", "commutes to your sort table and sorts recyclables + junk"),
+        new Step(ShopIds.MagnusBrain, 1, "Magnus Gets a Job", "moves to your sort table, rips the bags within his reach and sorts recyclables + junk"),
         new Step(ShopIds.MagnusRailMotor, 1, "Rail Motor", "commutes twice as fast and works ×1.25 faster"),
-        new Step(ShopIds.MagnusGripper, 1, "Lobster Pincer", "lifts items up to 25 kg and rips bags open himself"),
-        new Step(ShopIds.MagnusVision, 1, "X-Ray Googly Eyes", "flags 60% of treasure bags on the tipping floor"),
+        new Step(ShopIds.MagnusGripper, 1, "Lobster Pincer", "lifts items up to 25 kg and handles HEAVY bags"),
+        new Step(ShopIds.MagnusVision, 1, "X-Ray Googly Eyes", "flags 60% of treasure bags (the belt and he take those first)"),
         new Step(ShopIds.MagnusBrain, 2, "Treasure Sense", "puts treasure in the KEEP crate"),
-        new Step(ShopIds.MagnusVision, 2, "Appraisal Monocle", "flags every treasure bag (+3% on ebae)"),
+        new Step(ShopIds.MagnusVision, 2, "Appraisal Monocle", "flags every treasure bag (+3% on ebag)"),
         new Step(ShopIds.MagnusBrain, 3, "Hazmat Certified", "bins hazards in the barrel"),
         new Step(ShopIds.MagnusGripper, 2, "Quad-Claw", "works ×1.4 faster"),
         new Step(ShopIds.MagnusBrain, 4, "Grandmaster Module", "works 24 hours a day (and becomes MAGNUS PRIME)"),
@@ -144,13 +145,13 @@ public static class MagnusCareer
                     : "recyclables and junk";
         string hours = b.endHour - b.startHour >= 23.99f ? "around the clock" : $"{Hour(b.startHour)}-{Hour(b.endHour)}";
         lines.Add($"Commutes to your sort table and sorts {what}: {rate:0.#} items/min, {Mathf.RoundToInt(b.accuracy * 1000f) / 10f:0.#}% accurate, {hours}.");
-        lines.Add(UpgradeEffects.MagnusRipsBags
-            ? $"Rips bags open himself (Bag Belt tray first, then the tipping pile). Lifts items up to {UpgradeEffects.GripperMaxKg:0} kg."
-            : $"Sorts what you rip onto the table (he can't open bags yet). Lifts items up to {UpgradeEffects.GripperMaxKg:0} kg.");
+        lines.Add(UpgradeEffects.MagnusHandlesHeavyBags
+            ? $"Rips every bag within his reach, heavy ones too (the table, {MagnusReach.ReachMetres:0} m around it and the Bag Belt's queue; never the dump pile). Lifts items up to {UpgradeEffects.GripperMaxKg:0} kg."
+            : $"Rips the bags within his reach (the table, {MagnusReach.ReachMetres:0} m around it and the Bag Belt's queue; never the dump pile). Heavy bags are yours. Lifts items up to {UpgradeEffects.GripperMaxKg:0} kg.");
         if (!b.hazards)
             lines.Add(b.valuables ? "Hazards go to LEFTOVERS for you." : "Treasure and hazards go to LEFTOVERS for you.");
         float flags = UpgradeEffects.VisionDetect;
-        if (flags > 0f) lines.Add(flags >= 1f ? "Flags every treasure bag on the tipping floor (+3% on ebae)." : $"Flags {Mathf.RoundToInt(flags * 100f)}% of treasure bags on the tipping floor.");
+        if (flags > 0f) lines.Add(flags >= 1f ? "Flags every treasure bag in the garage (+3% on ebag)." : $"Flags {Mathf.RoundToInt(flags * 100f)}% of treasure bags in the garage.");
         if (UpgradeEffects.Level(ShopIds.MagnusRailMotor) >= 1) lines.Add("Rides a rail motor with racing stripes (commutes twice as fast).");
         return lines;
     }
@@ -169,6 +170,68 @@ public static class MagnusCareer
         if (i < 0) return "Career complete. He is MAGNUS PRIME. He knows.";
         var s = Steps[i];
         return $"Next: Step {i + 1}: {s.name} ({Economy.Money(s.Price)}, Rank {s.Rank}): Magnus {s.adds}.";
+    }
+
+    // ------------------------------------------------------------------ what a set of levels can do (pure)
+
+    /// <summary>Everything Magnus can do at a set of career levels, as numbers. Two different sets of levels that give
+    /// the same Capabilities would mean a step that does nothing: <see cref="StepAdds"/> (and CareerStepIntegrityTests).</summary>
+    public struct Capabilities : System.IEquatable<Capabilities>
+    {
+        public bool employed, ripsBags, heavyBags, valuables, hazards;
+        public float itemsPerMin, accuracy, hoursPerDay, maxItemKg, railSpeed, flagShare, ebaeBonus;
+        public int chessTier;
+
+        public bool Equals(Capabilities o) =>
+            employed == o.employed && ripsBags == o.ripsBags && heavyBags == o.heavyBags && valuables == o.valuables &&
+            hazards == o.hazards && itemsPerMin == o.itemsPerMin && accuracy == o.accuracy && hoursPerDay == o.hoursPerDay &&
+            maxItemKg == o.maxItemKg && railSpeed == o.railSpeed && flagShare == o.flagShare && ebaeBonus == o.ebaeBonus;
+        // chessTier is left out on purpose: every step raises it, so it would hide a step with no sorting effect.
+        public override bool Equals(object o) => o is Capabilities c && Equals(c);
+        public override int GetHashCode() => itemsPerMin.GetHashCode() ^ maxItemKg.GetHashCode() ^ (heavyBags ? 1 : 0);
+    }
+
+    /// <summary>Capabilities at explicit levels. Without the job (brain 0) nothing else counts: he only plays chess.</summary>
+    public static Capabilities CapabilitiesAt(int brain, int rail, int gripper, int vision)
+    {
+        var b = UpgradeEffects.BrainAt(brain);
+        bool job = brain >= 1;
+        return new Capabilities
+        {
+            employed = job,
+            ripsBags = job && MagnusReach.MayRip(brain, gripper, false),
+            heavyBags = job && MagnusReach.MayRip(brain, gripper, true),
+            valuables = b.valuables, hazards = b.hazards,
+            itemsPerMin = b.itemsPerMin * (job ? UpgradeEffects.MagnusSpeedMultAt(rail, gripper) : 0f),
+            accuracy = b.accuracy,
+            hoursPerDay = Mathf.Max(0f, b.endHour - b.startHour),
+            maxItemKg = UpgradeEffects.GripperMaxKgAt(brain, gripper),
+            railSpeed = job ? UpgradeEffects.RailSpeedAt(rail) : 0f,
+            flagShare = UpgradeEffects.VisionDetectAt(vision),
+            ebaeBonus = UpgradeEffects.MonocleEbaeBonusAt(vision),
+            chessTier = UpgradeEffects.ChessTierFor(rail, gripper, vision, brain),
+        };
+    }
+
+    /// <summary>
+    /// Does career step <paramref name="index"/> (0-based) change what Magnus can do, bought on top of every step before
+    /// it on the path? (Chess strength alone does not count.)
+    /// </summary>
+    public static bool StepAdds(int index)
+    {
+        if (index < 0 || index >= Steps.Length) return false;
+        int brain = 0, rail = 0, gripper = 0, vision = 0;
+        void Apply(Step s)
+        {
+            if (s.id == ShopIds.MagnusBrain) brain = Mathf.Max(brain, s.level);
+            else if (s.id == ShopIds.MagnusRailMotor) rail = Mathf.Max(rail, s.level);
+            else if (s.id == ShopIds.MagnusGripper) gripper = Mathf.Max(gripper, s.level);
+            else if (s.id == ShopIds.MagnusVision) vision = Mathf.Max(vision, s.level);
+        }
+        for (int i = 0; i < index; i++) Apply(Steps[i]);
+        var before = CapabilitiesAt(brain, rail, gripper, vision);
+        Apply(Steps[index]);
+        return !before.Equals(CapabilitiesAt(brain, rail, gripper, vision));
     }
 
     static string Hour(float h)

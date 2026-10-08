@@ -24,6 +24,7 @@ public sealed class TruckCabVisuals : MonoBehaviour
     ulong shownDriver = ulong.MaxValue;
     PlayerController shownPlayer;
     float nextRefresh;
+    Vector3 shownScale = Vector3.one;
     Vector3 headRest;
     WheelCollider steeringWheel;
     public ulong ShownDriver => shownDriver;
@@ -129,7 +130,8 @@ public sealed class TruckCabVisuals : MonoBehaviour
                 source = PlayerController.Local; // coop:allow(local) offline-only cosmetic occupant, never gameplay identity
                 if (source != null) driver = source.IsSpawned ? source.OwnerClientId : 0;
             }
-            if (driver != shownDriver || source != shownPlayer || (occupant == null && source != null)) BuildOccupant(driver, source);
+            if (driver != shownDriver || source != shownPlayer || shownScale != TruckModelVisuals.ScaleFor(transform) ||
+                (occupant == null && source != null)) BuildOccupant(driver, source);
             if (occupant != null) occupant.gameObject.SetActive(source != null && (source.IsDriving || truck.IsLocalPlayerSeated));
         }
         if (head == null || occupant == null || !occupant.gameObject.activeSelf) return;
@@ -146,13 +148,16 @@ public sealed class TruckCabVisuals : MonoBehaviour
         occupant = head = null;
         shownDriver = client;
         shownPlayer = source;
+        shownScale = TruckModelVisuals.ScaleFor(transform);
         var puppet = source != null ? source.GetComponent<ChuckPuppet>() : null;
         if (puppet == null || puppet.parts == null || puppet.parts.Length < ChuckPartsData.Count) return;
         var face = puppet.parts[ChuckPartsData.Head_Ball];
         if (face == null) return;
         occupant = ShopModKit.Pivot("Seated driver " + client, cab, Vector3.zero);
-        head = ShopModKit.Pivot("Driver body and face", occupant, DriverHeadMetres);
-        headRest = DriverHeadMetres;
+        // The cab shrinks, never the person: only the seat/body anchor is remapped to the compact cab.
+        occupant.localScale = new Vector3(1f / shownScale.x, 1f / shownScale.y, 1f / shownScale.z);
+        headRest = TruckModelVisuals.MapMetres(transform, DriverHeadMetres);
+        head = ShopModKit.Pivot("Driver body and face", occupant, headRest);
         int variant = puppet.Variant >= 0 ? puppet.Variant : (int)(client % 4);
         Quaternion inverse = Quaternion.Inverse(source.transform.rotation);
         for (int i = 0; i < ChuckPartsData.Count; i++)
@@ -181,8 +186,8 @@ public sealed class TruckCabVisuals : MonoBehaviour
         var glove = PartMaterial(puppet, ChuckPartsData.Glove_Mitt_L);
         for (int side = -1; side <= 1; side += 2)
         {
-            var shoulder = new Vector3(-0.50f + side * 0.24f, 1.73f, 3.12f);
-            var hand = new Vector3(-0.50f + side * 0.15f, 1.70f, 3.38f);
+            var shoulder = TruckModelVisuals.MapMetres(transform, new Vector3(-0.50f + side * 0.24f, 1.73f, 3.12f));
+            var hand = TruckModelVisuals.MapMetres(transform, new Vector3(-0.50f + side * 0.15f, 1.70f, 3.38f));
             Segment(occupant, "Sleeve", shirt, shoulder, hand, 0.13f);
             ShopModKit.Prim(PrimitiveType.Sphere, "Hand on wheel", occupant, glove, hand, new Vector3(0.13f, 0.14f, 0.14f));
         }

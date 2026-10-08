@@ -2,21 +2,18 @@ using System.Collections;
 using UnityEngine;
 
 /// <summary>
-/// Drives Magnus's cart along his floor rail between stops: the chess board, the back of the
-/// garbage truck and (once he has the job, magnus_brain L1, which brings the rail branch) the Sort Stop at the sorting
-/// table. Put this on the cart; Magnus rides on it. Trips to and from the Sort Stop always go via the chess stop
-/// (the branch leaves from there). The magnus_rail_motor L1 motor doubles the rail speed (0.7 -> 1.4 m/s).
+/// Drives Magnus's cart along his floor rail between its two stops: the chess board and (once he has the job,
+/// magnus_brain L1, which brings the rail) the Sort Stop at the sorting table. That one straight line is the whole
+/// track: he cannot go anywhere else, and in particular not to the dump pile (the old branch behind the truck is gone).
+/// Put this on the cart; Magnus rides on it. The magnus_rail_motor L1 motor doubles the rail speed (0.7 -> 1.4 m/s).
 ///
-/// It only moves the cart on the machine that calls it, so a networked job (like unloading the
-/// truck) should call DriveTo on every client, the same way MagnusChessBot broadcasts chess moves.
+/// It only moves the cart on the machine that calls it; MagnusPoseNet replicates the pose.
 /// </summary>
 public class MagnusTrack : MonoBehaviour
 {
     [SerializeField] MagnusArm arm;
     [Tooltip("Where the cart parks to play chess.")]
     [SerializeField] Transform chessStop;
-    [Tooltip("Where the cart parks behind the garbage truck.")]
-    [SerializeField] Transform truckStop;
     [Tooltip("Optional: where the cart parks to sort at the sorting table (end of the rail branch; set by Setup_GarageUpgrades).")]
     [SerializeField] Transform sortStop;
     [Tooltip("Top speed along the rail in m/s (stock motor).")]
@@ -25,8 +22,11 @@ public class MagnusTrack : MonoBehaviour
     [SerializeField] float motorSpeed = 1.4f;
 
     [Header("Wheels (optional)")]
+    [Tooltip("Wheel pivots: each spins about its own local X (its axle).")]
     [SerializeField] Transform[] wheels;
     [SerializeField] float wheelRadius = 0.06f;
+    [Tooltip("Optional: forward of this transform is the direction of travel along the rail (the cart's chassis). Empty = the cart's own forward.")]
+    [SerializeField] Transform travelFrame;
 
     public bool IsDriving { get; private set; }
 
@@ -61,32 +61,19 @@ public class MagnusTrack : MonoBehaviour
     }
 
     public Coroutine DriveToChess() => StartCoroutine(DriveRoute(chessStop));
-    public Coroutine DriveToTruck() => StartCoroutine(DriveRoute(truckStop));
     public Coroutine DriveToSort() => StartCoroutine(DriveRoute(sortStop));
 
-    /// <summary>Drive to <paramref name="stop"/>, going via the chess stop when the trip starts or ends on the branch.</summary>
+    /// <summary>The only places the cart may go.</summary>
+    public bool IsStop(Transform stop) => stop != null && (stop == chessStop || stop == sortStop);
+
+    /// <summary>Drive along the rail to one of its two stops (the chess board or the Sort Stop). Anything else is refused.</summary>
     public IEnumerator DriveRoute(Transform stop)
     {
-        if (!stop || IsDriving) yield break;
-        bool onBranch = sortStop && !AtChess && !NearMainRail(transform.position);
-        bool toBranch = stop == sortStop && stop != chessStop;
-        if ((onBranch || toBranch) && chessStop && !AtChess && stop != chessStop) yield return DriveTo(chessStop);
-        if (!stop) yield break;
+        if (!IsStop(stop) || IsDriving) yield break;
         yield return DriveTo(stop);
     }
 
-    /// <summary>On the main chess-truck rail (same x as the chess stop, within a few cm)?</summary>
-    bool NearMainRail(Vector3 p)
-    {
-        if (!chessStop) return true;
-        Vector3 a = chessStop.position, b = truckStop ? truckStop.position : chessStop.position;
-        Vector3 ab = b - a; ab.y = 0f;
-        Vector3 ap = p - a; ap.y = 0f;
-        float t = ab.sqrMagnitude > 1e-4f ? Mathf.Clamp01(Vector3.Dot(ap, ab) / ab.sqrMagnitude) : 0f;
-        Vector3 c = a + ab * t; c.y = p.y;
-        return (p - c).sqrMagnitude < 0.05f * 0.05f;
-    }
-
+    /// <summary>The motion itself (no route check: use <see cref="DriveRoute"/> / DriveToChess / DriveToSort).</summary>
     public IEnumerator DriveTo(Transform stop)
     {
         if (!stop || IsDriving) yield break;
@@ -116,13 +103,11 @@ public class MagnusTrack : MonoBehaviour
         if (arm) arm.ShiftTarget(delta);   // carry the arm's pose along with the cart
 
         if (wheels == null || wheelRadius <= 0f) return;
-        float degrees = Vector3.Dot(delta, transform.forward) / wheelRadius * Mathf.Rad2Deg;
+        Vector3 along = travelFrame ? travelFrame.forward : transform.forward;
+        float degrees = Vector3.Dot(delta, along) / wheelRadius * Mathf.Rad2Deg;
         foreach (var wheel in wheels)
             if (wheel) wheel.Rotate(Vector3.right, degrees, Space.Self);
     }
-
-    [ContextMenu("Drive to truck (play mode)")]
-    void TestDriveToTruck() { if (Application.isPlaying) DriveToTruck(); }
 
     [ContextMenu("Drive to the Sort Stop (play mode)")]
     void TestDriveToSort() { if (Application.isPlaying) DriveToSort(); }

@@ -7,7 +7,7 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 
 /// <summary>
-/// Idempotent setup for ebae: panel settings (drawn above the HUD, scales with screen), a theme
+/// Idempotent setup for ebag: panel settings (drawn above the HUD, scales with screen), a theme
 /// that doesn't double-import ebae.uss, and a sanity check of the ShopScene wiring
 /// (UIManager.EbaeUI.ebae → UIDocument with ebae.uxml). Also a few play-mode debug menu items.
 /// </summary>
@@ -19,7 +19,7 @@ public static class Setup_Ebae
     const string UxmlPath = Folder + "/ebae.uxml";
     const string ScenePath = "Assets/Scenes/ShopScene.unity";
 
-    /// <summary>ebae is a full-screen app: draw it above the HUD. Unity 6 sorts overlay UI Toolkit
+    /// <summary>ebag is a full-screen app: draw it above the HUD. Unity 6 sorts overlay UI Toolkit
     /// panels together with uGUI overlay canvases; the Feel HUD canvas uses sortingOrder 100.</summary>
     public const float SortingOrder = 200f;
 
@@ -158,7 +158,7 @@ public static class Setup_Ebae
     [MenuItem("Rubbish/Debug/ebae/Give Test Treasures")]
     static void GiveTestTreasures()
     {
-        if (!Application.isPlaying) { Debug.LogWarning("[ebae] Enter play mode first."); return; }
+        if (!Application.isPlaying) { Debug.LogWarning("[ebag] Enter play mode first."); return; }
         var rng = new System.Random();
         int given = 0;
         foreach (var def in ItemCatalog.All)
@@ -172,32 +172,32 @@ public static class Setup_Ebae
             GameSession.AddToInventory(ItemCatalog.RollItem(ItemCatalog.All[0], rng, "742 Evergreen Terrace"));
             given = 1;
         }
-        Debug.Log($"[ebae] Gave {given} test item(s).");
+        Debug.Log($"[ebag] Gave {given} test item(s).");
     }
 
     [MenuItem("Rubbish/Debug/ebae/Force Offers Now")]
     static void ForceOffers()
     {
-        if (!Application.isPlaying) { Debug.LogWarning("[ebae] Enter play mode first."); return; }
+        if (!Application.isPlaying) { Debug.LogWarning("[ebag] Enter play mode first."); return; }
         EbaeMarket.DebugForceOffers();
     }
 
     [MenuItem("Rubbish/Debug/ebae/Open Laptop")]
     static void OpenLaptop()
     {
-        if (!Application.isPlaying) { Debug.LogWarning("[ebae] Enter play mode first."); return; }
+        if (!Application.isPlaying) { Debug.LogWarning("[ebag] Enter play mode first."); return; }
         if (EbaeUI.Instance != null) EbaeUI.Instance.Show(LaptopApp.Ebae);
-        else Debug.LogWarning("[ebae] No EbaeUI in the loaded scenes (it lives in ShopScene).");
+        else Debug.LogWarning("[ebag] No EbaeUI in the loaded scenes (it lives in ShopScene).");
     }
 
-    [MenuItem("Rubbish/Debug/ebae/Wipe ebae Save")]
+    [MenuItem("Rubbish/Debug/ebae/Wipe ebag Save")]
     static void WipeSave()
     {
         if (!Application.isPlaying)
         {
             // Saves go through LegacySave (the pair rubbish_save.json + ebae_save.json, the data root, the backups). Deleting one
             // file by hand in edit mode would split the pair and skip the backups, so the wipe only runs in play mode.
-            Debug.LogWarning("[ebae] Enter play mode first: the wipe goes through the save system (your old ebae data stays " +
+            Debug.LogWarning("[ebag] Enter play mode first: the wipe goes through the save system (your old ebag data stays " +
                              "in the backups under ebae_save.gen/).");
             return;
         }

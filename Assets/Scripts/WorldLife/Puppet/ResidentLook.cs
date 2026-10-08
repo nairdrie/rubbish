@@ -183,7 +183,8 @@ public static class ResidentLook
     public static ResidentStyle StyleFor(ResidentArchetype a, byte district, ulong hash)
     {
         var d = new PuppetDice(hash);
-        var pal = DistrictPalette[Mathf.Min(district, (byte)3)];
+        int style = Districts.StyleIndex(district);
+        var pal = DistrictPalette[style];
         var s = new ResidentStyle
         {
             archetype = a, district = district,
@@ -194,7 +195,7 @@ public static class ResidentLook
             hairKind = (PuppetHair)d.Range(1, 10), hat = PuppetHat.None, hatColor = d.Pick(pal),
             outfit = PuppetOutfit.None, outfitColor = d.Pick(pal), prop = PuppetProp.None,
             voicePitch = d.Range(0.85f, 1.5f),
-            name = d.Pick(Names[Mathf.Min(district, (byte)3)]),
+            name = d.Pick(Names[style]),
         };
         if (s.bottom == s.top) s.bottom = Grey;
         switch (a)

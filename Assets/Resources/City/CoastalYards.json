@@ -1,0 +1,13 @@
+{
+  "revision": 1,
+  "sideClearance": 2.2,
+  "rearClearance": 5.5,
+  "minimumRearClearance": 2.5,
+  "sideGateWidth": 1.8,
+  "sidewalkClearance": 3.6,
+  "maximumNeighbourGap": 15.0,
+  "maximumRowAngle": 3.0,
+  "obstacleClearance": 0.35,
+  "fenceHeight": 1.15,
+  "sampleSpacing": 1.0
+}

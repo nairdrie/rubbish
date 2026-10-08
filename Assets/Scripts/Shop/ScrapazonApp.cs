@@ -5,12 +5,12 @@ using UnityEngine.UIElements;
 using Random = UnityEngine.Random;
 
 /// <summary>
-/// Scrapazon, the buy-side app on the shop laptop (Assets/UI/shop/scrapazon.uxml, instanced inside the ebae
+/// Scrapazon, the buy-side app on the shop laptop (Assets/UI/shop/scrapazon.uxml, instanced inside the ebag
 /// laptop document as "scrapazonPage"). Hosted by <see cref="EbaeUI"/>, which owns show/hide and the single
 /// PlayerController UI lock — switching apps never touches the lock. Purchases go through
 /// <see cref="ScrapazonStore"/>; this class is only the storefront + juice.
 /// Progression (Docs/Progression.md §9.5 A.4): departments, per-level titles/blurbs/effects, LOCKED chips (rank,
-/// prerequisite, Key to the City), Kevin's wage, a "NEW FOR YOU" ribbon after a promotion, the "Best next buy" shelf,
+/// prerequisite, Key to the City), a "NEW FOR YOU" ribbon after a promotion, the "Best next buy" shelf,
 /// and the Career page (<see cref="ScrapazonCareer"/>).
 /// </summary>
 public class ScrapazonApp
@@ -36,14 +36,14 @@ public class ScrapazonApp
         "Search \"how to get raccoon smell out of everything\"",
         "Search \"how to get promoted at a garbage company\"",
         "Search \"legal to honk at a raccoon?\"",
-        "Search \"is kevin ok\"",
+        "Search \"can raccoons unionize\"",
         "Search \"golden garbage truck price (serious)\"",
     };
     static readonly string[] AlsoBought =
     {
         "Tetanus Shot (not sold here)", "A Second Raccoon", "Nose Plugs (6-pack)", "Therapy (back-ordered)",
         "Industrial Febreze", "A Normal Job", "Bigger Pockets", "Raccoon Translation Guide",
-        "Gloves (you should really wear gloves)", "Emotional Support Trash Can", "Kevin's Other Shoe", "A Promotion (not for sale)",
+        "Gloves (you should really wear gloves)", "Emotional Support Trash Can", "One Left Shoe (unclaimed)", "A Promotion (not for sale)",
     };
 
     readonly EbaeUI host;
@@ -79,7 +79,7 @@ public class ScrapazonApp
         public ScrapazonItem item;
         public VisualElement card, art, artImage, review, levelRow, lockChip, details;
         public Label detailsToggle;
-        public Label owned, whole, cents, sym, listPrice, effect, levelText, stock, buy, reviewText, title, blurb, wage, lockText, newRibbon;
+        public Label owned, whole, cents, sym, listPrice, effect, levelText, stock, buy, reviewText, title, blurb, lockText, newRibbon;
         public VisualElement reviewStars;
         public readonly List<VisualElement> pips = new List<VisualElement>();
         public VisualElement priceRow;
@@ -216,7 +216,7 @@ public class ScrapazonApp
             host.LaptopToast("search is down. a raccoon ate the index.", "info");
             NextSearchLine();
         });
-        OnClick(root.Q<VisualElement>("szDeliver"), () => host.LaptopToast("Upgrades install automatically. Supplies go straight into your inventory. The smiling delivery box is decorative and disappears.", "info"));
+        OnClick(root.Q<VisualElement>("szDeliver"), () => host.LaptopToast("Upgrades install automatically. Supplies go straight into your inventory. Nothing to unpack.", "info"));
         OnClick(root.Q<VisualElement>("szAccount"), () => SetFilter(ScrapazonCatalog.CareerTag, true));
         OnClick(root.Q<VisualElement>("szReturns"), () => host.LaptopToast("Returns: no. Orders: all of them, instantly.", "info"));
         OnClick(cart, () =>
@@ -232,7 +232,7 @@ public class ScrapazonApp
 
         if (footer != null)
             footer.text = $"{Scrapazon.Name} (c) 1997-2026 · all sales final · Prime delivery by a guy named Doug on a leaf blower · " +
-                          $"{Scrapazon.Name} is not responsible for bites, bonks, moths, Kevins or feelings";
+                          $"{Scrapazon.Name} is not responsible for bites, bonks, moths, gnomes or feelings";
         if (deliverLabel != null) deliverLabel.text = "Auto-installed";
         root.style.display = DisplayStyle.None;
         builtFilter = null;
@@ -441,6 +441,8 @@ public class ScrapazonApp
         RefreshMagnusPath(true);
 
         var items = SortedItems(filter);
+        // Personal gear left the shop for SolidWaste 3D's blueprint tree: the Gear aisle says where it went.
+        if (filter == "gear") grid.Add(GearMovedNotice());
 
         int index = 0;
         foreach (var it in items)
@@ -560,6 +562,42 @@ public class ScrapazonApp
         foreach (var s in list) bestRow.Add(ScrapazonCareer.BestBuyTile(s, ShowAndBuy));
     }
 
+    /// <summary>A full-width shelf note at the top of the Gear department (not a product: no card, no buy button).</summary>
+    static VisualElement GearMovedNotice()
+    {
+        var note = Ignore(new VisualElement { name = "szGearMoved" });
+        note.style.width = Length.Percent(99f);
+        note.style.flexDirection = FlexDirection.Row;
+        note.style.alignItems = Align.Center;
+        note.style.marginBottom = 10f;
+        note.style.paddingLeft = note.style.paddingRight = 12f;
+        note.style.paddingTop = note.style.paddingBottom = 8f;
+        note.style.backgroundColor = (Color)new Color32(0xFF, 0xF8, 0xE1, 0xFF);
+        note.style.borderLeftWidth = 6f;
+        note.style.borderLeftColor = ScrapazonArt.Orange;
+        note.style.borderTopLeftRadius = note.style.borderBottomLeftRadius = 4f;
+        note.style.borderTopRightRadius = note.style.borderBottomRightRadius = 8f;
+        foreach (string id in new[] { ShopIds.WorkGloves, ShopIds.WorkBoots, ShopIds.Headlamp })
+        {
+            var art = Ignore(ScrapazonArt.Product(id));
+            // .sz-art is an absolute fill inside a product tile; here it is a small inline thumbnail
+            art.style.position = Position.Relative;
+            art.style.left = art.style.top = art.style.right = art.style.bottom = StyleKeyword.Auto;
+            art.style.width = 60f; art.style.height = 42f; art.style.flexShrink = 0f; art.style.marginRight = 4f;
+            note.Add(art);
+        }
+        var text = Ignore(new VisualElement());
+        text.style.flexGrow = 1f; text.style.flexShrink = 1f; text.style.marginLeft = 8f;
+        var title = Ignore(new Label(UiText.ScrapazonGearMovedTitle));
+        title.style.unityFontStyleAndWeight = FontStyle.Bold; title.style.fontSize = 15f; title.style.whiteSpace = WhiteSpace.Normal;
+        title.style.color = ScrapazonArt.Ink;
+        var body = Ignore(new Label(UiText.ScrapazonGearMovedBody));
+        body.style.fontSize = 13f; body.style.whiteSpace = WhiteSpace.Normal; body.style.color = ScrapazonArt.Ink;
+        text.Add(title); text.Add(body);
+        note.Add(text);
+        return note;
+    }
+
     CardView BuildCard(ScrapazonItem it, int index)
     {
         var v = new CardView { item = it, reviewIndex = 0 };
@@ -634,8 +672,6 @@ public class ScrapazonApp
         price.Add(v.sym); price.Add(v.whole); price.Add(v.cents); price.Add(v.listPrice);
         v.priceRow = price;
         body.Add(price);
-        v.wage = L("", "sz-wage sz-wage--hidden");
-        body.Add(v.wage);
 
         v.effect = L("", "sz-effect");
         body.Insert(0, v.effect);
@@ -682,8 +718,9 @@ public class ScrapazonApp
 
     public static string DeliveryDescription(ScrapazonItem item) => item == null || item.IsTeaser
         ? "Not available to purchase."
-        : item.IsUpgrade ? "Installs automatically · box is decorative"
-        : "Added to your supplies · box is decorative";
+        : item.id == ShopIds.TruckModel ? "Trade-in at your depot: stop and clear all riders first. Cargo and upgrades transfer automatically."
+        : item.IsUpgrade ? "Installs automatically"
+        : "Added to your supplies";
 
     /// <summary>All gates for the shown level remain readable on a collapsed card.</summary>
     public static string RequirementDescription(ScrapazonItem item, int level)
@@ -792,15 +829,6 @@ public class ScrapazonApp
         }
         v.listPrice.text = it.listPrice > 0f ? $"List: <s>{Economy.Money(it.listPrice)}</s>" : "";
 
-        // Kevin's wage (and what you pay now)
-        float wage = maxed ? UpgradeEffects.KevinWage : ScrapazonStore.NextDailyWage(it);
-        bool showWage = it.id == ShopIds.HireKevin && wage > 0f;
-        v.wage.EnableInClassList("sz-wage--hidden", !showWage);
-        if (showWage)
-            v.wage.text = maxed ? $"+ {Economy.Money(wage)}/day wage (charged at midnight)"
-                        : owned > 0 ? $"+ {Economy.Money(wage)}/day wage (now {Economy.Money(UpgradeEffects.KevinWage)})"
-                        : $"+ {Economy.Money(wage)}/day wage, charged at midnight";
-
         // what it actually does (the important bit)
         v.effect.text = EffectText(it, owned, out string effectMood);
         v.effect.EnableInClassList("sz-effect--alert", effectMood == "alert");
@@ -897,13 +925,21 @@ public class ScrapazonApp
             case ShopIds.Repellent:
                 if (ShopEffects.RepellentActive) { mood = "active"; return "ACTIVE: critters won't bite or bonk you until morning."; }
                 return "The first time a critter tries to bite or bonk you, you spritz a bottle: nothing touches you until morning.";
+            case ShopIds.TruckModel:
+            {
+                int capacityLevel = ShopEffects.TruckCapacityLevel;
+                float next = TruckProgression.CapacityKg(TruckProgression.RearLoader, capacityLevel);
+                if (owned >= it.maxLevel) return $"Your Rear-loader holds {next:0} kg with your current hopper upgrades.";
+                float current = TruckProgression.CapacityKg(TruckProgression.Mini, capacityLevel);
+                return $"Curb Pup → Rear-loader: {current:0} → {next:0} kg. All equipment, hopper upgrades and cargo transfer free. Park at your own depot with everyone off the truck. Trade-in included.";
+            }
             case ShopIds.TruckCapacity:
             {
-                var kg = UpgradeEffects.CapacityKg;
-                float cur = kg[Mathf.Clamp(owned, 0, kg.Length - 1)];
-                if (owned >= it.maxLevel) return $"Truck holds {cur:0} kg. That's the most hopper legally allowed. The ram goes THUNK.";
-                float nxt = kg[Mathf.Clamp(owned + 1, 0, kg.Length - 1)];
-                return $"Truck holds {cur:0} → {nxt:0} kg (+{nxt - cur:0} kg)." + (owned + 1 >= 4 ? " Plus a compaction ram that thumps every bag." : "");
+                float cur = ShopEffects.TruckCapacityFor(owned);
+                string model = TruckProgression.ModelName(TruckProgression.CurrentModel);
+                if (owned >= it.maxLevel) return $"Your {model} holds {cur:0} kg. The ram goes THUNK. Transfers free when you trade up.";
+                float nxt = ShopEffects.TruckCapacityFor(owned + 1);
+                return $"Your {model}: {cur:0} → {nxt:0} kg (+{nxt - cur:0} kg). Transfers free when you trade up." + (owned + 1 >= 4 ? " Includes a compaction ram." : "");
             }
             case ShopIds.AirHorn:
             {
@@ -944,14 +980,14 @@ public class ScrapazonApp
         {
             case ShopIds.RabiesShot: return "OWWW";
             case ShopIds.Repellent: return "1 NIGHT";
+            case ShopIds.TruckModel: return "+80 kg";
             case ShopIds.TruckCapacity: return "+40 kg";
             case ShopIds.TruckTurbo: return "VROOM";
             case ShopIds.AirHorn: return "HONK";
-            case ShopIds.Headlamp: return "AUTO-ON";
             case ShopIds.TruckArm: return "PRESS X";
             case ShopIds.TruckHandling: return "UNFLIP";
             case ShopIds.TruckHeadlights: return "BRIGHT";
-            case ShopIds.AutoTipper: return "CREEPY";
+            case ShopIds.AutoTipper: return "FWOOMP";
             case ShopIds.ConveyorBelt: return "IN STOCK!";
             case ShopIds.CompactorMk2: return "ACHOO";
             case ShopIds.RecyclingContracts: return "×1.5";
@@ -965,18 +1001,13 @@ public class ScrapazonApp
             case ShopIds.MagnusRailMotor: return "STRIPES";
             case ShopIds.MagnusGripper: return "PINCH";
             case ShopIds.MagnusVision: return "!";
-            case ShopIds.WorkGloves: return "GRIP";
-            case ShopIds.WorkBoots: return "SQUEAK";
-            case ShopIds.TreasureWand: return "BEEP";
-            case ShopIds.RabiesVaccine: return "SMUG";
-            case ShopIds.HardHat: return "BONK";
             case ShopIds.BagCannon: return "FWOOMP";
-            case ShopIds.GrabberPole: return "POKE";
             case ShopIds.PermitMinivanMeadows: return "$15/BAG";
+            case ShopIds.PermitCouponCommons: return "$25/BAG";
             case ShopIds.PermitSnootingtonHills: return "$40/BAG";
+            case ShopIds.PermitStackingtonHeights: return "$55/BAG";
             case ShopIds.PermitBillionaireBluffs: return "$80/BAG";
             case ShopIds.EbaePowerSeller: return "5% FEE";
-            case ShopIds.HireKevin: return "1 SHOE";
             case ShopIds.GoldenTruck: return "24K";
             case ShopIds.GarbageJuice: return "*HIC*";
             case ShopIds.LuckyGnome: return "24 h";
@@ -1069,7 +1100,7 @@ public class ScrapazonApp
         string name = ScrapazonStore.ShortName(it);
         lastBoughtName = name;
         v.celebrating = true;
-        bool big = it.dept == "permits" || it.id == ShopIds.GoldenTruck;
+        bool big = it.dept == "permits" || it.id == ShopIds.GoldenTruck || it.id == ShopIds.TruckModel;
 
         Sfx.Play("cash");
         Sfx.Play(big ? "legendary" : "ding", null, 0.8f, big ? 1f : 1.25f);
@@ -1082,23 +1113,17 @@ public class ScrapazonApp
         v.buy.AddToClassList("sz-buy--done");
         v.buy.text = it.IsUpgrade ? "Installed!" : "Added to supplies!";
 
-        // a little smiling box drops into the product tile... THUD
-        var box = ScrapazonArt.Box();
-        box.AddToClassList("sz-drop-box");
-        v.art.Add(box);
-        box.schedule.Execute(() => box.AddToClassList("sz-drop-box--landed")).ExecuteLater(30);
+        // No delivery box: the purchase just takes effect, with a stamp and confetti on the card.
         host.LaptopAfter(330, () =>
         {
-            Sfx.Play("thud", null, 0.9f, 1.15f);
             Flash(v.card, "sz-card--bought", 230);
             if (it.dept == "permits") host.LaptopStamp("PERMIT APPROVED!", name, "sz");
             else if (it.id == ShopIds.GoldenTruck) host.LaptopStamp("24 KARATS!", "The Golden Garbage Truck", "sz");
+            else if (it.id == ShopIds.TruckModel) host.LaptopStamp("NEW TRUCK!", "Your upgrades came along", "sz");
             else host.LaptopStamp(it.IsUpgrade ? "INSTALLED!" : "SUPPLIES ADDED!", "+1 " + name, "sz");
             host.LaptopConfetti(big ? 80 : 36, 6, 7, 8, 2);
         });
-        host.LaptopAfter(1250, () => box.AddToClassList("sz-drop-box--gone"));
-        host.LaptopAfter(1650, () => box.RemoveFromHierarchy());
-        // Magnus department: re-sort into career order once the delivery animation is done.
+        // Magnus department: re-sort into career order once the purchase celebration is done.
         if (MagnusCareer.IsCareerItem(it.id)) host.LaptopAfter(1700, ResortMagnusIfStale);
         host.LaptopAfter(900, () =>
         {
@@ -1122,7 +1147,10 @@ public class ScrapazonApp
                 host.LaptopToast($"Raccoon-Be-Gone delivered! It spritzes itself the moment a critter tries something. {joke}", "sz");
                 break;
             case ShopIds.TruckCapacity:
-                host.LaptopToast($"Hopper upgraded! Your truck now holds {UpgradeEffects.CapacityKg[Mathf.Clamp(lvl, 0, UpgradeEffects.CapacityKg.Length - 1)]:0} kg. {joke}", "sz");
+                host.LaptopToast($"Hopper upgraded! Your {TruckProgression.ModelName(TruckProgression.CurrentModel)} now holds {ShopEffects.TruckCapacityFor(lvl):0} kg. Transfers free when you trade up. {joke}", "sz");
+                break;
+            case ShopIds.TruckModel:
+                host.LaptopToast($"Your Rear-loader is ready: {GameSession.TruckCapacityKg:0} kg! Cargo and upgrades transferred. Same business, bigger truck.", "sz");
                 break;
             case ShopIds.TruckTurbo:
                 host.LaptopToast(lvl <= 1 ? "TURBO installed. Press W and try not to scream." : $"{it.TitleFor(lvl)} installed. Top speed {UpgradeEffects.Engine.maxSpeed:0.#} m/s. Scream responsibly.", "sz");
@@ -1130,23 +1158,19 @@ public class ScrapazonApp
             case ShopIds.AirHorn:
                 host.LaptopToast("Air Horn installed on your truck. Press H to ruin the neighborhood's day.", "sz");
                 break;
-            case ShopIds.Headlamp:
-                host.LaptopToast(lvl <= 1 ? $"Headlamp delivered! It clicks on by itself when it gets dark. {joke}" : "UV Treasure Headlamp! At night, some treasure bags glow purple.", "sz");
-                break;
             case ShopIds.TruckArm:
                 host.LaptopToast(lvl <= 1 ? "Grabby Arm installed! Stop next to a curb and HOLD X. Never leave the cab." : $"{it.TitleFor(lvl)} installed! Press X while driving for AUTO.", "sz");
                 break;
             case ShopIds.PermitMinivanMeadows:
+            case ShopIds.PermitCouponCommons:
             case ShopIds.PermitSnootingtonHills:
+            case ShopIds.PermitStackingtonHeights:
             case ShopIds.PermitBillionaireBluffs:
             {
                 var d = DistrictFor(it.id);
                 host.LaptopToast(d != null ? $"Permit approved! Drive through the {d.name} gate to cut the ribbon. {Progression.Subscribers(d)} houses already signed up." : "Permit approved!", "sz");
                 break;
             }
-            case ShopIds.HireKevin:
-                host.LaptopToast(lvl <= 1 ? "Kevin hired! He sweeps at 8 AM, 2 PM and 8 PM. He has already lost a shoe." : $"{it.TitleFor(lvl)}! Wage {Economy.Money(UpgradeEffects.KevinWage)}/day.", "sz");
-                break;
             case ShopIds.LuckyGnome:
             case ShopIds.GoldenGnome:
             {
@@ -1173,7 +1197,7 @@ public class ScrapazonApp
                 break;
             }
             default:
-                host.LaptopToast($"{name}{(it.maxLevel > 1 && it.IsUpgrade ? $" Lv {lvl}" : "")} {(it.IsUpgrade ? "installed automatically" : "added to your supplies")}. The smiling box is decorative.", "sz");
+                host.LaptopToast($"{name}{(it.maxLevel > 1 && it.IsUpgrade ? $" Lv {lvl}" : "")} {(it.IsUpgrade ? "installed automatically" : "added to your supplies")}.", "sz");
                 break;
         }
 
@@ -1256,7 +1280,7 @@ public class ScrapazonApp
                 $"Rabies Shot™ {PriceOf(ShopIds.RabiesShot)} · Prime: in your arm in 0.3 seconds · the hospital charges {Economy.Money(Economy.HospitalBill)}", "alert", true, ShopIds.RabiesShot);
 
         // a permit you can buy right now beats everything else
-        foreach (var d in Districts.All)
+        foreach (var d in Districts.ProgressionOrder)
         {
             var permit = ScrapazonCatalog.Get(d.permitId);
             if (permit == null || Districts.IsUnlocked(d) || ScrapazonStore.IsLocked(permit)) continue;
@@ -1271,7 +1295,7 @@ public class ScrapazonApp
                 $"Congratulations, {Progression.RankTitle(Progression.Rank)}. Your salary is unchanged. Your shopping options are not.", "promo", false, null);
         if (GameClock.IsNight && heroIndex % 2 == 0)
             return ("NIGHT OWL DEALS", "The raccoons are out. Are you ready?",
-                $"Raccoon-Be-Gone {PriceOf(ShopIds.Repellent)} · Night Shift Headlamp {PriceOf(ShopIds.Headlamp)} (moths included) · Air Horn {PriceOf(ShopIds.AirHorn)}", "night", false, ShopIds.Repellent);
+                $"Raccoon-Be-Gone {PriceOf(ShopIds.Repellent)} · Raccoon Trap {PriceOf(RaccoonTrap.ConsumableId)} (fish included) · Air Horn {PriceOf(ShopIds.AirHorn)}", "night", false, ShopIds.Repellent);
         switch (heroIndex % 6)
         {
             case 0: return ("DEAL OF THE DAY", "Rabies Shot™: cheaper than the hospital",

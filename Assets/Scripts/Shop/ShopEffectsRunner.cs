@@ -85,7 +85,7 @@ public class ShopEffectsRunner : MonoBehaviour
 
     void OnUpgradeChanged(string id, int level)
     {
-        if (id == ShopIds.TruckCapacity) ShopEffects.ApplyTruckCapacity();
+        if (id == ShopIds.TruckCapacity || id == ShopIds.TruckModel) ShopEffects.ApplyTruckCapacity();
         if (id == ShopIds.RabiesVaccine) ShopEffects.ApplyInfectionResist();
         if (id == ShopIds.Headlamp || id == ShopIds.WorkGloves || id == ShopIds.WorkBoots || id == ShopIds.TreasureWand)
             AttachToPlayer(true);
@@ -107,7 +107,7 @@ public class ShopEffectsRunner : MonoBehaviour
     void OnRabiesChanged(bool infected)
     {
         // Got bitten with a shot in your pocket: let the bite land, then auto-inject.
-        if (infected && ShopEffects.RabiesShots > 0 && rabiesShotAt < 0f)
+        if (infected && ShopEffects.RabiesShots > 0 && rabiesShotAt < 0f && FeralStatus.LocalAutoShot) // Embrace It: no auto-shot
             rabiesShotAt = Time.unscaledTime + 2.2f; // CritterSpawner auto-injects at 1.5 s; we are the fallback
     }
 
@@ -120,7 +120,7 @@ public class ShopEffectsRunner : MonoBehaviour
             applyPending = false;
             ShopEffects.ApplyTruckCapacity();
             ShopEffects.ApplyInfectionResist();
-            if (GameSession.HasRabies && ShopEffects.RabiesShots > 0 && rabiesShotAt < 0f) rabiesShotAt = now + 2.2f;
+            if (GameSession.HasRabies && ShopEffects.RabiesShots > 0 && rabiesShotAt < 0f && FeralStatus.LocalAutoShot) rabiesShotAt = now + 2.2f;
         }
 
         if (PlayerController.Local != lastPlayer) AttachToPlayer(false);
@@ -199,12 +199,14 @@ public class ShopEffectsRunner : MonoBehaviour
         var trucks = FindObjectsByType<TruckControllerV2>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
         foreach (var t in trucks)
         {
-            if (t == null || t.GetComponent<ShopTruckMods>() != null) continue;
+            if (t == null) continue;
             var go = t.gameObject;
-            go.AddComponent<ShopTruckMods>();
+            if (go.GetComponent<TruckModelVisuals>() == null) go.AddComponent<TruckModelVisuals>();
+            if (go.GetComponent<ShopTruckMods>() == null) go.AddComponent<ShopTruckMods>();
             if (go.GetComponent<TruckHandlingMods>() == null) go.AddComponent<TruckHandlingMods>();
             if (go.GetComponent<TruckRecovery>() == null) go.AddComponent<TruckRecovery>();
             if (go.GetComponent<TruckSideLoader>() == null) go.AddComponent<TruckSideLoader>();
+            if (go.GetComponent<TruckTipper>() == null) go.AddComponent<TruckTipper>();
             if (go.GetComponent<GoldenTruckFx>() == null) go.AddComponent<GoldenTruckFx>();
         }
     }
