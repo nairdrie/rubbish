@@ -51,26 +51,26 @@ public static class RideSoloCruiseCheck
             graph.Invalidate();
             Check(!SoloCruiseRoute.TryBuild(graph, truck, 0, out _), "locked lane is refused");
 
-            // A reliable old jolt can arrive after a newer future-stamped one. It must fire at the visible tick,
+            // A reliable old crash can arrive after a newer future-stamped one. It must fire at the visible tick,
             // without waiting for the future event or firing twice on subsequent frames.
             var ride = go.AddComponent<RideTruck>();
-            int subscribeAt = ride.LastJoltSerial;
+            int subscribeAt = ride.LastCrashSerial;
             var seen = new HashSet<int>();
-            var ready = new List<RideTruck.Jolt>();
-            ride.ReceiveJolt(new RideTruck.Jolt { t = 20.0, cost = 25f });
-            ride.ReceiveJolt(new RideTruck.Jolt { t = 10.0, cost = 40f });
-            ride.JoltsSince(subscribeAt, 10.0, seen, ready);
-            Check(ready.Count == 1 && ready[0].cost == 40f, "late old jolt crosses a future receipt");
+            var ready = new List<RideTruck.Crash>();
+            ride.ReceiveCrash(new RideTruck.Crash { t = 20.0, dv = 6f });
+            ride.ReceiveCrash(new RideTruck.Crash { t = 10.0, dv = 9f });
+            ride.CrashesSince(subscribeAt, 10.0, seen, ready);
+            Check(ready.Count == 1 && ready[0].dv == 9f, "late old crash crosses a future receipt");
             ready.Clear();
-            ride.JoltsSince(subscribeAt, 10.0, seen, ready);
-            Check(ready.Count == 0, "old jolt is not duplicated");
-            ride.JoltsSince(subscribeAt, 20.0, seen, ready);
-            Check(ready.Count == 1 && ready[0].cost == 25f, "future jolt waits for its visible tick");
-            for (int j = 0; j < 40; j++) ride.ReceiveJolt(new RideTruck.Jolt { t = 30.0 + j, cost = j });
+            ride.CrashesSince(subscribeAt, 10.0, seen, ready);
+            Check(ready.Count == 0, "old crash is not duplicated");
+            ride.CrashesSince(subscribeAt, 20.0, seen, ready);
+            Check(ready.Count == 1 && ready[0].dv == 6f, "future crash waits for its visible tick");
+            for (int j = 0; j < 40; j++) ride.ReceiveCrash(new RideTruck.Crash { t = 30.0 + j, dv = 5f + j * 0.1f });
             ready.Clear();
-            ride.JoltsSince(subscribeAt, 100.0, seen, ready);
-            Check(seen.Count <= 24, "consumed receipt history stays bounded to retained jolts");
-            Debug.Log("[RideSoloCruiseCheck] PASS: route, forward command, wrong-way, off-road, locked-lane and jolt receipt checks");
+            ride.CrashesSince(subscribeAt, 100.0, seen, ready);
+            Check(seen.Count <= 8, "consumed receipt history stays bounded to retained crashes");
+            Debug.Log("[RideSoloCruiseCheck] PASS: route, forward command, wrong-way, off-road, locked-lane and crash receipt checks");
         }
         finally
         {

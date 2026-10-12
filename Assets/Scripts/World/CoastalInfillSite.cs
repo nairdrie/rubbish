@@ -95,7 +95,7 @@ public sealed class CoastalInfillSite : MonoBehaviour
         {
             var hit = hits[i];
             if (!hit || !hit.transform.IsChildOf(town) || hit.transform.IsChildOf(transform) || hit.attachedRigidbody != null ||
-                hit.bounds.max.y <= transform.position.y + .3f) continue;
+                TownRelief.IsGroundSurface(hit) || TownRelief.TopAboveGround(hit) <= TownRelief.Above(transform.position) + .3f) continue;
             var anchor = hit.GetComponentInParent<CityRoadAnchor>();
             return "occupied by " + (anchor != null ? anchor.stableId : hit.name);
         }

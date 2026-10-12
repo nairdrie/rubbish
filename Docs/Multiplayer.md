@@ -35,8 +35,8 @@
 3. **Ship "Crew Up Lite" first (about 10–11 focused weeks, including ~2 weeks for save safety and save slots).** 1–4 friends,
    one company, one truck, one shared wallet, with carry, throw and pass, riding the back of the truck, and proximity voice. The first
    fun session over the internet lands around **week 7**. Cloud accounts (M1.5) run alongside once Nick's Steamworks account exists.
-4. **The truck is the stage.** It has a driver, a shotgun seat and two rear steps. Rear riders have a grip meter, and corners taken
-   above about 8 m/s fling them off. The driver can see everyone's grip, so every fling is the driver's choice.
+4. **The truck is the stage.** It has a driver, a shotgun seat and two rear steps. Riders hang on solidly: only a crash (a tree, a
+   wall, another truck, a rear-ender) throws them off, so every fling is still the driver's doing.
 5. **Sharing or fighting over bags.** A second grab takes the other side: move together to carry, pull harder to take it,
    or sustain equal opposing pulls to tear it. No special UI, button timing, or company advantage. Depot work permissions still apply.
 6. **Money adds, it never splits.** The company gets 100% of every bag. Helpers get a 15% wage **created on top**, split between
@@ -463,7 +463,7 @@ future preset permission layer described in this table is not yet wired into tho
 
 | Where | Role | What they do | Why a friend beats an upgrade |
 |---|---|---|---|
-| Truck | **Driver** | steer, throttle, brake, horn; sees every rider's grip | decides the comedy (§4.4) |
+| Truck | **Driver** | steer, throttle, brake, horn; a crash throws every rider off | decides the comedy (§4.4) |
 | Truck | **Shotgun** | **navigator:** while the seat is occupied, shotgun sees the full route map and drops pings on the driver's HUD, and the driver's big next-stop beam turns into those pings (a solo driver keeps the beam). **Spotter:** when backing into the bay, shotgun's wave shows as distance beeps. Also horn cord, lights, radio station, and **side-loader arm operator** once it's bought | the arm is operated, never automatic |
 | Truck | **Rear steps** (2) | snag bags as the truck rolls past (§4.4); BANG the truck to signal | at 2.5 m/s or slower, a rider beats the tier-1 side-loader arm |
 | Street | **Runner** | grab bags beyond step reach, PASS them up the line | the relay chain (§4.5) |
@@ -506,35 +506,32 @@ future preset permission layer described in this table is not yet wired into tho
 | Action | Rule |
 |---|---|
 | Enter the cab | truck at 1.0 m/s or slower, within 1.5 m of the door |
-| **Catch the truck** (rear step) | truck at 4.0 m/s or slower, within 1.2 m **of where the truck was on your screen** (lag-compensated, §4.12). Sprint speed is 5.3 m/s, so you can catch it empty-handed but not carrying a heavy bag. **4–6 m/s:** the prompt shows "RISKY", and a miss is a faceplant (1.0 s). **Above 6 m/s:** no prompt. |
-| Hop off | any time. **Up to 3 m/s:** land on your feet with the truck's speed. **3–6 m/s:** stumble 0.5 s. **Above 6 m/s:** tumble 1.2 s. |
+| **Catch the truck** (rear step or side ladder) | **E anywhere near the back** (12 Oct 2026): behind it, round the rear corners or alongside the side ladders, looking anywhere, with the truck at 4.5 m/s or slower. You go onto the nearest free hold, your own side first; a full truck answers "No room on the back". The host re-checks the spot on its own copy with 1.5 m of lag slack (and takes the next nearest hold if yours went meanwhile). Sprint speed is 5.3 m/s, so you can catch a rolling truck empty-handed. **Above 4.5 m/s:** no prompt. |
+| Switch spot | **Shift** (pad RB) while riding: shuffle round the back to the next free hold (left ladder → rear-left step → rear-right step → right ladder → round again). The host checks the hold is still free. |
+| Hop off | E or Space, any time. **Up to 3 m/s:** land on your feet with the truck's speed. **3–6 m/s:** stumble 0.5 s. **Above 6 m/s:** tumble 1.2 s. |
 | Driver bails while moving | roll-out tumble. The truck coasts, and the handbrake engages after 2 s. |
 | Driver swap | only at 0.5 m/s or slower, via "Scoot over". Nobody can be yanked out. |
 | AFK driver | seat released after 90 s with no input while stopped |
 | Driver disconnects | the host takes over, coasts to a stop and applies the handbrake. `Truck V2.prefab` gets `DontDestroyWithOwner = true`. |
 | Lock | drivers are always company members. Riders: "Crew only" (default) or "Anyone". |
 
-#### Grip and fling: the driver decides the comedy
+#### Staying on, and getting thrown off: the driver decides the comedy
 
-- Rear-step riders have a **Grip** meter (0–100), shown as a ring around their crosshair. The driver's HUD shows every rider's grip as a pip.
-- **Drain while holding one-handed:** `35 × max(0, sideways g − 3.5) + 50 × max(0, braking − 5)`, in m/s², smoothed over 0.15 s.
-  **"Hold on"** (hold Shift; both hands, so you can't grab): drain × 0.3. **Regain:** +30 per second while under both thresholds.
-- **Jolts:** a curb or speed bump costs 30. Any truck impact above 5 m/s flings every rider at once.
-- **At 0 grip: FLUNG.** The rider ragdolls with the truck's velocity plus 4 m/s outward, then is knocked out for 1.2 s. Whatever they
-  were holding flies too, sometimes straight into the hopper. (Riding is opt-in, so flings are exempt from the 1.5 s rule, but
-  immunity still follows.)
-
-| Driving (90° street corner, ~10 m radius) | One-handed | Holding on | Result |
-|---|---|---|---|
-| Corner at 6 m/s (3.6 m/s²) | ~0/s | ~0/s | safe: the "courteous driver" speed |
-| Corner at 8 m/s (6.4 m/s²) | flung in 1.0 s | lasts 3.3 s | riders survive only if they hold on |
-| Corner at 10 m/s (10 m/s²) | flung in 0.44 s | lasts 1.5 s | **flung mid-corner: the clip** |
-| Braking at ~1 g | flung in 0.4 s | lasts 1.3 s | a stop from 10 m/s takes 1.0 s, so riders who hold on survive |
-| Braking at today's ~2.1 g (wheels lock) | instant | 0.44 s | riders fly off every stop. **Bringing the brakes down to ~1 g is a prerequisite** (`TruckControllerV2.brakeTorque = 2000`). |
+- **Riders stay on solidly** (Nick, 12 Oct 2026: "completely remove the grip mechanic ... should be solidly on unless they hit
+  something solid"). No grip meter, no leaning, no HOLD ON, no shoving each other off. Corners, hard braking, drifting, curbs and
+  potholes never throw anyone.
+- **A crash throws every rider off at once:** the truck's horizontal velocity changing by **5 m/s or more within ~0.06 s** (three
+  physics steps), from any speed: driving into a tree, a wall or another vehicle, or being rear-ended while parked. Locked-wheel
+  braking changes it by ~0.4 m/s a step and a hard corner by ~0.2, so ordinary driving stays far below it.
+- **Safety Bar** (Scrapazon; any rider flips it with B): while it's down, crashes under 8 m/s throw nobody. **Padded Step:** +1.5 /
+  +3 m/s on top. A crash they soak up is a jolt and "The Safety Bar held!".
+- **FLUNG.** The rider flies with the truck's velocity plus 4 m/s outward and 4.2 m/s up, then is knocked out for a moment (a hedge
+  catches softly: no knockout). Whatever they were holding flies too, sometimes straight into the hopper. (Riding is opt-in, so
+  flings are exempt from the 1.5 s rule, but immunity still follows.)
 
 - **BANG signal:** a rear rider slaps the truck, the way real crews do. One bang means go, two means stop. "You TOLD me to stop!"
-- **Rear-step pickups:** curb bags sit 1.1–1.8 m from a curb-hugging truck, and step reach is 1.6 m + 0.4 m of lean. At 2.5 m/s or
-  slower, a rider snags bags as the truck rolls past and feeds them into the hopper beside them.
+- **Rear-step pickups:** curb bags sit 1.1–1.8 m from a curb-hugging truck, and step reach is 1.9 m. At 2.5 m/s or slower, a rider
+  snags bags as the truck rolls past and feeds them into the hopper beside them.
 - **The roof and the hopper lip are slippery.** Anyone who lands there snaps to a free anchor or slides off. Nobody ever stands on a
   moving rigidbody (the desync trap Drive Beyond Horizons fell into).
 
@@ -550,17 +547,25 @@ future preset permission layer described in this table is not yet wired into tho
   the truck** in `LateUpdate`. Position sync for seated riders pauses (~0 bytes). Rider and truck always come from the same local copy,
   so there's zero jitter between them. This also removes the broken client-side `player.transform.parent = this.transform` at
   `TruckControllerV2.cs:207`, which NGO reverts on non-hosts because `Player.prefab` has `AllowOwnerToParent: 0`.
-- **Grip is simulated by the rider (O), timed to what they see.** Only the driver's machine has the truck's true acceleration. The
-  driver sends `RideStress{tick, byte sideways, byte braking}` 10 times a second (~30 B/s), plus tick-stamped `Jolt` events. Each
-  rider **buffers them and applies each one when their interpolated truck reaches that tick**. The fling direction comes from the
-  pinned truck's interpolated velocity at that same tick. So you're never flung before the corner you see.
-  - *Rejected alternative:* each rider computing stress from their own interpolated truck pose. Second derivatives of jittery
+- **A crash is detected where the truck is simulated and applied where each rider sees it.** Only the driver's machine (or the host,
+  for an empty truck) has the truck's true velocity, so its sensor reports a crash as `{tick, Δv}`; while anyone rides it also sends
+  a 10 Hz pose sample (`{tick, speed, position}`, ~21 B) so every machine can measure how far its displayed truck lags the driver's
+  clock. Each rider **applies the crash when their interpolated truck reaches that tick** (against the truck's replicated Safety Bar
+  and Padded Step), so you're never thrown before the hit you see; the rider's fling event carries that tick and its world start, so
+  every machine flies the same arc.
+  - *Rejected alternative:* each rider detecting the crash from their own interpolated truck pose. Second derivatives of jittery
     interpolated positions produce false flings.
+- **Switching spots** is a request to the host (`RideSwitchRpc`): it checks the rider rides that truck and the hold is free, then
+  moves `BodyNet.step`; every machine walks the rider round the back of its own copy of the truck.
 - **Rider camera:** remote trucks are **dead-reckoned** between snapshots using the 10 Hz velocity sync, with a bigger interpolation
   buffer than players. The rider camera is damped in the truck's local space. The driver's own truck gets Rigidbody interpolation
   (it's `m_Interpolate: 0` in `Truck V2.prefab` today).
 - **Ownership follows the simulation, not the seat.** A driver who bails keeps simulating the empty truck until it stops, and only then
-  does the host take it back.
+  does the host take it back. *Built 12 Oct 2026:* a guest who gets out parks the truck on their own machine at once (parking brake,
+  WASD no longer drives it, no grade-assist downforce, exactly as on the host) and stays its owner; the host takes it back once its
+  own copy has held still for 0.5 s (within 1 cm / 0.5°; at most 10 s), starting it at rest (`TruckHandbackWatch`,
+  `TruckControllerV2.ServerHandbackTick`). If they get back in before then, nothing changes hands at all; `ServerForceReleaseDriver`
+  (Depot Row, payroll) still takes it back at once. The exiting player's move to the door is sent as a `NetworkTransform` teleport.
 - **Collisions** are covered in §5.2. In short: players collide with trucks **one-way on their own machine**; rival trucks are
   **ghosts** to each other in Rival and Open presets; loose bags get nudged by the host.
 
@@ -617,7 +622,7 @@ future preset permission layer described in this table is not yet wired into tho
 | Fling (opt-in: you chose to ride) | 2 s at most |
 | Carried (voluntary flop or involuntary knockdown) | 10 s at most, and you can wriggle free |
 | Flattened or baled (opt-in, after an escape window) | 3 s |
-| Passed out (you ignored the rabies) | up to 45 s |
+| Passed out (you ignored the rabies) | about 4 s: the world tips, fade, hospital bill, you wake where you fell (no lie-down to wait for a jab since 2026-10-12) |
 
 Hit immunity prevents repeat bonks after a full knockdown, but it deliberately does not block a pickup while the player is down.
 Short combo-building punches also do not trigger the long immunity period.
@@ -814,7 +819,7 @@ lives in the company record.
 - **Table items belong to the sorter** (at most 40, as today), so sorting has no lag and friends can watch.
 - **Bins and compactor:** the sorter's machine detects the drop, and the host checks the item came from a bag opened at that station by
   that player, then pays.
-- **Line Combo:** correct sorts at *either* station within 2.5 s of each other chain together. Payout = max(personal combo, line combo),
+- **Line Combo** (not built; the personal streak is now the x1.5..x10 `SortLadder`, 3.0 s down to 1.8 s between sorts, Progression.md §3.6; reconcile before building this): correct sorts at *either* station within 2.5 s of each other chain together. Payout = max(personal combo, line combo),
   still capped at ×2. Co-op makes the cap easier to hold, not higher.
 - **Blame on the receipt:** "Contaminated by Ozzie", or a hazard in the compactor ($10 fine) logged against whoever slammed it.
 - **HitStop and slow-mo become local camera effects.** Today `Juice.HitStop` changes the global `Time.timeScale` from ~10 call sites,
@@ -876,7 +881,7 @@ We deliberately don't add artificial delay to the host's inputs.
 
 | Moment | Why it lands |
 |---|---|
-| **"HOLD ON!"** A corner at 10 m/s, both rear riders fly into a hedge, and one bag still sails into the hopper. | The driver *chose* it: they could see the grip pips. |
+| **"WAAAAH!"** The driver clips a tree at 10 m/s, both rear riders fly into a hedge, and one bag still sails into the hopper. | The driver *chose* it: corners and stops never throw anyone, only a hit does. |
 | **Catch the Truck:** a sprint and dive for the step at 5 m/s ("RISKY"), then a faceplant. | victory-or-faceplant |
 | **Bang-Bang-BRAKE:** a rider signals stop, wasn't holding on, and gets launched. | a ready-made argument |
 | **Bucket Brigade:** curb → hand → hand → hopper. "RELAY ×4!" | a satisfying team combo (and it works at any ping, because PASS is scripted) |
@@ -920,8 +925,8 @@ We deliberately don't add artificial delay to the host's inputs.
 | Pose history | host memory, 1 s per truck and player | H | none | — | used by every range check | 0 |
 | Driving | owner-synced truck position + our own 10 Hz velocity | driver (O) | 30 Hz + velocity for dead reckoning | `ClaimSeat(0, …)` | seat rules; speed ≤ tier max + 15% (public Towns) | ~0.9 KB/s |
 | Seats and riders | `TruckSeats` NetworkList | H | list; riders pinned on each machine | `ClaimSeat`, `LeaveSeat` | per-seat speed limit, lag-compensated range, lock, not knocked out | ~0 while seated |
-| Grip and fling | rider's machine; tick-stamped `RideStress` from the driver | rider (O) | 3 B at 10 Hz + `Jolt` events | fling report | plausibility | ~30 B/s |
-| Crash fling | driver reports it | driver → H → riders | `Fling` to each rider | `Impact(speed, point, tick)` | speed plausible | event |
+| Riding (stay on, switch spot) | `BodyNet.step` (the hold); 10 Hz pose samples `{tick, speed, pos}` from the truck's simulating machine while anyone rides (lag matching) | H seats and moves riders; every machine pins them on its own copy | ~21 B at 10 Hz per ridden truck | `Hitch(truck, hold)`, `RideSwitch(truck, hold)` | in the boarding area round the back (+1.5 m lag slack), hold free | ~210 B/s |
+| Crash fling | the truck's simulating machine detects `{tick, Δv ≥ 5 m/s}` | driver → H → riders; each rider's machine flings at that tick | crash event + `Fling` to everyone | fling report | rides that truck, tick and start plausible | event |
 | Horn, lights, radio, bang, shotgun pings | truck NetworkVariables + events | H relays | NetworkVariables + events | `Honk`, `Bang`, `SetLights`, `Ping` | seat, rate | tiny |
 | Hopper intake and truck cargo | `TruckCargo` NetworkList of bag IDs + total weight | thrower detects, H confirms | list deltas | `HopperEnter(bag, truck, tick)` | owns the bag; ≤3 + 0.75 m of the truck's rewound pose; capacity; permit; not already counted | bytes |
 | Rear-step feed | none | H | scripted 0.45 s arc event | `Feed(bag)` | rider is on a step and holding it | event |
@@ -1971,8 +1976,13 @@ sold and traded between players on ebag.
 This replaces "4 players in one company" (Crew) as the default. Joining a friend no longer means working in their company; it means
 opening your own shop next door, and *choosing* to work for someone if you want to.
 
-**Business-save parity (current):** Main menu → **Choose business** lists the original save and every additional business,
-including those created while joining a friend. Any can Continue/Play Solo, Host with Friends, or be chosen by the guest picker.
+**Business-save parity (current):** the main menu asks HOW first and WHICH save second (Nick, 2026-10-09: "first choice
+should be solo or play with friends THEN a separate choose a save or new menu. same for join"). **Play Solo**, **Host with
+Friends** and every JOIN on the menu (code, a hosting friend, an invite card) open the same step: the original save and every
+additional business (including those created while joining a friend), plus **Start a new save**; picking one goes straight
+on. The **Continue** card is still one click on the last save. There is no separate "Choose business" button any more. A join
+that starts outside the menu (Steam's Join Game or an invite accepted in the overlay) still asks once you are in the friend's
+Town, as before, and so does a host's refusal ("that business is already open here").
 The selected solo/host business is remembered across restarts; joining may bring a different business and leaving restores the
 previous solo/host selection. Cash, upgrades, inventory, ebag and progression stay in that business's existing file. Session jobs
 and another host's world are not imported. New menu-created businesses get a new slot; nothing resets the original business.
@@ -2042,7 +2052,7 @@ so every player has a business and a colour (§13.10).
 | Walk into the shop, look at displays | ✓ | ✓ | ✓ |
 | Pick up / sort / bin / smash trash inside the shop | ✓ | ✓ | ✗ (hands pass through; "Not your shop!") |
 | Unload (tip) this business's truck | ✓ | ✓ | ✗ |
-| Drive this business's truck | ✓ | ✓ (on shift) | ✗ |
+| Drive this business's truck, or call it to where you stand (Esc > Unstuck on foot, −$25 to the caller, host-validated; UIPass §5.5) | ✓ | ✓ (on shift) | ✗ |
 | Hitch a ride on the back of this truck | ✓ | ✓ | ✓ |
 | Laptop: upgrades, Scrapazon, ebag selling, payroll, rename | ✓ | ✗ | ✗ |
 | Keep crate, shelves, display cases | ✓ | put in only | ✗ |
@@ -2050,7 +2060,8 @@ so every player has a business and a colour (§13.10).
 
 - Money from pickups goes to the business **whose truck** took the bag; sort/recycle/compactor pay goes to the **shop's** business.
   Valuables an employee finds go into the employer's keep crate (company property).
-- No passenger seat. **Hitching:** stand on the rear step of any truck (§8.2 M3's rear-step riding, without the rest of M3 at first).
+- No passenger seat. **Hitching:** E anywhere near the back of any truck puts you on its nearest free rear step or side ladder;
+  Shift switches spot (§14.1).
 
 ### 13.5b Chaos verbs work for everyone
 
@@ -2068,8 +2079,10 @@ whether youre coworkers (hired) or not."
 
 ### 13.6 Hiring (payroll)
 
-- **Offer a job:** walk up to a player and press the interact key → "Hire" card, or use the laptop's Payroll app (lists everyone in
-  the Town). Set the **hourly wage** (per in-game hour, $1–$200; 1 in-game hour = 50 real seconds). They accept or decline.
+- **Offer a job:** from the laptop's Payroll app, and only there (it lists everyone in the Town; "Hire…" opens the Hire card). There
+  is no prompt on the person themselves: the walk-up "Hire Bob" / "Fire Bob" zone was removed 2026-10-12 (Nick) because it took E
+  away from picking up a flopped player and from hitching a ride. Set the **hourly wage** (per in-game hour, $1–$200; 1 in-game
+  hour = 50 real seconds). They accept or decline.
 - **On the job:** the employee wears your colour's vest over theirs, sees your business on their HUD ("Working for Nick's Rubbish
   Co., $12/hr"), and gets the permissions above. Their own business keeps its lot; they can go back any time by quitting.
 - **Pay:** the host pays every in-game hour from the employer's cash to the employee's business, through the Ledger. If the employer
@@ -2077,7 +2090,7 @@ whether youre coworkers (hired) or not."
   employer's Payroll app) until they choose to quit or are fired; later successful paydays do not erase it or pay it back
   automatically. A partial current hour is paid when the job ends if the employer can afford it. Earlier missed wages remain
   unpaid and are stated in the end notice.
-- **Fire / quit:** the employer can fire from the laptop or face to face; the employee can quit from the Esc menu. Both are instant.
+- **Fire / quit:** the employer fires from the laptop's Payroll app; the employee can quit from the Esc menu. Both are instant.
 - A confirmed hire, fire, quit or job end gets a large center-screen announcement; the smaller persistent HUD tag says who
   employs you and your hourly wage (and any unpaid amount).
 - One employer at a time. You can't hire yourself, and an employer can't be someone else's employee.
@@ -2188,9 +2201,10 @@ Voice (M4), sorting duels and shared-station rotation (M5), night-shift co-op (M
 - **N4 (2 Oct, payroll, code in):** `Assets/Scripts/Business/Payroll/` — `Payroll` (facade: rules, queries, requests,
   `WorksFor` = N3's `EmployeeHook`/`DriverHook`), `PayrollNet` (`[NetSessionComponent]`, `NetworkList<PayrollJob>`, offer /
   answer / fire / quit / shop-pay / keep RPCs, host pay ticks on `GameClock.TotalHours`), `PayrollUi` (Hire card, Payroll app
-  sheet + laptop tab injected into ebag's app strip at runtime, HUD line, offer card, `HireTarget` zones on other players,
-  employer-colour vests), `PayrollBotBrain` (`payroll`). Integration fix: `World/DepotRow/DepotTruckCargo.cs` sets
-  `TruckHopper.BusinessResolver` (lot truck → the lot's business by PlayerKey), so pickups pay the truck's business; and
+  sheet + laptop tab injected into ebag's app strip at runtime, HUD line, offer card, employer-colour vests; the `HireTarget`
+  zones on other players were removed 2026-10-12, hire and fire are laptop-only), `PayrollBotBrain` (`payroll`). Integration fix:
+  `World/DepotRow/DepotTruckCargo.cs` sets `TruckHopper.BusinessResolver` (lot truck → the lot's business by PlayerKey), so
+  pickups pay the truck's business; and
   `DepotTruckCargoNet` (`[NetSessionComponent]`) hands a non-local truck's cargo (`Businesses.HostCargo`, or the host's
   `GameSession.TruckBags`) to whoever tips it, so a guest can unload its own truck and an employee the boss's.
   Additive edits outside N4 (all small): `Ledger.Redirect` (un-scoped credit/charge hook), `BusinessRegistry.Closing` (raised
@@ -2257,6 +2271,18 @@ Voice (M4), sorting duels and shared-station rotation (M5), night-shift co-op (M
   into truck, burst, station rip/sort ×4 with physics flat (0.01 ms) and frame 1.3–2.1 ms. Not done: InFlight layer
   (thrown items still collide with other loose items locally), grip/fling and lag-compensated pose history (M3), Auto-pull,
   Safety Vest/Permits() presets; an employee's station fetch/compactor claim path is code-only (not driven by a bot).
+- **Unstuck calls your truck (12 Oct, built, not yet played in co-op):** on foot, Esc > Unstuck no longer teleports the player;
+  it asks for their own business's truck (the employer's, while they are on someone's payroll) to be flown to the spot beside
+  them (Docs/UIPass.md §5.5). Wire: `DepotRowNet.TruckCallRpc` guest → host (the caller's position, the landing spot the
+  caller's machine found, a yaw; `NetGuard` 1 per 2 s, burst 2), `TruckCallReplyRpc` host → that guest (toast), `TowDroneRpc`
+  host → everyone else, twice per delivery (start, end), so every machine shows the tow drone, which only follows the truck's
+  replicated pose. The host (`TruckCall.ServerCall`) checks `Permissions.CanDrive`, that nobody drives the truck and it isn't
+  mid-delivery, that it owns it (a driver who just got out still simulates it until it stands still), re-validates the landing
+  (dry, level, clear, 1 m+ from the player) with its own physics, posts the −$25 tow fee to the caller's business through
+  `Ledger.ToBusiness` (free with handling L1+; may go negative like the hold-R tow) and runs the drone (`TruckRecovery`):
+  the truck is the host's to move while it is parked, so the existing owner-authoritative NetworkTransform carries the lift
+  and carry; a truck parked in a shop bay is `Teleport`ed into the sky above the spot first. No new NetworkBehaviour
+  (`DepotRowNet` became partial). Not done: a driver's own hold-R tow is still invisible to other machines.
 
 ---
 
@@ -2265,20 +2291,24 @@ Voice (M4), sorting duels and shared-station rotation (M5), night-shift co-op (M
 Everything here works in solo and co-op, for owners, employees and visitors alike (same rules as §13.5b). Packages: **F1** riding,
 **F3** bags & tools, **F4** night shift, **F5** events & weather. (**F2** replay is skipped for now.)
 
-### 14.1 F1 Riding the truck (grip, fling, drive-by grabs)
-- **4 hold points:** left/right rear steps + a ladder rung on each side. Any player can hitch (E); Space hops off.
-- **Grip meter** (arc by the hands) drains with lateral g (main), hard braking, bumps/curbs/potholes (spikes) and the driver's
-  drift/handbrake; refills when the truck is slow or stopped. **Lean** (hold A/D into the turn) cuts the drain.
-- **"HOLD ON!"** on big jolts: tap Space in the window → no loss; miss → double loss.
-- **Fling** at 0 grip: launched along the truck's momentum, flailing ragdoll; bowls over pedestrians, knocks lamp posts/bins; hedges
-  and trampolines catch. "AIR TIME 14.2 m!" readout + personal best. A flung rider can knock the neighbouring rider off (dominoes);
-  riders can shove each other off.
+### 14.1 F1 Riding the truck (crash flings, drive-by grabs)
+- **4 hold points:** left/right rear steps + a ladder rung on each side. **E anywhere near the back** (behind it, round the rear
+  corners, alongside the ladders; no aiming) puts you on the nearest free one, your own side first; a full truck says "No room on
+  the back". **Shift** (pad RB) shuffles you round the back to the next free spot (left ladder → rear-left → rear-right → right
+  ladder → round again). E or Space hops off. Any player can hitch any truck, Curb Pup or rear-loader.
+- **Riders stay on solidly** (Nick, 12 Oct 2026): no grip meter, no lean, no HOLD ON, no rider shoving or dominoes. Corners,
+  braking, drifting, curbs and potholes never throw anyone off; yard dogs only bark at riders.
+- **Crash fling:** a heavy hit (the truck's speed changes by ≥ 5 m/s within ~0.06 s: a tree, a wall, another vehicle, being
+  rear-ended) throws every rider off at once: launched along the truck's momentum, flailing; bowls over pedestrians, knocks lamp
+  posts/bins; hedges and trampolines catch. "AIR TIME 14.2 m!" readout + personal best.
 - **Driver:** smooth driving earns a small "Crew Comfort" tip per stop while riders are aboard.
-- **Upgrades (Scrapazon):** Grip Gloves (slower drain), Padded Step (smaller spikes), Safety Bar (no flings below a set speed; toggle).
+- **Upgrades (Scrapazon):** Padded Step (a crash needs +1.5 / +3 m/s more to throw riders), Safety Bar (while down, crashes under
+  8 m/s throw nobody; B toggles). Grip Gloves are no longer sold (a save that bought them keeps the id; it does nothing).
 - **Drive-by grabs:** below walking speed a rider can snag a curb bag within reach and lob it into the hopper without hopping off;
   consecutive snags build a combo ("STREAK x4!", small pay bonus).
-- **Net:** rider simulated in truck space on the rider's machine; jolts tick-stamped so the fling happens at the same corner on
-  every screen (§8.2 M3, red-team T4).
+- **Net:** crashes are detected where the truck is simulated, tick-stamped, and applied on each rider's machine when its own copy
+  of the truck reaches that tick, so the fling starts at the same hit on every screen (§4.4, red-team T4); seat switches are
+  host-checked (`BodyNet.step`).
 
 ### 14.2 F2 Instant replay — **skipped for now (Nick, 2 Oct 2026)**
 - A rolling ~10 s buffer of nearby transforms (players, trucks, bags, items, critters, knockables) recorded locally at low cost.
@@ -2311,19 +2341,20 @@ Everything here works in solo and co-op, for owners, employees and visitors alik
   brief startle, not a permanent flee; bonked thieves and shooed stowaways can retaliate. Aggro remembers the provoking player,
   regardless of employment/business. Connected bites or an unremoved latch can infect that player (60% plain, 80% foamy/King),
   never by proximity. A 0.4 s lunge windup, 5 s per-player protection, 5.5 s bite spacing and two-bite encounter limit give escape windows.
-- **Rabies per player** (foaming, goofy hiccups, Rabies Shot at any shop; friends can carry you there); optional **Rabies Tag**
-  toggle (a rabid bonk passes it on), off by default.
+- **Rabies per player** (foaming, goofy hiccups; everyone buys their own Rabies Shot on the laptop's Scrapazon, nobody can jab a
+  friend on the street); optional **Rabies Tag** toggle (a rabid bonk passes it on), off by default.
 - **Traps & bounties:** bait a trash-can trap; sell caught raccoons to Animal Control or keep one as a shop pet on a shelf.
 - **Raccoon King:** rare night event: a giant raccoon raids Depot Row; all businesses team up; beating it drops a trophy piece.
 
 ### 14.5 F5 Events, poaching, dogs, weather
 - **Big Cleanup:** the city announces a 10-minute rush (double put-out rate) with a live scoreboard of businesses (bags/kg); winner
   gets a trophy display piece and a cash prize. Roughly once per in-game day when ≥1 player is online (solo: beat your best).
+  **Switched off 2026-10-09** (`CleanupTuning.Enabled = false`, see Docs/Campaign.md §14.2): it is never scheduled and the depot
+  board stays hidden; only a forced event (the debug menu) still runs. The code, saves and wire format are unchanged.
 - **Poaching:** collecting a curb bag on a street another business is actively routing shows "POACHED!" to the victim (fun callout,
   no penalty beyond the lost bag).
 - **Dogs:** WorldLife yard dogs chase riders and players carrying bags, can snatch a dangling bag and run.
-- **Weather:** wind gusts push loose trash and light bags around; rain makes surfaces slippery (players slide, trucks drift easier,
-  grip drains faster).
+- **Weather:** wind gusts push loose trash and light bags around; rain makes surfaces slippery (players slide, trucks drift easier).
 
 ### 14.6 Progress (append-only; newest last)
 
@@ -2382,9 +2413,11 @@ Everything here works in solo and co-op, for owners, employees and visitors alik
   `RaccoonLatch` scrambles their movement (never frozen), mash Space ×6 to shake it, a friend's E / shove / bonk knocks it off
   (`HandsNet.HostKnocked`, a new additive hook), 4 s timeout = 50% rabies. **Rabies per player**: host `NetworkList<RabiesRec>`
   keyed by PlayerKey (each player reports their own; a rejoin restores it), everyone sees everyone's foam (`RabiesLook`); goofy
-  hiccup hops; co-op pass-out = lie flopped 30 s so a friend can jab you with a Rabies Shot where you lie (`RabiesJab`: an
-  interaction on a rabid player who is down or carried, $35, the jabber's business pays, host-verified `NightNet.ShotFor`;
-  the first-aid shelf by every shop laptop, `RabiesShotKiosk`, was removed 2026-10-08) before the hospital bill; no scene trip in the one world. **Rabies Tag**: host
+  hiccup hops; co-op pass-out = the same fade and hospital bill as solo, where you fell (no scene trip in the one world). Nobody can
+  cure a friend: the "Jab Dot" interaction on a downed rabid player (`RabiesJab`, $35 on the jabber's business, plus a 30 s lie-down
+  to wait for it) was removed 2026-10-12 and the first-aid shelf by every shop laptop (`RabiesShotKiosk`) on 2026-10-08, so everyone
+  buys their own shot on Scrapazon (`ShopEffects`). `NightNet.ShotFor` is only the host-charged shot for yourself (no caller but the
+  `nightextra` bot), and the host refuses any other target (`night.shot.refused`). **Rabies Tag**: host
   toggle in the Esc menu (and `Rubbish/Debug/Night`), off by default: a symptomatic player's knock passes it on (50%).
   **Traps** (Scrapazon "Humane-ish Raccoon Trap", $45, T to set; `RaccoonTrap`/`NightTraps`, host list): raccoons within 16 m are
   lured in; E = Animal Control bounty ($40, rabid $60, `animal_control`), F = keep it as a shop pet (`pet_raccoon`, tier-99
@@ -2531,3 +2564,63 @@ Everything here works in solo and co-op, for owners, employees and visitors alik
     awarded one Ribbon and $150, then reset to 1×. A final unforced run announced at t=200.712 and entered
     Running at t=212.738 with 2× rate; all runs passed their save/network audits. F2 instant replay remains
     intentionally unimplemented by request.
+
+- **12 Oct 2026, two prompts removed from other players (Nick: "remove that mechanic", "hire/fire should be from laptop only"):**
+  both sat on every other player's body and took E away from "Pick up Dot" and "Hitch a ride". The friend's Rabies Shot jab is gone
+  (`RabiesJab`, the "Jab Dot with a Rabies Shot ($35)" zone, and the 30 s co-op lie-down that waited for it): a co-op pass-out is
+  the solo fade and hospital bill where you fell, `NightNet.ShotFor` serves only yourself (the host refuses other targets and audits
+  `night.shot.refused`), and the `nightextra` bot now asks for a shot for a rabid, flopped, carried friend and expects the refusal
+  (`Tools/bots/check_nightx.py`). The walk-up Hire/Fire zone (`HireTarget`, `PayrollHireZone`) is gone: hire and fire live only in the
+  laptop's Payroll app (§13.6). What still publishes an interaction on another player: `PlayerBody` (pick up a flopped or downed
+  player, grab the other side of their bag) and, while a raccoon is latched on them, `CritterPoke`. `PlayerBody` also carries a
+  `PickUpZone` (an `InteractionZone` with the body as its target, 2.5 m either way, no line of sight): PlayerController's look-at and
+  proximity scans resolve a hit with `GetComponentInParent<IInteractable>()`, which returns ONE component of the root, and the Grabby
+  Hand / Compactor Pack (added to every player copy before `PlayerBody`, never interactable on a remote copy) came first, so "Pick up
+  Dot" could be hidden behind them. A zone names its target directly, and PlayerController's +3 for a downed player still applies.
+
+- **12 Oct 2026, a guest's truck jumped when they got out (Nick: "when guests on multiplayer get out of their truck it jumps and
+  bounces sometimes unpredictably, not a problem for hosts"):** the host took the truck's physics back the moment a guest's "get
+  out" reached it, and three things went wrong in that round trip. (1) The guest's machine still counted them as the driver until
+  the host's answer came back, so the empty truck's parking brake was released again and it coasted, steered and accelerated with
+  the WASD they walked away with. (2) The host's copy, which trails the guest's by half a round trip plus the interpolation delay,
+  turned dynamic where it happened to be, from a standstill; the guest's copy then snapped to it. (3) The host's copy of the guest's
+  player was still at the truck's root, inside the body's convex collider, with its CharacterController on, so the freshly dynamic
+  truck was shoved out of that capsule (depenetration) and bounced, which the guest saw a moment later. A host hands nothing over, so its exits were calm. Now (§4.4) the guest parks and
+  keeps simulating the truck until the host's copy has held still for 0.5 s, the move to the door is a teleport, and a Space press
+  while seated (the drift key) no longer makes anyone hop as they get out. Compiles; `TruckHandbackWatchTests` added; **not yet
+  checked in a real two-player session.**
+
+- **12 Oct 2026, riding without grip (Nick: "hitching a ride on the back of the truck in coop is super hard like i have to be
+  looking at just the right spot. should just be e anywhere near the back of the small or rear loader truck. need a key to switch
+  seats ... lets completly remove the grip mechanic ... should be solidly on unless they hit something solid"):** boarding was four
+  ~0.7 m pockets that also wanted the camera within ~49° of the hold. It is now one area round the back of either body
+  (`RideHolds.BoardingArea`, from `ModelBodyBoxMetres` so the Curb Pup and the rear-loader both work: 3 m out behind the rear face,
+  the body's width + 1.4 m each side, forward to 1 m past the side ladders; the cab doors and the front half of the flanks stay
+  "Enter Truck"). One `InteractionZone` at score 2.05 sits above anything you can look at or stand by (≤ 2), so near the back E is
+  the ride and the truck's own "Enter Truck" moves to F; a held bag's toss (3), a downed friend (3+) and `CritterPoke` (now 2.3)
+  still win, and so does any bag or piece of trash you can reach (Nick, same day: "prioritize bags and trash over boarding ... dont
+  want e to board or e to anything to stop people from being able to pick up trash"): `PlayerController.PickUpScore` squeezes a
+  `Carryable`'s 0..2 scan score into a 2.1–2.19 band (on foot only: a driver's E stays "Exit Truck", a rider's "Hop off"), above the ride and every look-at / nearby prompt (so also above "Enter Truck"
+  and "Not your truck"), under the dominant zone actions (workshop, heavy lift, hutch door, 2.2+) and a downed friend; with a bag on
+  E, F goes to the best thing that is not another bag (the ride, the truck), since only one fits in your hands; with hands full
+  the ride is not offered at all (the hopper's "Toss into truck" is the prompt back there). E puts you on the nearest free hold (`RideHolds.NearestFreeHold`); the host re-checks the area with 1.5 m of slack and
+  takes the next nearest hold if yours went meanwhile; a full truck says "No room on the back". **Switch spot** (Shift / pad RB,
+  `GameControls.Action.SwitchSpot`, `Keybinds.Defaults.SwitchSpot`, in both control sheets): `RideSwitchRpc` → the host moves
+  `BodyNet.step` if that hold is free; every machine walks the rider 0.3–0.7 s round the back of its own copy of the truck
+  (`RideRider.HoldPose`, on a path outside both bodies' corners; the mitts let go of the rails meanwhile and the local camera swings
+  out for a ladder). **The grip system is gone:** the grip meter and its HUD (and the driver's crew-grip panel), lean (A/D, stick),
+  HOLD ON, jolt costs, the stress stream, the lean/grip RPCs, rider shove (RMB) and dominoes, `Riding.GripHit` (yard dogs now only
+  bark at riders), `Riding.GripDrainScale` / `Weather.GripDrainMul` (rain) and Grip Gloves (off Scrapazon; the id stays for old
+  saves). **What still throws a rider off:** a crash, the truck's horizontal velocity changing by ≥ 5 m/s within three physics
+  steps from any speed (the `RideTruck` sensor where the truck is simulated → `RideCrashRpc {tick, Δv}` → each rider's machine at
+  that tick; the old "truck was already doing 5 m/s" gate is gone so being rear-ended while parked counts), and `Riding.KnockOff`
+  (nothing calls it). The Safety Bar (down: crashes under 8 m/s throw nobody) and the Padded Step (+1.5 / +3 m/s) now raise that
+  threshold (`RideTuning.CrashFlingDv`). The 10 Hz pose sample (~21 B) stays only for lag matching; the Crew Comfort tip still
+  measures roughness locally on the driver's machine; riders' puppets sway with the displayed truck's acceleration (cosmetic).
+  Solo riders no longer punch critters from the step (`CritterMelee`, as in co-op). Protocol 23. Bots: `ride` / `rideverify`
+  laps cycle rough (full-speed corner and hard stop: everyone must still be aboard), gentle and crash (a 7 m/s hit on the
+  straight; `rideverify`'s flipped bar alternates "held" and flung), riders board from a loose spot facing away and one switches
+  spot; `f5riderdog` passes when the nipped rider stays on. `RideBoardingTests` cover the area on the production prefab (both
+  bodies), hold choice, the switch order, the shuffle path, the crash sensor (braking, cornering, drifting, a curb: no crash; a hit
+  and a rear-ender: crash) and the shop. Compiles; **not yet run in Unity (EditMode tests, bots) or played in a real two-player
+  session.**

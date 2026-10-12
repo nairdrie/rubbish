@@ -1,0 +1,151 @@
+/* Payroll: the crew app on the shop laptop (fourth tab). Built by PayrollApp (Assets/Scripts/Business/Payroll/PayrollUi.cs).
+   Same paper-and-ink look as ebag; the buttons are ebae.uss's .btn. Sizes are in the laptop panel's reference pixels (1280 x 800). */
+
+.pr-page {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-height: 0;
+    flex-direction: column;
+    background-color: var(--paper);
+    color: var(--ink);
+    font-size: 15px;
+}
+
+.pr-header {
+    flex-shrink: 0;
+    padding: 14px 22px 10px 22px;
+    border-bottom-width: 2px;
+    border-color: var(--line);
+    background-color: #F1EEFA;
+}
+
+.pr-title {
+    padding: 0;
+    margin: 0;
+    font-size: 30px;
+    -unity-font-style: bold;
+    letter-spacing: 6px;
+}
+
+.pr-sub {
+    padding: 0;
+    margin: 4px 0 0 0;
+    font-size: 13px;
+    color: var(--muted);
+    white-space: normal;
+}
+
+.pr-scroll {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-height: 0;
+}
+
+.pr-content {
+    padding: 14px 22px 24px 22px;
+}
+
+.pr-heading {
+    margin: 10px 0 8px 2px;
+    padding: 0;
+    font-size: 18px;
+    -unity-font-style: bold;
+    letter-spacing: 5px;
+}
+
+.pr-note {
+    margin: 0 0 12px 12px;
+    padding: 0;
+    font-size: 15px;
+    color: var(--muted);
+    -unity-font-style: italic;
+    white-space: normal;
+}
+
+.pr-row {
+    flex-direction: row;
+    align-items: center;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+    background-color: #FFFFFF;
+    border-width: 2px;
+    border-bottom-width: 4px;
+    border-color: var(--ink);
+    border-radius: 12px;
+}
+
+.pr-dot {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    margin-right: 12px;
+    border-width: 2px;
+    border-color: var(--ink);
+    border-radius: 8px;
+}
+
+.pr-row-body {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+.pr-name {
+    padding: 0;
+    margin: 0;
+    font-size: 18px;
+    -unity-font-style: bold;
+    white-space: normal;
+}
+
+.pr-name-pay {
+    -unity-font-style: normal;
+    font-size: 14px;
+    color: var(--muted);
+}
+
+.pr-meta {
+    padding: 0;
+    margin: 2px 0 0 0;
+    font-size: 13px;
+    color: var(--muted);
+    white-space: normal;
+}
+
+.pr-owed {
+    color: #DB1F29;
+    -unity-font-style: bold;
+}
+
+.pr-why {
+    padding: 0;
+    margin: 2px 0 0 0;
+    font-size: 13px;
+    color: #5A5266;
+    -unity-font-style: italic;
+    white-space: normal;
+}
+
+.pr-row-button {
+    flex-shrink: 0;
+    min-width: 130px;
+    margin-left: 14px;
+    font-size: 16px;
+}
+
+.pr-btn-fire {
+    background-color: #FFE0E1;
+}
+
+.pr-btn-fire:hover {
+    background-color: #FFC2C5;
+}
+
+.pr-btn-hire {
+    background-color: var(--green);
+    color: #FFFFFF;
+}
+
+.pr-btn-hire:hover {
+    background-color: #9BD01F;
+}

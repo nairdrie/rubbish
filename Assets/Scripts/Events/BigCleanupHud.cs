@@ -172,7 +172,10 @@ public sealed class BigCleanupHud : MonoBehaviour
         if (frame.valid)
         {
             float x = Mathf.Max(HudLayout.Margin, frame.size.x - HudLayout.Margin - board.sizeDelta.x);
-            float y = Mathf.Max(HudLayout.ColumnTop, frame.size.y - 116f - board.sizeDelta.y);
+            // the corner is the pocket / gear bar's too: the board rides above it when it is up
+            float bottom = frame.size.y - 116f;
+            if (frame.pocket.width > 0.5f) bottom = Mathf.Min(bottom, frame.pocket.yMin - HudLayout.Gap);
+            float y = Mathf.Max(HudLayout.ColumnTop, bottom - board.sizeDelta.y);
             HudLayout.PlaceAt(board, new Vector2(x, y));
         }
 

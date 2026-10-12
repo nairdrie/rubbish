@@ -77,7 +77,7 @@ public class CoastalDistrictRulesTests
     {
         var added = District(addedId); var peer = District(peerId);
         object a = Field<object>(added, "loot"), p = Field<object>(peer, "loot");
-        foreach (string field in new[] { "p0", "p1", "springFlat" }) Assert.AreEqual(Field<float>(p, field), Field<float>(a, field));
+        foreach (string field in new[] { "p0", "p1", "springFlat", "common0", "common1", "keepsakeChance" }) Assert.AreEqual(Field<float>(p, field), Field<float>(a, field));
         foreach (string field in new[] { "rarity0", "rarity1", "tierBoost" }) CollectionAssert.AreEqual(Field<float[]>(p, field), Field<float[]>(a, field));
         foreach (string field in new[] { "tier", "minItems", "maxItems" }) Assert.AreEqual(Field<int>(p, field), Field<int>(a, field));
         CollectionAssert.AreNotEqual(Field<float[]>(p, "categoryWeights"), Field<float[]>(a, "categoryWeights"));

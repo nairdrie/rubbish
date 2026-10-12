@@ -346,7 +346,7 @@ public class DiskTests
         Assert.IsFalse((bool)Static("DiskItem", "Is", can)); Assert.IsFalse((bool)Static("DiskItem", "Is", New("ItemInstance"))); Assert.IsFalse((bool)Static("DiskItem", "Is", new object[] { null }));
         // the KEEP crate has its own path for it (never the inventory), and the laptop's third app is the printer
         Assert.NotNull(T("SortBin").GetMethod("KeepDisk", Flags)); Assert.NotNull(T("DiskItem").GetMethod("Kept", Flags)); Assert.NotNull(T("DiskFoundPopup"));
-        CollectionAssert.AreEqual(new[] { "Ebae", "Scrapazon", "Printer" }, Enum.GetNames(T("LaptopApp")), "SolidWaste 3D is the THIRD tab");
+        CollectionAssert.AreEqual(new[] { "Ebae", "Scrapazon", "Printer", "Payroll" }, Enum.GetNames(T("LaptopApp")), "SolidWaste 3D is the THIRD tab (Payroll the fourth)");
     }
 
     /// <summary>The floppy never enters an inventory (KEEP sends it to the laptop: SortBin.KeepDisk, DiskItem.Kept), and the

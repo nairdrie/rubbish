@@ -22,7 +22,7 @@ public class CritterPoke : MonoBehaviour, IInteractable
         z.center = new Vector3(0f, -0.9f, 0f);
         z.size = new Vector3(4.2f, 5.2f, 4.2f);
         z.mode = ZoneMode.OnFoot;
-        z.score = 1.7f; // above the truck's "Hitch a ride" / "Hop off" (1.1)
+        z.score = 2.3f; // above the truck's "Hitch a ride" / "Hop off" (HitchStep.ZoneScore 2.05)
         z.targetOverride = p;
     }
 

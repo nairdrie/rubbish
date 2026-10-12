@@ -307,28 +307,47 @@ public static class SortingKit
 }
 
 /// <summary>
-/// Sort combo: consecutive correct sorts within Economy.ComboWindow seconds stack +Economy.ComboStep each,
-/// capped at Economy.ComboMax. Wrong bins break it.
+/// Sort streak: consecutive correct hand sorts climb the <see cref="SortLadder"/> (x1 → x1.5 → x2 → x3 → x4 → x5 → x10) and pay
+/// that multiplier. A wrong bin ends the streak; leaving too long between sorts only cools it one tier at a time (every window
+/// that passes, see <see cref="SortLadder.Cool"/>), and a hotter streak has a tighter window, so speed holds the top tiers and
+/// accuracy keeps the streak at all. Robots (Magnus, the magnet strip) never touch it. The clock is read lazily: nothing ticks.
 /// </summary>
 public static class SortCombo
 {
-    /// <summary>Correct sorts in the current streak (0 = no streak).</summary>
-    public static int Streak { get; private set; }
+    static int streak;
     static float lastTime = -999f;
 
-    /// <summary>(streak, multiplier) whenever the combo changes. HUD may show a meter.</summary>
+    /// <summary>Correct sorts in the current streak, after any cooling since the last sort (0 = no streak).</summary>
+    public static int Streak => StreakAt(Time.time);
+
+    /// <summary><see cref="Streak"/> at an explicit clock (tests).</summary>
+    public static int StreakAt(float now) => SortLadder.Cool(streak, now - lastTime);
+
+    /// <summary>(streak, multiplier) whenever a sort or a mistake changes the streak. The HUD polls the cooling.</summary>
     public static event System.Action<int, float> Changed;
 
-    public static bool Alive => Streak > 0 && Time.time - lastTime <= Economy.ComboWindow;
+    /// <summary>The streak a wrong bin just ended (only raised when there was one).</summary>
+    public static event System.Action<int> Lost;
 
-    /// <summary>Current payout multiplier (1 when no streak).</summary>
-    public static float Multiplier => Alive ? MultiplierFor(Streak) : 1f;
+    public static bool Alive => Streak > 0;
 
-    /// <summary>0..1 how much of the combo window is left (for a HUD bar).</summary>
-    public static float TimeLeft01 => Alive ? 1f - (Time.time - lastTime) / Economy.ComboWindow : 0f;
+    /// <summary>Current ladder tier 0..<see cref="SortLadder.MaxTier"/>.</summary>
+    public static int Tier => SortLadder.TierFor(Streak);
 
-    public static float MultiplierFor(int streak) =>
-        Mathf.Min(Economy.ComboMax, 1f + Economy.ComboStep * Mathf.Max(0, streak - 1));
+    /// <summary>Current payout multiplier (1 when there is no streak).</summary>
+    public static float Multiplier => MultiplierFor(Streak);
+
+    /// <summary>0..1 how much of the current window is left before the streak cools a tier (for the HUD bar).</summary>
+    public static float TimeLeft01
+    {
+        get
+        {
+            int s = SortLadder.Cool(streak, Time.time - lastTime, out float idle);
+            return s <= 0 ? 0f : Mathf.Clamp01(1f - idle / SortLadder.WindowForStreak(s));
+        }
+    }
+
+    public static float MultiplierFor(int streak) => SortLadder.MultiplierFor(streak);
 
     /// <summary>A short major-scale climb in a lower register, held at a fifth for long streaks.</summary>
     public static float DingPitchFor(int streak)
@@ -342,28 +361,63 @@ public static class SortCombo
     public static float FlourishPitchFor(int streak) => DingPitchFor(streak) * .85f;
 
     /// <summary>Count a correct sort. Returns the multiplier to apply to this sort's payout.</summary>
-    public static float RegisterCorrect()
+    public static float RegisterCorrect() => RegisterCorrect(Time.time);
+
+    /// <summary><see cref="RegisterCorrect()"/> at an explicit clock (tests).</summary>
+    public static float RegisterCorrect(float now)
     {
-        if (!Alive) Streak = 0;
-        Streak++;
-        lastTime = Time.time;
-        float m = MultiplierFor(Streak);
-        Changed?.Invoke(Streak, m);
+        streak = SortLadder.Cool(streak, now - lastTime) + 1;
+        lastTime = now;
+        float m = MultiplierFor(streak);
+        RaiseChanged(streak, m);
         return m;
     }
 
-    public static void Break()
+    /// <summary>A mistake (wrong bin): the streak is gone.</summary>
+    public static void Break() => Break(Time.time);
+
+    public static void Break(float now)
     {
-        if (Streak == 0) return;
-        Streak = 0;
-        Changed?.Invoke(0, 1f);
+        int had = SortLadder.Cool(streak, now - lastTime);
+        if (streak == 0) return;
+        streak = 0;
+        if (had > 0) RaiseLost(had);
+        RaiseChanged(0, 1f);
+    }
+
+    // A listener's bug (the HUD, a test) must never break the sort that raised it: the caller pays out right after this returns.
+    static void RaiseChanged(int s, float m)
+    {
+        var handler = Changed;
+        if (handler == null) return;
+        foreach (var d in handler.GetInvocationList())
+        {
+            try { ((System.Action<int, float>)d)(s, m); } catch (System.Exception e) { Debug.LogException(e); }
+        }
+    }
+
+    static void RaiseLost(int had)
+    {
+        var handler = Lost;
+        if (handler == null) return;
+        foreach (var d in handler.GetInvocationList())
+        {
+            try { ((System.Action<int>)d)(had); } catch (System.Exception e) { Debug.LogException(e); }
+        }
+    }
+
+    /// <summary>Forget the streak without any event (a new session, tests).</summary>
+    public static void Clear()
+    {
+        streak = 0;
+        lastTime = -999f;
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
-        Streak = 0;
-        lastTime = -999f;
+        Clear();
         Changed = null;
+        Lost = null;
     }
 }

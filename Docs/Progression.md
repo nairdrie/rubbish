@@ -8,6 +8,21 @@
 > base rate remains $0.45/kg, so sorting pays more; forfeited treasure is the main tradeoff. The L3 grate preserves
 > treasure at 30% value. Historical simulation and pacing tables were not rerun for this change.
 
+> **Pace pass — 2026-10-12:** Nick, after a play session where friends made about $500 in an hour: "progression is too slow", "better we
+> make this game too easy to progress than too hard", "after a single load in the small truck start game of pickup and sort, you should
+> achieve rank 2", a sorting streak that tops out at 10x, and "after a day and night cycle someone whos LOCKED IN should be able to afford a
+> conveyor and a slow magnus sort". Pickup and curb pay ×3, sorting
+> pay ×4, Rep per action ×3-6, rank 2 at 350 Rep, Clean Day minimums cut to about 40%, and a hand-sort streak ladder
+> (x1.5 / x2 / x3 / x4 / x5 / x10) with a tighter clock at every tier, plus the HUD, sounds and effects that go with it. **§3.6 has every
+> number.** The numbers in §0, §1, §2 and §8 (day-by-day arc, milestone ETAs, "typical player" tables) come from the economy BEFORE
+> this pass and were NOT re-simulated: the game now runs roughly 3x faster on cash and 3-4x on Rep, so read those as "the shape, not
+> the clock". Dollar and Rep figures quoted in prose elsewhere (§5, §6: compactor and hazmat rates, shelf Rep, district fees) are the old ones unless §3.6 lists them. The first loop and first day are modelled in `sim/pace_model.py` (results in `sim/pace_results.md`); none of it has been played.
+
+> **Campaign slice 1 — 2026-10-09:** the Minivan Meadows and Coupon Commons permits are no longer bought. A district under contract
+> starts messy, and winning its contract (90% clean for 24 game hours) grants the next permit; neglect fines, Trust losses and
+> dirty-district letters are off for the district being cleaned. See `Campaign.md` §14. Where that disagrees with §4.2, §4.6, §5.1,
+> §5.2 and §6.5 below, `Campaign.md` wins. Playtest metrics: `Metrics.md`.
+
 > **Status:** spec, ready to build. Nothing here is built yet. Read `CoreLoop.md` and `LivingWorld.md` first (conventions,
 > ownership, setup-script rules, world facts). `Multiplayer.md` is a plan awaiting approval; this spec already follows its §9 rules.
 >
@@ -194,6 +209,10 @@ scaling (§9.9) also helps.
 
 ### 3.1 `Economy` (`Core/RubbishTypes.cs`, lead file, edited in Step 0)
 
+> The "New" column is the 2026-10-05 value. The 2026-10-12 pace pass (§3.6) moved most of these again: recycling rates ×4, pickup fee and
+> curb bonus ×3, late-pay floor 0.25 → 0.6, compaction ×4, hazard pay ×4, Work Order minimum ×3, the wrong-bin penalty to $1.00, and the combo
+> row (2.5 s / +10% / ×2) is replaced by the streak ladder.
+
 | Constant | Old | New | Why |
 |---|---|---|---|
 | `RecycleRatePerKg(Metal)` | 1.40 | **2.00** | sorting must beat crushing without leaning on treasure |
@@ -212,7 +231,7 @@ scaling (§9.9) also helps.
 | `TrickShotStreakStep` / `Cap` | — | **0.25 / 2.5** (new) | streak × (1 + 0.25·(n − 1)), capped at ×2.5 |
 | `WorkOrderPayFraction` / `WorkOrderMinPay` / `WorkOrdersPerDay` | — | **0.05 / $25 / 3** (new) | Work Order pay = max($25, 5% of yesterday's net) |
 | `KevinFeeShare` / `KevinBurstChance` | — | ~~0.70 / 0.05~~ | removed with Kevin's Crew (2026-10-08); the raccoon crew's numbers are all in `RaccoonTuning` |
-| `TowFee` | — | **$25** (new) | "Hold R" recovery when you don't own `truck_handling` L1 |
+| `TowFee` | — | **$25** (new) | "Hold R" recovery, and Esc > Unstuck calling your truck to you, when you don't own `truck_handling` L1 |
 | `PickupFeePerBag`, `CurbClearedBonus`, `OnTimeHours`, `LateFloorHours`, `LatePayFloor`, `NeglectedHours` | 4, 2, 4, 12, 0.25, 16 | **unchanged** | these become the Mildly Pleasant row of the district table; richer districts override them through `DistrictDef` |
 | `PawnFraction`, `EbaeFeeFraction`, `HospitalBill`, `StartingTruckCapacityKg`, combo | 0.45, 0.08, 100, 160, 2.5 s / +10% / ×2 | **unchanged** | `ebae_power_seller` overrides the fee |
 
@@ -225,7 +244,7 @@ with the starter constants.
 | Item | Old | New |
 |---|---|---|
 | `ValuableChance(w)` (= the starter profile) | 0.02 + 0.04·w | **0.005 + 0.008·w** |
-| `RarityWeights(w)` Uncommon | Lerp(70, 50) | **Lerp(84, 74)** |
+| `RarityWeights(w)` Common + Uncommon bucket (was Uncommon) | Lerp(70, 50) | **Lerp(84, 74)**, of which Common is Lerp(62, 50) and Uncommon Lerp(22, 24) (§5.4) |
 | Rare | Lerp(22, 30) | **Lerp(14, 20)** |
 | Epic | Lerp(6.5, 15) | **Lerp(1.7, 5)** |
 | Legendary | Lerp(1.5, 5) | **Lerp(0.3, 1.0)** |
@@ -280,11 +299,83 @@ All were in the sim. Each needs Nick's OK (§10).
 - **Shift Rep:** +150 Rep × your top district's Rep multiplier for every shift worked.
 - **Work Orders:** pay = max($25, 5% of yesterday's net) + 40 Rep × your top district's multiplier.
 
+### 3.6 Pace pass, 2026-10-12: faster everywhere, and a streak worth chasing
+
+**What Nick asked for** (his words, same day): "would rather people finish it quickly than get bored because they made no progress"; "after a
+single load in the small truck start game of pickup and sort, you should achieve rank 2"; "Sorting needs to pay more, bags on curbs more,
+everything more"; a streak that goes 1.5x, 2x, 3x, 4x, 5x and "10x ... is the max", with sound and visuals that are "super epic feeling and
+rewarding" when sorting is fast and accurate; Magnus "much sooner": "after a day and night cycle someone whos LOCKED IN should be able to
+afford a conveyor and a slow magnus sort". He said he did not know the exact numbers: they are ours. They are a model (`sim/pace_model.py`), not play.
+
+**Why the first loop was so slow.** The messy start's backlog bags are 18-36 hours old, so every one is at the late floor: $1 a bag and 1 Rep.
+A full Curb Pup load (about 17 bags, 150 items) paid about $100 and 90 Rep, against 450 Rep for rank 2.
+
+| Knob | Before | After |
+|---|---|---|
+| `PickupFeePerBag` (Acres) / `CurbClearedBonus` | $4 / $2 | **$12 / $6** |
+| `LatePayFloor` (Acres; the old heaps pay this) | 0.25 | **0.6** |
+| District fee / tip / curb bonus / `cleanStreetsMax` | Meadows 15 / 0 / 8 / 250, Commons 25 / 5 / 18 / 500, Hills 40 / 15 / 30 / 900, Heights 55 / 20 / 45 / 1,150, Bluffs 80 / 40 / 80 / 1,500, Acres cleanStreetsMax 60 | **all ×3** (Meadows $45 / 0 / 24 / 750, Commons $75 / 15 / 54 / 1,500, Hills $120 / 45 / 90 / 2,700, Heights $165 / 60 / 135 / 3,450, Bluffs $240 / 120 / 240 / 4,500, Acres 180) |
+| Recycling $/kg Metal / Plastic / Glass / Paper | 2.00 / 1.10 / 0.55 / 0.45 | **8.00 / 4.40 / 2.20 / 1.80**; minimum per item $0.10 → **$0.40** |
+| Hazard disposal (base, hazmat L1, L2) | $0.75 / $1.50 / $4.00 | **$3.00 / $6.00 / $16.00** |
+| Compaction $/kg, compactor L0 / L1 / L2 / L3 | 0.20 / 0.25 / 0.30 / 0.35 | **0.80 / 1.00 / 1.20 / 1.40** (still under paper, 1.80) |
+| Wrong bin | -$0.30 | **-$1.00** (the streak is the real penalty) |
+| Work Order minimum | $25 | **$75** (the 5% of yesterday's net scales by itself) |
+| Retired gram bank (`WorkshopCatalog`) | bin rates | ×4 with them (pinned by `WorkshopStateTests`) |
+| Raccoon crew kibble (plain / brain / full-time) | $5 / $8 / $70 | **$15 / $24 / $210**, so the crew stays company, not income (its fee income tripled) |
+| Rep: late bag / on-time bag / curb clean | 1 / 3 / 2 | **8 / 12 / 10** |
+| Rep: correct sort / wrong bin | 0.5 / -2 | **3 / -5** |
+| Rep: treasure Uncommon / Rare / Epic / Legendary | 5 / 12 / 25 / 50 | **15 / 36 / 75 / 150** |
+| Rep at midnight: clean streets ×clean² / neglected curb / shift | 120 / -3 / 150 | **360 / -6 / 450** |
+| Rep: Work Order / chess win ×tier / trophy shelf L1, L2 | 40 / 25 / 40, 160 | **120 / 75 / 120, 480** (display pieces and Showcase Rep ×3 too: glass case 30, pedestal 75, vault 120; Rare / Epic / Legendary 6 / 12 / 24) |
+| Rep: flattened / car shunt / minor / noise / neighborly | -4 / -3 / -1 / -1 / +1 | **-8 / -6 / -2 / -2 / +3** (the penalties only doubled, so they still sting) |
+| Rank 2 threshold | 450 Rep | **350 Rep** (ranks 3-12 unchanged) |
+| Clean Days for ranks 4-12 | 2 / 3 / 4 / 6 / 8 / 9 / 12 / 15 / 20 | **1 / 2 / 2 / 3 / 4 / 4 / 5 / 6 / 8** (cut, not removed: rank 12 is still 8 midnights, about 2.7 h) |
+| "+N REP" floater | 10 Rep or more | **8 or more** (so a late bag shows its Rep) |
+
+**The streak (`SortLadder`, `SortCombo`).** Consecutive correct *hand* sorts (bin, compactor junk, KEEP crate; Magnus and the magnet strip never
+count) climb a ladder, and each sort pays its tier's multiplier on top of the recycling contract:
+
+| Tier | Name | Starts at | Pays | Seconds allowed between sorts |
+|---|---|---|---|---|
+| 0 | (COMBO) | 1 | x1 | 3.0 |
+| 1 | NICE | 3 in a row | x1.5 | 2.8 |
+| 2 | HOT | 6 | x2 | 2.6 |
+| 3 | ON FIRE | 10 | x3 | 2.4 |
+| 4 | UNSTOPPABLE | 15 | x4 | 2.2 |
+| 5 | LEGENDARY | 22 | x5 | 2.0 |
+| 6 | TRASH GOD | 35 | **x10** | 1.8 |
+
+A wrong bin ends the streak. Running out of clock does not: every full window that passes cools it one tier (x10 falls to the start of x5,
+and so on), so fetching the next bag costs a step, not the lot. The old rule was +10% a sort up to x2 in a 2.5 s window. A fast, accurate
+sorter lives at x5-x10; a slow one can still hold x3. The model gives a "locked in" player an average of about x4 over a load and a top of x10.
+
+**What you see and hear (`SortStreakHud`, `FeelSfxSynth`).** A panel on the right (x1.5 ... x10, the tier name, the run length, "N more for
+x4", a bar that drains with the clock and shakes the panel when nearly out), a heat vignette round the screen edge, and for every tier up a
+slam, a rising stinger, a camera shake, a tier-coloured word and sparks at the bin, and confetti; x4 and up add a flash, x5 and x10 a slow-mo
+beat, x10 a fanfare, rainbow text and a gold storm. From the 6th sort a melody climbs a pentatonic scale, one note per correct bin (the ding itself
+stops climbing at 5; `SortComboAudioTests` pins that). A wrong bin cracks the number and drops it with a deflating womp; cooling a tier plays a
+small bloop. Flashes, the strobing rainbow and the vignette pulse follow Settings → Accessibility → Reduce flashing. Playtest metrics: one
+`sort_streak` line per streak of 3 or more (`Metrics.md`, `summarize.py`). Preview without playing: Rubbish > Debug > UI Shots > Sort Streak.
+
+**Model results** (`sim/pace_results.md`; the player types and mistake rates are assumptions): one full first load now earns rank 2 for every
+type, about 70% of the way through the load (before: not on day 1 for anyone, about 40 minutes for a locked-in player). Magnus's job ($500, rank 2)
+and the Bag Belt ($900, rank 3) are both affordable after about 14 minutes for a locked-in player (inside one day), 20 minutes for a skilled one,
+36 minutes for a typical one; a casual player gets there in about two days. In the first 20 minutes a player now makes about $480 / $720 / $1,400 /
+$2,160 (casual / typical / skilled / locked in) against $100-270 before; one load pays about $400 / $490 / $700 / $1,000 against $86-125.
+
+**Not changed, on purpose:** Scrapazon and permit prices (they get cheaper by the same factor as income), treasure and ebag values (so treasure
+is a smaller share of income than the 30% §0 aimed at), the hospital bill, tow fee, neglect fines, the Trap Bounty, payroll wages, the
+Big Cleanup and the casino. **Consequences to know about:** a hand sorter at x4-x10 out-earns Magnus (8 items a minute at base pay, no streak)
+by 10-40x, so his value is the background Rep and cash while you drive, not beating you at the table; the rest of the game was not re-simulated, so
+expect rank 12 in roughly 3-4 hours and the full tree in about a third of the old 13 hours, but that is scaling, not a run.
+
 ---
 
 ## 4. Business Rank and Rep
 
 ### 4.1 Rep sources
+
+> Values below are after the 2026-10-12 pace pass (§3.6); the old ones are in its table.
 
 Every event is multiplied by the **Rep multiplier of the district it happened in** (×1 / ×1.5 / ×2 / ×3), unless marked "top".
 "Top" means the multiplier of your highest unlocked district. Rep is computed in one place (builder A, from the facts the other
@@ -292,18 +383,18 @@ builders raise; §9.3). Nobody else hard-codes Rep values.
 
 | Rep id | Rep | When |
 |---|---|---|
-| `bag_ontime` | +3 | a curb bag enters the hopper within its district's on-time window |
-| `bag_late` | +1 | a late bag (any age) |
-| `curb_clean` | +2 | the house's last curb bag was collected |
-| `item_sorted` | +0.5 | an item went into its correct bin (recyclables, hazard barrel, junk into the compactor, valuables into the keep crate). Magnus's sorts count ("your employee, your credit"). A CRUSH ALL gives nothing. |
-| `contamination` | −2 | wrong bin (Magnus's misses too) |
-| `treasure_uncommon` / `_rare` / `_epic` / `_legendary` | +5 / +12 / +25 / +50 | a valuable goes into the KEEP crate (by you or Magnus). A non-valuable kept there is a part for SolidWaste 3D: no Rep at all (§6.9.4) |
-| `clean_streets` | +120 × clean² | per unlocked district at midnight (clean = 0..1) |
-| `neglected_curb` | −3 | per neglected curb at midnight |
-| `shift` | +150 (top) | at midnight, if at least 5 bags went into your truck that day |
-| `work_order` | +40 (top) | per completed Work Order |
-| `chess_win` | +25 × max(1, chess tier) | beating Magnus; once per in-game day |
-| `trophy_shelf` | +40 / +160, + the display line | at midnight, with `trophy_shelf` L1 / L2; plus (§6.8) the glass case +10, pedestal +25 and vault +40 while each shows a find, and Showcase Rep for each find in them: Rare +2, Epic +4, Legendary +8 (×2 on the pedestal). Paid in one entry through `UpgradeEffects.TrophyRepPerDay`. |
+| `bag_ontime` | +12 | a curb bag enters the hopper within its district's on-time window |
+| `bag_late` | +8 | a late bag (any age) |
+| `curb_clean` | +10 | the house's last curb bag was collected |
+| `item_sorted` | +3 | an item went into its correct bin (recyclables, hazard barrel, junk into the compactor, valuables into the keep crate). Magnus's sorts count ("your employee, your credit"). A CRUSH ALL gives nothing. |
+| `contamination` | −5 | wrong bin (Magnus's misses too) |
+| `treasure_uncommon` / `_rare` / `_epic` / `_legendary` | +15 / +36 / +75 / +150 | a valuable goes into the KEEP crate (by you or Magnus). A non-valuable kept there is a part for SolidWaste 3D: no Rep at all (§6.9.4) |
+| `clean_streets` | +360 × clean² | per unlocked district at midnight (clean = 0..1) |
+| `neglected_curb` | −6 | per neglected curb at midnight |
+| `shift` | +450 (top) | at midnight, if at least 5 bags went into your truck that day |
+| `work_order` | +120 (top) | per completed Work Order |
+| `chess_win` | +75 × max(1, chess tier) | beating Magnus; once per in-game day |
+| `trophy_shelf` | +120 / +480, + the display line | at midnight, with `trophy_shelf` L1 / L2; plus (§6.8) the glass case +30, pedestal +75 and vault +120 while each shows a find, and Showcase Rep for each find in them: Rare +6, Epic +12, Legendary +24 (×2 on the pedestal). Paid in one entry through `UpgradeEffects.TrophyRepPerDay`. |
 | a raccoon crew's bags | half of `bag_ontime` / `bag_late` (`RepValues.CrewShare`), no floater, no Work Order credit | `BagCollectedFact.byRaccoon` (§6.9.3) |
 
 Rep can dip (penalties), but **rank never goes down.** The highest rank reached is stored.
@@ -316,7 +407,8 @@ A midnight counts as a **Clean Day** when both are true:
 
 Both are percentages or flat counts, so crew size doesn't change them. In all 24 sim runs (3 player types × 8 seeds) the Clean Day
 requirement below **never delayed a promotion**. A 4-player crew earning Rep ~2× faster is held to about one rank per in-game day:
-Meadows no earlier than day 3, Snootington day 7, Bluffs day 13, rank 12 day 21.
+Meadows no earlier than day 3, Snootington day 7, Bluffs day 13, rank 12 day 21. (Those days are the pre-pass minimums: after the 2026-10-12 pace
+pass (§3.6) the minimums are about 40% of that, so the Clean Day gate now holds a crew to roughly rank 12 on day 9 instead.)
 
 (A stricter version, "and every unlocked district at least 40%", would delay greedy casual players by up to 3 days. It is kept as a
 tuning knob, off.)
@@ -324,21 +416,23 @@ tuning knob, off.)
 ### 4.3 The 12 ranks
 
 A promotion needs **Rep ≥ threshold AND Clean Days ≥ minimum**. It is checked on every Rep change and at every midnight.
+After the 2026-10-12 pace pass (§3.6) rank 2 is 350 Rep and the Clean Day column is about 40% of what it was; the "Typical ETA" column below
+is the OLD economy's and is stale (rank 2 is now the end of the first load, rank 3 the middle of the second).
 
 | # | id | Title | Rep | Clean Days | Typical ETA | Unlocks on Scrapazon (level: rank) |
 |---|---|---|---|---|---|---|
 | 1 | `rank_trash_intern` | Trash Intern (Unpaid) | 0 | 0 | start | capacity L1, air horn L1, headlamp L1, gloves L1, wobbly plank shelf, garbage juice, rabies shot, repellent |
-| 2 | `rank_bag_wrangler` | Bag Wrangler | 450 | 0 | ~20 min | capacity L2, turbo L1, handling L1, headlights L1, **Magnus's job (brain L1, career step 1)**, boots L1, primer paint |
+| 2 | `rank_bag_wrangler` | Bag Wrangler | 350 | 0 | **one full first load** | capacity L2, turbo L1, handling L1, headlights L1, **Magnus's job (brain L1, career step 1)**, boots L1, primer paint |
 | 3 | `rank_curbside_associate` | Curbside Associate | 950 | 0 | 1.0 h | capacity L3, **arm L1**, auto-tipper (truck), conveyor L1 (Bag Belt), table L1, compactor L1, recycling L1, Magnus rail motor (step 2), hard hat, lucky gnome, Trash FM radio |
-| 4 | `rank_certified_bin_technician` | Certified Bin Technician | 1,800 | 2 | 1.3 h | **permit Minivan Meadows**, turbo L2, handling L2, hazmat L1, trophy shelf L1, wand L1, vaccine L1, ebag L1, Magnus lobster pincer (gripper L1, step 3), musical horn pack |
-| 5 | `rank_senior_sack_specialist` | Senior Sack Specialist | 3,250 | 3 | 2.0 h | capacity L4, conveyor L2 (Heavy-Duty Motor), compactor L2, recycling L2, Magnus googly eyes (vision L1, step 4), gloves L2, flames paint, disco ball |
-| 6 | `rank_hopper_whisperer` | Hopper Whisperer | 4,900 | 4 | 2.7 h | **arm L2**, horn L2, headlights L2, table L2 (second sorting spot), boots L2, headlamp L2, lit glass case |
-| 7 | `rank_regional_rubbish_manager` | Regional Rubbish Manager | 6,650 | 6 | 3.3 h | **permit Snootington Hills**, turbo L3, brain L2 (step 5), hazmat L2, wand L2, vaccine L2, ebag L2, raccoon-camo paint |
-| 8 | `rank_garbage_guru` | Garbage Guru | 9,600 | 8 | 4.3 h | handling L3, conveyor L3 (Junk Diverter), recycling L3, museum wing, vision L2 (step 6), gloves L3 |
-| 9 | `rank_duke_of_dumpsters` | Duke of Dumpsters | 13,100 | 9 | 5.3 h | compactor L3, **brain L3** (step 7), pedestal of honor, golden gnome, chrome paint |
-| 10 | `rank_trash_tycoon` | Trash Tycoon | 17,400 | 12 | 6.3 h | **permit Billionaire Bluffs**, **arm L3**, Magnus quad-claw (gripper L2, step 8), ebag L3 |
-| 11 | `rank_baron_of_bins` | Baron of Bins | 27,550 | 15 | 8.0 h | recycling L4, **brain L4** (step 9, MAGNUS PRIME), **the Legendary Vault** |
-| 12 | `rank_supreme_garbage_overlord` | Supreme Garbage Overlord | 43,900 | 20 | 10.0 h | Key to the City quest, **Golden Garbage Truck** |
+| 4 | `rank_certified_bin_technician` | Certified Bin Technician | 1,800 | 1 | 1.3 h | **permit Minivan Meadows**, turbo L2, handling L2, hazmat L1, trophy shelf L1, wand L1, vaccine L1, ebag L1, Magnus lobster pincer (gripper L1, step 3), musical horn pack |
+| 5 | `rank_senior_sack_specialist` | Senior Sack Specialist | 3,250 | 2 | 2.0 h | capacity L4, conveyor L2 (Heavy-Duty Motor), compactor L2, recycling L2, Magnus googly eyes (vision L1, step 4), gloves L2, flames paint, disco ball |
+| 6 | `rank_hopper_whisperer` | Hopper Whisperer | 4,900 | 2 | 2.7 h | **arm L2**, horn L2, headlights L2, table L2 (second sorting spot), boots L2, headlamp L2, lit glass case |
+| 7 | `rank_regional_rubbish_manager` | Regional Rubbish Manager | 6,650 | 3 | 3.3 h | **permit Snootington Hills**, turbo L3, brain L2 (step 5), hazmat L2, wand L2, vaccine L2, ebag L2, raccoon-camo paint |
+| 8 | `rank_garbage_guru` | Garbage Guru | 9,600 | 4 | 4.3 h | handling L3, conveyor L3 (Junk Diverter), recycling L3, museum wing, vision L2 (step 6), gloves L3 |
+| 9 | `rank_duke_of_dumpsters` | Duke of Dumpsters | 13,100 | 4 | 5.3 h | compactor L3, **brain L3** (step 7), pedestal of honor, golden gnome, chrome paint |
+| 10 | `rank_trash_tycoon` | Trash Tycoon | 17,400 | 5 | 6.3 h | **permit Billionaire Bluffs**, **arm L3**, Magnus quad-claw (gripper L2, step 8), ebag L3 |
+| 11 | `rank_baron_of_bins` | Baron of Bins | 27,550 | 6 | 8.0 h | recycling L4, **brain L4** (step 9, MAGNUS PRIME), **the Legendary Vault** |
+| 12 | `rank_supreme_garbage_overlord` | Supreme Garbage Overlord | 43,900 | 8 | 10.0 h | Key to the City quest, **Golden Garbage Truck** |
 
 **Sensitivity:** the Rep-per-rank knob is the sharpest lever in the sim (±25% moves the top district from day 16.5 to 23.8). Tune
 this table before touching anything else.
@@ -497,12 +591,21 @@ changes.
 
 ### 5.4 Loot profiles (`LootProfile` rows, Step 0; rolled by D's `RollBag` overload)
 
-| Profile | p = p0 + p1·w | Rarity U/R/E/L at w=0 → w=1 | Items per bag | Category weights J/P/Pl/M/G/H | Tier pool boost (item tier: ×) | Spring flat |
+| Profile | p = p0 + p1·w | Rarity C/U/R/E/L at w=0 → w=1 | Items per bag | Category weights J/P/Pl/M/G/H | Tier pool boost (item tier: ×) | Spring flat |
 |---|---|---|---|---|---|---|
-| `mildly_pleasant` | 0.0050 + 0.0080·w | 84/14/1.7/0.3 → 74/20/5/1 | 5–10 | 40/18/15/11/10/4 (today's) | 1: ×1 | 0.012 |
-| `minivan_meadows` | 0.0060 + 0.0070·w | 68/25/6/1 → 58/30/10/2 | 6–11 | 34/22/16/12/11/5 | 1: ×1, 2: ×5 | 0.020 |
-| `snootington_hills` | 0.0068 + 0.0068·w | 52/32/13/3 → 42/35/18/5 | 7–12 | 28/22/12/14/18/6 | 1: ×0.6, 2: ×2, 3: ×8 | 0.025 |
-| `billionaire_bluffs` | 0.0066 + 0.0049·w | 55/30/12/3 → 47/33/15/5 | 8–13 | 24/20/10/16/20/10 | 1: ×0.25, 2: ×0.8, 3: ×3, 4: ×12 | 0.030 |
+| `mildly_pleasant` | 0.0050 + 0.0080·w | 62/22/14/1.7/0.3 → 50/24/20/5/1 | 5–10 | 40/18/15/11/10/4 (today's) | 1: ×1 | 0.012 |
+| `minivan_meadows` | 0.0060 + 0.0070·w | 48/20/25/6/1 → 38/20/30/10/2 | 6–11 | 34/22/16/12/11/5 | 1: ×1, 2: ×5 | 0.020 |
+| `snootington_hills` | 0.0068 + 0.0068·w | 34/18/32/13/3 → 26/16/35/18/5 | 7–12 | 28/22/12/14/18/6 | 1: ×0.6, 2: ×2, 3: ×8 | 0.025 |
+| `billionaire_bluffs` | 0.0066 + 0.0049·w | 34/21/30/12/3 → 28/19/33/15/5 | 8–13 | 24/20/10/16/20/10 | 1: ×0.25, 2: ×0.8, 3: ×3, 4: ×12 | 0.030 |
+
+**Common and the Keepsake bonus.** `RarityWeights` keeps its four buckets: the first is Common + Uncommon together, so Rare, Epic
+and Legendary odds are exactly the old ones. `LootProfile.common0/common1` say how much of that bucket is Common at w=0/w=1
+(Acres 62→50, Meadows and Coupon Commons 48→38, Hills and Stackington 34→26, Bluffs 34→28); `ItemCatalog.CommonShare` turns
+that into a fraction, and `PickDef` rolls it whenever the first bucket comes up. The old "everyday finds" swap pass is gone.
+In its place `LootProfile.keepsakeChance` (Acres 5%, Meadows/Coupon 4%, Hills/Stackington/Bluffs 3%) gives a lucky bag ONE extra
+valuable, added rather than swapped in, drawn Common or Uncommon in the same proportion as the table (never Rare+, never when the
+18 kg bag cap would be exceeded). Acres at mid wealth, per 100 bags: Common 3.8 + 3.5 bonus, Uncommon 1.55 + 1.5 bonus, Rare 1.15,
+Epic 0.23, Legendary 0.04.
 
 **Rolling rules** (exactly what the sim did):
 1. The valuable pool is every valuable with item tier ≤ the profile tier, each weighted by `weight × tierBoost[tier]`.
@@ -729,7 +832,9 @@ than a skilled player on foot until L3; the sim's arm share was 60% of stops at 
 
 **Truck recovery (base game, not an upgrade; producer M5):** when the truck has been upside down or stuck (< 0.3 m/s with
 throttle, for 3 s), "Hold R: Call a Scrapazon Prime Tow (−$25)". Holding R for 1.5 s makes a crane drone right the truck at
-the nearest road point. `truck_handling` L1 makes it free and 0.5 s.
+the nearest road point. `truck_handling` L1 makes it free and 0.5 s. The same drone also answers **Esc > Unstuck on foot**
+(2026-10-12, `Docs/UIPass.md` §5.5): it fetches your empty truck from wherever it is and sets it down beside you, at the same
+price (−$25 to the caller, free with L1).
 
 **Engine note:** the tier values are absolute, not multipliers. Stock (level 0) also changes: **brakeTorque 2000 → 1000** per
 wheel, because today's brakes ask for 2.1 g and lock the wheels. Hard cap is **18 m/s**. L3 needs the additive cornering limit in
@@ -913,7 +1018,8 @@ level, with a graduation cap at L4.
 > tree (§6.9). The `$` and `Rank` columns below are history: there is no cash price and no rank gate any more. The ids, levels
 > and **effects are unchanged** (`UpgradeEffects` §6.4 still reads `GameSession.GetUpgradeLevel(id)`; a built node raises that
 > level). A save that bought gear with cash keeps it and sees those nodes already built. Scrapazon's Gear aisle still sells the
-> consumables, gnomes, the trap and the riding gloves, under a shelf note pointing at SolidWaste 3D.
+> consumables, gnomes and the trap, under a shelf note pointing at SolidWaste 3D (the riding Grip Gloves left on 12 Oct 2026 with
+> the grip meter, `Multiplayer.md` §14.1).
 
 | id | Lv | $ | Rank | Title / blurb | Effect (exact) |
 |---|---|---|---|---|---|
@@ -1010,7 +1116,7 @@ leaves the display (a dust puff; the next find moves up). Nothing is locked away
   the plan; where on the piece is presentation: a find that stays on a piece keeps its spot, so a new best find moves one find
   per piece down the line instead of reshuffling every shelf.
 - **Showcase Rep (the fancy-case perk):** every find shown in the glass case, the pedestal or the vault pays **Rare +2, Epic +4,
-  Legendary +8** Rep per midnight; the pedestal's spotlight doubles its find (a Legendary there: +16). Base Rep is paid only while
+  Legendary +8** Rep per midnight (×3 since the pace pass: +6 / +12 / +24); the pedestal's spotlight doubles its find (a Legendary there: +16, now +48). Base Rep is paid only while
   the piece shows at least one find. It's all paid at midnight as `trophy_shelf` Rep: `UpgradeEffects.TrophyRepPerDay` = the trophy
   shelf's flat +40 / +160 + `DisplayPlanner.ExtraRepPerDay()`, so `ProgressionRules` didn't change. The most the new pieces can pay
   is 75 base + 96 Showcase = **171 Rep a day**, about 6% of late-game Rep income (≈ 2,600 a day); before the top district (rank
@@ -1020,11 +1126,10 @@ leaves the display (a dust puff; the next find moves up). Nothing is locked away
   condition if dented, the appraisal, the Showcase Rep it earns and which piece it's on. An empty slot says why ("Epic and
   Legendary finds only. No riff-raff." / "Keep a find (don't sell it) and it shows up here."). The card sits part of the way along
   your line of sight, so the recycling banner or a parked truck can't hide it. Every find also gets a small brass name plate.
-- **Arrange (stretch goal, built):** stand in front of a piece (its `InteractionZone`), look at a slot and press **E**. Looking
-  straight at a slot from within 2.2 m (flat) lifts the piece's zone score to 3 (`DisplayGallery.arrangeFocusScore`), above
-  the garage door's 1 and line-of-sight picks (0–2) but below the sort station's step-up (4), so at the glass case and the
-  pedestal E is "Swap find" and F keeps "Exit Garage" (look away and E is the door again); further away it's **F** when
-  another interactable has E. The prompt is just "Swap find" / "Back to auto" (one tooltip row) and the placard's last line
+- **Arrange (stretch goal, built):** stand in front of a piece (its `InteractionZone`), look at a slot and press **E**. The garage door
+  is pinned to **F** (`IAltKeyPinned`, resolved by `InteractionKeys.Resolve`): whenever a garage door's zone is in range its action
+  (Exit Garage / Enter Garage / Drive Out) is F (gamepad Y), always, and E goes to the best other option, so at a piece E is
+  "Swap find" (zone score 0.6, above Enter Truck's 0.25) with no score tricks. The prompt is just "Swap find" / "Back to auto" (one tooltip row) and the placard's last line
   names the next find ("Swap find: Vinyl Record next"). The slot pins the next find in best-first order (the one it pushes out
   moves down the line); after the last find a pinned slot goes back to automatic, and an automatic slot starts over from the best
   find (finds keep their spot when a pin clears, so without that the slot would get stuck). Pins are company counters `display_pin_<piece>_<slot>` = a
@@ -1320,7 +1425,7 @@ origin story (the vaccine line is "cure it", Embrace It is "or don't"), and the 
 | Node | Lv 1 | Lv 2 | Lv 3 |
 |---|---|---|---|
 | **Critter Hutch** (`calling_critter_hutch`) | a hutch at your depot, **3 bunks**; **F on a sprung trap** sends the raccoon there (E is still the bounty; the shop pet is "Retire" at the hutch, or F when the hutch is full); kibble **$5 a head a day** | Critter Condo: **6 bunks**, and bigger crew sweeps (cap 10 / 20 / 26 instead of 6 / 12 / 16) | |
-| **Embrace It** (`calling_embrace_it`) | rabies never makes you pass out or pay the hospital; a stored shot no longer fires by itself (**K, K** uses it; buying a shot while rabid and a friend's jab still cure); the trippy look is capped at 12% and the stumbling drift and hiccup hops are gone | while rabid: **+15% on foot at night**, night eyes (a soft local light), wild raccoons never bite, latch onto or get angry at you | while rabid: **Y = pounce**, 7 m, 9 s cooldown; raccoons within 12 m of the landing are friends for 20 s and drop their loot; +5% on foot by day |
+| **Embrace It** (`calling_embrace_it`) | rabies never makes you pass out or pay the hospital; a stored shot no longer fires by itself (**K, K** uses it; buying a shot while rabid still cures); the trippy look is capped at 12% and the stumbling drift and hiccup hops are gone | while rabid: **+15% on foot at night**, night eyes (a soft local light), wild raccoons never bite, latch onto or get angry at you | while rabid: **Y = pounce**, 7 m, 9 s cooldown; raccoons within 12 m of the landing are friends for 20 s and drop their loot; +5% on foot by day |
 | **Breeding Box** (`calling_breeding_box`) | pair two rested adults at the hutch: a litter of 1-2 in **2 days**, grown up **2 days** later, parents rest 1 day; each trait = the parents' average ±1 (12%: ±2); 6% special variants (Golden, Albino, Chonk, Zoomer); litters never exceed the bunks (they wait) | | |
 | **Collar Chip** (`calling_collar_chip`) | raccoons on the crew sweep the kerbs at **22:00 and 02:00**, oldest bag first, up to **6** a sweep (10 with the Condo) | | |
 | **Brain Chip** (`calling_brain_chip`) | no more naps, wandering or gnome theft, a fifth of the dog scares, a **12:00** sweep, a cart for every raccoon (**+1 + Carry / 5** bags), the **cheapest district first**, up to **12** a sweep (20 with the Condo); crew kibble **$8** a head | **Full-Time Chip** (45 kg): a **07:00** sweep as well, up to **16** a sweep (26 with the Condo); crew kibble **$70** a head | |
@@ -1557,6 +1662,222 @@ Nothing here is listed in SolidWaste 3D: decor is Scrapazon's, and the sculpture
   and never reused; "customize" (sign colour, rename) is now allowed from outside the shop). No save-version bump: the new
   fields default to zero, recipes are code, printed levels stay printed, and a save whose decor fields are damaged (a stale
   display pin, a bad colour) has just those repaired on load (`WorkshopState.RepairDecor`) instead of losing its print shop.
+
+### 6.10 THE HOVERHOG (dept `air`): the late-game flying truck. STAGES 1 AND 2 BUILT 2026-10-08
+
+**Status: stages 1 and 2 are in code (the drone, flying, battery, helipad + stairwell + hatch, the Claw, the bomb bay; then
+`hog_belly`, `hog_claw` up to the beam, `hog_rotors`, `hog_battery` and the satellite pads). Stages 3 to 5 (the co-op ropes
+and seats, the Skyhook, the cannon, Trash Panda One, the helipad levels, the brain line, the Mothership) are design only. No number has been simulated.** Names are provisional. "What stage 1 actually is" at the end of this section
+is the built contract; where it differs from the proposal text above it, it wins. Nick's brief: a
+giant drone with a compactor belly and a grabber arm; upgraded to a UFO beam; ropes/ladders so a co-op crew drops in like a
+SWAT team; a garbage cannon to fight the Raccoon King; buying it adds a rooftop helipad to your depot with its own stairs.
+
+**What it is.** A **second vehicle**, not a `truck_model` trade-in: the ground truck stays in the bay, the Hoverhog lives on
+the roof, and in co-op one player can fly while another drives. It stays on Scrapazon for cash (the split rule in §6.9:
+vehicles and the shop are bought, upgrades to yourself are printed). Scrapazon already flies tow drones and delivers the
+Golden Truck by drone swarm; this is their heavy-lift model, "delivered by itself".
+
+**Flying.** Arcade hover, no stalling: WASD moves, Space / Ctrl climbs and sinks, it holds its height when you let go.
+Ceiling 40 m, stock speed 12 m/s (the stock ground truck does 10, the Golden Truck 18). It ignores roads, gates still need
+their permit (the beam and claw refuse bags in a district you hold no permit for). Owner-simulated by the pilot, like the truck.
+- **Seats (4, one whole co-op world):** pilot, belly-gunner (works the claw / beam / cannon when occupied, same rule as the
+  side-loader's shotgun seat), and two skid riders on the existing rider grips.
+- **Battery** is the limit that keeps the ground truck worth owning: 5 min of flight stock, shown as a gauge. It charges on
+  your helipad (full in 40 s) and nowhere else until you buy pads. Empty = the rotors cough, it autorotates down wherever it
+  is (never damage, riders bounce off), and it sits there until a Prime Tow (−$250) or 3 min of sulking gives it 20%.
+- **TIP IT from the air = the bomb bay.** Hold G: the belly doors open and the load falls. Over your helipad's roof hatch it
+  goes down the depot chute onto your tipping floor (the `DepotDeliveryDropper` path). Anywhere else it is litter, with every
+  consequence in §6.1 (`StreetLitter`), so carpet-bombing a friend's lot is possible and costs the city's Clean bonus.
+
+**The helipad (comes with the base purchase; `Setup_Helipad`).** Built on the roof of your depot on Depot Row: a painted H,
+edge lights, a windsock, the charging puck, and the **roof hatch** over the tipping floor. A **stairwell runs from the roof
+down into the shop** (Nick, 2026-10-08: "stairs into the shop"): its own door on the roof, its own way in, separate from the
+bay door. `Permissions.CanWorkIn` decides who may fly it, as for the truck.
+
+| id | Lv | $ | Rank | Prereq | Title / blurb | Effect (first pass) |
+|---|---|---|---|---|---|---|
+| `hoverhog` | 1 | 85,000 | 11 | `truck_arm:2`, `permit_billionaire_bluffs` | *HOVERHOG H-1 Heavy Garbage Drone (Roof Not Included. Wait, Roof Included)*: "Eight rotors, one belly, zero licences required, apparently." | the drone, the helipad, the stairs, the hatch; belly 300 kg; the Claw (below); 5 min battery; 12 m/s |
+| `hog_belly` | 1 | 15,000 | 11 | | *Bigger Belly*: "It's not fat, it's storage." | 450 kg |
+| | 2 | 35,000 | 12 | | *Compactor Gut*: "Chews before it swallows." | 600 kg; bags are squeezed on the way in (sack only, never contents: the Hauler pack's crush rule) |
+| | 3 | 70,000 | 12 | `hog_belly:2` | *Bottomless Pit (Has a Bottom)* | 850 kg; the bomb bay empties in 3 s and can drop **one bag at a time** (tap G) for precision deliveries |
+| `hog_claw` | 0 | (base) | | | *The Claw*: "Like the arcade one, except this one is only mostly rigged." | hover ≤ 10 m over a curb, press X: an arcade claw drops on a cable, grabs **one** resting curb bag, winches it into the belly. 4 s a bag, 10% slip (the bag falls back, never bursts) |
+| | 1 | 20,000 | 11 | | *Three-Finger Discount Claw* | three bags a drop, 2.5 s, no slips |
+| | 2 | 75,000 | 12 | `hog_claw:1` | *UFO Beam (Totally Not Alien Technology)*: "Residents report 'a light' and 'my bins are gone'." | hold X while hovering ≤ 12 m and ≤ 2 m/s: a cone of light lifts **every** resting curb bag and loose item within 6 m, 0.6 s apart. Also lifts, for no pay: gnomes, balls, mailbox flags, and raccoons (they float, paddle, and count as trapped if you own a trap) |
+| | 3 | 160,000 | 12 | `hog_claw:2`, `key_to_the_city` | *Mothership-Grade Beam*: "Now with crop circles." | works while moving ≤ 6 m/s, 11 m radius, 0.25 s apart; leaves a crop circle on any lawn it crosses (cosmetic, fades at midnight) |
+| `hog_rotors` | 1 / 2 / 3 | 12,000 / 30,000 / 60,000 | 11 / 12 / 12 | | *More Rotors* / *Even More Rotors* / *Jet Pods (the Garbage Still Gets Warm)* | 15 / 18 / 22 m/s; L3 adds a Shift boost (+6 m/s for 3 s, 15 s cooldown) and a 60 m ceiling |
+| `hog_battery` | 1 / 2 | 10,000 / 25,000 | 11 / 12 | | *Extended Pack* / *Car Battery (Several)* | 8 / 12 min |
+| | 3 | 55,000 | 12 | `hog_battery:2`, `hog_belly:2` | *Garbage-Juice Reactor*: "Runs on trash. Finally." | hold a key to burn belly load for charge: 1 kg = 3 s of flight (burns the lightest bag first; a burned bag still paid its pickup fee, its contents are gone) |
+| `hog_ropes` | 1 | 8,000 | 11 | | *Rope Ladder (Slightly Too Short)* | hovering ≤ 8 m: a ladder hangs down, anyone climbs up or down; boarding from the street |
+| | 2 | 20,000 | 11 | `hog_ropes:1` | *Fast Ropes: S.W.A.T. Kit (Sanitation Workers And Tactics)* | two ropes: riders hold E to rappel from ≤ 20 m in 1.5 s and land running. **Auto-hover:** the pilot may rappel too, the Hoverhog holds its spot |
+| | 3 | 45,000 | 12 | `hog_ropes:2` | *Yoink Harness* | everyone who rappelled is on a line: hold Q to be winched back up from ≤ 30 m with whatever bag you hold, which goes straight into the belly. The crew loop: drop on a cul-de-sac, grab, yoink |
+| `hog_skyhook` | 1 | 35,000 | 12 | `hog_rotors:1` | *Skyhook*: "Technically a tow." | hover over a truck (yours, a friend's, a parked car) and hook it: carry it, riders and all, and set it down or let go. Free tows for the whole town |
+| `hog_cannon` | 1 | 25,000 | 11 | owns a `raccoon_king_crown` | *Bale Mortar*: "Return to sender." | chin gun, gunner seat (or pilot, slower). Ammo = **bales from your Compactor** (one bale per 25 kg crushed, rack of 12, loaded on the pad). A bale that bonks the King is one hit (`OnHitByThrown`); critters are scared; players are bonked. Every bale that lands is **litter** until someone picks it up or beams it (it goes back in the rack) |
+| | 2 | 60,000 | 12 | `hog_cannon:1` | *Stink Gatling* | rack 30, 4 bales/s spin-up bursts; hit raccoons are stunned 3 s |
+| | 3 | 120,000 | 12 | `hog_cannon:2`, `hog_belly:3` | *Dumpster Drop* | one dumpster on the bomb rack: 4 hits to the King, flattens a 5 m circle of critters, 90 s reload on the pad |
+| `helipad` | 2 | 15,000 | 11 | `hoverhog` | *Fast-Charge Pad + Beacon* | full charge in 12 s; a night beacon; **Whistle:** hold a key anywhere and the Hoverhog flies itself to you (if it has charge) |
+| | 3 | 45,000 | 12 | | *Auto-Unload Hangar* | landing empties the belly down the hatch in 3 s without a keypress; a second pad for a visiting friend's drone |
+| `sat_pad` | 1 / 2 / 3 | 10,000 each | 11 | district permit | *Satellite Pads* | one charging pad per richer district (Meadows, Snootington, and a Bluffs mansion's own helipad once Trust there ≥ 80%: "the butler allows it") |
+| `hog_brain` | 1 | 25,000 | 11 | | *Follow-Me Mode* | on foot or on Rocket Blades the Hoverhog tails you at 9 m and beams/claws any bag you toss up at it (Hauler synergy) |
+| | 2 | 60,000 | 12 | `hog_brain:1`, `hog_claw:2` | *Route Autopilot* | flies one district's route by itself at 60% of a player's pace, visibly, on battery, and comes home to unload; you can ride along |
+| | 3 | 110,000 | 12 | `hog_brain:2`, Magnus `brain:4` | *MAGNUS AIR*: "He insisted on a captain's hat." | Magnus Prime is the autopilot: 100% pace, picks the dirtiest district, plays chess with you over the radio while he flies |
+| `mothership` | 1 | 250,000 | 12 | `golden_truck`, `hog_claw:3`, `kings_signet` | *THE MOTHERSHIP (24K Saucer Shell)* | saucer body, gold, hums; the beam picks up whole wheelie bins and puts them back empty; residents wave; the true capstone |
+
+**All-in: about $1.5 M**, roughly ten Golden Trucks, against a stage-D income of $16k–$30k a day before the Hoverhog raises it.
+That is far too long at today's income and probably right once the beam is flying; **simulate before building prices in.**
+
+**The Raccoon King takes to the air (stage 4 of the build, needs `hog_cannon`).** The street King (HP 8 + 4/player) is a
+push-over for a gun, so he answers: once any business in the world owns a cannon, a night can roll **Trash Panda One**, the
+King's stolen GoldStar Premium Waste blimp (he is the competition's mob boss, §6.9.3).
+- HP 40 + 15/player, three engines to shoot out; it drifts over the districts **raining litter** (each minute it lives dirties
+  the district under it), so the fight has a clock and the Clean bonus is the stake.
+- Raccoon paratroopers jump onto the Hoverhog and chew the battery cable (−1% a second each): skid riders poke them off
+  (`CritterPoke`). This is the crew's job while the gunner shoots.
+- Beaten: the blimp deflates into the bay, $5,000 + $2,000/player split by hits, and each contributor gets the **King's
+  Signet** (`kings_signet`, a trophy and the Mothership's prereq). King's Rival players get their +$250 a hit as on the street.
+
+**Rules that keep it honest.**
+- It pays exactly what the truck pays: beam and claw hand bags to the same `TruckHopper.Accept` path (fee, curb bonus,
+  lateness, Rep). Only `Resting` curb bags with no holder, as the side-loader's arm rules say.
+- It never opens or sorts a bag, and nothing in the air tells you what is inside one.
+- The battery, the pad trips and the litter cost of every miss are the balance knobs; speed is not (22 m/s in the air is
+  safe because there is nothing to hit; the ground cap stays 18).
+- Co-op: one more vehicle per business, pilot-simulated; every rule runs on the host as for the truck; a `NetVersion.Protocol`
+  bump.
+
+**Build stages (each playable on its own).** S1 base: flight, battery, helipad + stairs + hatch, the Claw, bomb bay.
+S2 the four plain lines (belly, claw→beam, rotors, battery) and satellite pads. S3 co-op: ladder, fast ropes, Yoink, Skyhook.
+S4 cannon and Trash Panda One. S5 brain line, Magnus Air, the Mothership.
+
+**Decided by Nick (2026-10-08):** a second vehicle, not a trade-in; the battery stays ("battery is great"); the stairs go
+into the shop. **Still open:** the total price (the table, to be simulated) and whether the cannon may bonk other players'
+trucks and shops (default: yes, bales are litter, no damage).
+
+#### 6.10.1 What stage 1 actually is (built 2026-10-08)
+
+Code: `Assets/Scripts/Hoverhog/` (`HogTuning` holds every number, `HogRules` the pure rules pinned by `HogRulesTests`;
+`Hogs` the per-lot state and requests; `HogNet` the co-op replication; `Hoverhog` the drone; `Helipad` the roof, the hatch
+and both ends of the stairwell; `HogRuntime` the heartbeat; `HogShop` the Scrapazon item). Nothing is authored into a
+scene or a prefab except `HogNet` on `NetSession.prefab` (Setup_Coop): the pad, the drone and the stairs are built at
+runtime on every machine from the replicated upgrade level, like the walk-up hatch. No town-bake dependency was edited.
+
+- **Buying it.** `hoverhog`, department **Air**, $85,000, rank 11, needs `truck_arm:2` and the Bluffs permit. It replicates
+  as nibble 13 of `BusinessUpgradeInfo.truckLevels` (two nibbles left: the upgrade lines need a new field). Protocol 18.
+  To try it without the money: play mode, **Rubbish > Debug > Hoverhog > Give Me A Hoverhog (free)**.
+- **The helipad** lays one flat deck over the depot's stepped roof (top y 7.86) with the pad, eight lamps, a charger, a
+  windsock, the striped **roof hatch** and a brick **stairwell hut**. The shop end of the stairwell is a doorway with three
+  steps in the nook between the south-east pillar and the tipping pile. In co-op (one world) the stairs are a door-style
+  teleport between the roof and that shop's pocket interior, for the player who uses them only; anyone who could visit the
+  shop may use them. In solo they are the ordinary door trip, and you are put on the roof / at the stair foot on arrival.
+- **Flying.** Walk up, **E**. W/S forward and back (12 / 6 m/s), A/D turn, **Space** up, **Ctrl or Shift** down (5 m/s),
+  mouse or right stick orbits the camera. It stops faster than it starts. Ceiling 40 m, kept inside the town's bounds;
+  walls, roofs, trees and cars stop it, nothing pushes it and it takes no damage. Land (skids down) and press **E** to hop
+  out; you cannot leave in the air. **Pilot only**: the gunner seat and skid riders are stage 3.
+- **Battery.** 5 min in the air, no drain on the ground. Landed on **its own pad** it is full in 40 s; hovering over the pad
+  does not charge. Flat = it sinks at 3 m/s wherever it is. Stranded with a flat battery: **hold R** for a Scrapazon Prime
+  Air Tow home (−$250, the pilot's business pays), or wait: it sulks back to 20% in 3 min.
+- **The Claw (X).** Hover no higher than 10 m with a resting curb bag within 3 m of straight below. 4 s a bag, one at a
+  time; 10% of grabs slip (the bag is put back, never bursts); drifting more than 4 m off the bag misses. Refused: too high,
+  nothing below, belly full, no permit for that district. Pay, lateness, curb bonus, Rep and Work Order progress are the
+  truck hopper's own collect path (`TruckHopper.CollectCurbBag`), then the bag is moved from the truck's cargo to the belly.
+- **Belly.** 300 kg, its own load, separate from the truck. Like the truck's cargo it is not saved: quitting empties it.
+- **The bomb bay (hold G 0.6 s).** One bag every 0.3 s until empty; hold G again to stop. **Anywhere over your own roof,
+  up to 14 m above it** (not only over the hatch itself): the bags go down the hatch. In co-op they land on that shop's
+  tipping floor at once (refused with "Depot full" by `DepotBacklog`); in solo they join the depot delivery queue and drop
+  from the chute when you walk in. **Anywhere else:** they fall out as litter (`StreetLitter`), and from height they may
+  burst. Refused over water or over nothing.
+- **Not built in stage 1:** every line in the table above except `hoverhog` itself, the fast-charge / whistle / auto-unload
+  helipad levels, satellite pads, seats for a crew, the belly on the HUD's truck gauge (it is in the hint line), a gauge
+  for other players, and bot coverage.
+- **Co-op rules.** The host owns each lot's seat, battery, load and parked pose and replicates them (`HogNet`, 10 Hz when
+  something changed). The pilot's machine flies it and reports pose and battery twice a second; everyone else draws the
+  Hoverhog at the pilot's player, whose own transform already replicates. Claw and bomb bay are requests the host decides.
+  Whoever may work in the shop may fly it (`Permissions.CanWorkIn`). A pilot who drops out of the session frees the seat
+  after 3 s and the Hoverhog settles to the ground by itself. Only the host's own battery is saved; a guest's Hoverhog
+  starts each session full, on its pad.
+
+#### 6.10.2 Stage 2: the upgrade lines, the satellite pads and the new body (built 2026-10-08)
+
+Five more Scrapazon items in **Air**, three levels each, all needing `hoverhog`. Prices and ranks are the table's.
+`HogLevels` packs the five levels into ten bits; a business declares them through `HogNet` (the host checks the sender
+owns the lot) and they ride in `HogLotState.levels`, so nothing was added to `BusinessUpgradeInfo`. Protocol 19.
+
+| id | Lv 1 | Lv 2 | Lv 3 |
+|---|---|---|---|
+| `hog_belly` | 450 kg | 600 kg; the belly thumps and crunches each bag (sound and a squash only) | 850 kg; the bomb bay empties any load in 3 s; a **tap of G** drops one bag |
+| `hog_claw` | up to **3 bags** a drop, 2.5 s, no slips (four fingers) | **the beam replaces the Claw**: hold X at ≤ 12 m and ≤ 2 m/s; one thing floats up every 0.6 s from within 6 m | works up to 6 m/s, 11 m, every 0.25 s; crop circles on grass (cosmetic, each machine draws its own, gone in 4 min). Needs the Key to the City |
+| `hog_rotors` | 15 m/s | 18 m/s | 22 m/s, 60 m ceiling, **Shift** (pad RB) = jets: +6 m/s for 3 s, 15 s cooldown |
+| `hog_battery` | 8 min | 12 min | 12 min + the reactor: **hold F** (pad Y) in the seat burns the lightest thing in the belly every 0.5 s, 1 kg = 3 s of flight. Needs `hog_belly:2` |
+| `hog_sat_pad` | Minivan Meadows (on the park pavilion's roof) | Snootington Hills (the green between the two roads) | Billionaire Bluffs (the open field by the road) |
+
+- **What the beam and the Claw take.** Resting curb bags (paid, as before) and now **any other bag lying outdoors** (a
+  bombed load, a dropped sack: no pay, like tossing it back in a truck). The beam also takes **loose items** on the ground
+  (a burst bag's spill, litter): they join one loose pile in the belly, unpaid. Not built from the proposal: gnomes, balls,
+  mailbox flags and raccoons riding the beam.
+- **Satellite pads** need that district's permit (the proposal's "Bluffs Trust ≥ 80%" is not checked). A pad stands once
+  any business in town owns it; a Hoverhog charges only on pads its own business bought. Positions are fixed world
+  coordinates in `HogTuning.SatPads`, measured on the town as published on 2026-10-08: **re-check them after re-authoring
+  those districts.** Each has a slab with its own ground collider, a sign and a windsock.
+- **Controls changed:** down is now **Ctrl or C** (Shift became the jets).
+- **The body was rebuilt** (`HogModel`, `HogMesh`): Nick called the first one "goofy/lazy (can look goofy but not lazy)". It
+  is now low-poly lathed and extruded meshes instead of stacked primitives: a two-tone hull, a ribbed compactor drum on
+  four hydraulic rams that fattens with each Belly level, four ducted fans with two contra-rotating props each, a framed
+  canopy, snout, headlight eyes whose pupils follow the motion, ears that fold back with speed, a curly tail, a five-lamp
+  battery gauge, name plates, and upgrade parts that bolt on (battery packs, the reactor jar, jet pods with flames, the
+  beam dish and cone). The collision sphere grew to 2.2 m.
+- **Debug:** Rubbish > Debug > Hoverhog > Upgrades: All Maxed / One Level Up Each / Back To Stock.
+
+**Verification of stage 2 (2026-10-08, QA copy, solo, scripted input).** The three-bag claw took 3 bags (+$11.89, curb
+records 13 → 10); the beam emptied a four-bag stop and earned its curb bonus; seven bags bombed from 6 m left 14 loose
+items and the beam picked them up; a one-bag tap dropped exactly one bag and the beam took it back; cruise measured
+22.0 m/s and 27.8 m/s on the jets; the reactor turned 8.8 kg into +0.0369 battery (expected 0.0369); all three satellite
+pads built and charged at pad speed. EditMode: the whole suite ran at 1357 of 1359; one failure was `MonumentTests`' pin on protocol 17 (updated, passes), the other is `CleanupBoardMaterialTests` (a material's RenderPipeline tag read back empty in batch mode; not a file this work touched, cause not looked into). **Not tested:** any of it with a
+second player (levels declared by a guest, a guest's beam, the reactor credit reaching a guest pilot), the crop circles
+by eye, the gamepad, a human at the keyboard.
+
+**Verification (2026-10-08, private QA copy, test data root).** EditMode: `HogRulesTests` (11) plus the catalog and
+replication suites, 126 passing. Play mode, solo: the shop stairs appear when it is owned; stairs up put the player on the
+roof deck; boarding, climbing and flying under scripted input; two claw grabs paid ($3.49, then $3.27 + the $2 curb
+bonus) and went to the belly with the truck's cargo still empty; a bomb-bay drop outdoors left one non-curb bag; a drop over
+the roof queued one depot delivery, which fell from the chute on walking in; landing on the pad charged it; hopping out and
+the stairs down arrived at the stair foot. Play mode, hosting (one world, host only): `HogNet` spawned, stairs both ways
+between roof and pocket interior, a claw grab paid, and a roof drop spawned the bag in that lot's interior. **Not tested:**
+a real second player (a guest flying, a guest watching, an employee flying), a flat battery in flight and the tow, the
+gamepad, a human on the keyboard (all flight was scripted input), and an exported build.
+### 6.11 DUMPSTERS and the Dumpster Dunker (built 2026-10-08)
+
+Nick: "commercial buildings put out both normal trash and full size dumpsters. players need the back loader truck with a new
+upgrade in order to handle these... an arm or attachment that picks up full dumpsters and tips them. they contain multiple
+garbage bags." Code: `Assets/Scripts/Trash/Dumpsters/` (`DumpsterRules` holds the numbers and the pure rules, pinned by
+`DumpsterRulesTests`).
+
+- **Where.** Every collection stop in **Coupon Commons** (all nine shops and restaurants) has a dumpster on a pad beside its
+  forecourt, 9 m along the kerb from the door and 5.6 m back, open front facing the road (`DumpsterRules.PadLocal`).
+  Stackington's towers have none (yet). The dumpster object is built at runtime on every machine; the pad, its screen
+  walls and the hatching out to the kerb are town dressing (`TownLifeCommons`).
+- **What is in it.** Ordinary curb records of that stop, in **slots 8 to 13** (curb slots are 0 to 5). So a dumpster bag is
+  rolled, aged, paid, fined, counted for Clean Streets and Trust, and replicated exactly like a curb bag; the only
+  difference is that no bag object is put on the curb for it (`PickupStop.SyncBags` skips those slots). It holds 6.
+- **How it fills.** A shop's put-out brings **one more bag than a house's would**, and each new bag goes in the dumpster
+  60% of the time while both it and the curb have room, otherwise wherever there is room (`CurbTrashSpawner.PutOut`). The
+  district's `bagsPerDay` and caps are unchanged, so this was not re-simulated: Commons simply fills towards its
+  `curbCap` (48) faster.
+- **Who can empty it.** Not hands (the prompt explains), not the side-loader arm, not the Hoverhog's claw or beam (they
+  work on bag objects), and not the raccoon crew (it skips dumpster slots). Only:
+
+| id | Lv | $ | Rank | Prereq | Title | Effect |
+|---|---|---|---|---|---|---|
+| `truck_dumpster_lift` | 1 | 2,400 | 5 | `truck_model:1`, `permit_coupon_commons` | *Dumpster Dunker Rear Tipper (Lifts 1 Dumpster, 0 Feelings)* | rear-loader only: back the hopper up to a dumpster (within 4.2 m behind, 1.9 m either side, 42° of square), stop, **hold B** (pad: d-pad down) 0.6 s. It lifts in 1.3 s and tips a bag every 0.45 s into the truck through `TruckHopper.CollectCurbBag`, so each pays the district fee and tip, and the stop's "Curb clean!" bonus lands when both its curb and its dumpster are empty. Stops when the truck is full (the rest stays in) or if you drive off |
+| | 2 | 9,000 | 7 | `truck_dumpster_lift:1` | *Dumpster Dunker II: Twin Rams* | a bag every 0.18 s |
+
+- **Co-op.** Host-authoritative like TIP IT: a guest driver asks through `DumpsterNet` (the host re-checks the seat, the
+  level, the model, reach, speed, the permit of the truck's business and the truck's room), every machine plays the lift.
+  The level replicates as nibble 14 of `BusinessUpgradeInfo.truckLevels` (one nibble left). Protocol 20.
+- **Verified (QA copy, solo):** with five records put in `cc-market-2`'s dumpster, no bag appeared on the curb; the truck
+  parked in front of it was in reach; one hold tipped all five into the truck (47.9 kg) for +$193 (5 x $30 fee, $25 tips,
+  the $18 curb bonus). Not tested: the natural put-out filling dumpsters over a day, a full truck mid-tip, a guest driver,
+  backing up to it by hand (the truck was placed), and the economy.
+
+---
 
 ## 7. Late game and end goals
 

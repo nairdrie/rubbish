@@ -113,8 +113,8 @@ public static class UpgradeEffects
 
     /// <summary>compactor_mk2 level 0..3.</summary>
     public static int Compactor => L(ShopIds.CompactorMk2, 3);
-    static readonly float[] compactPerKg = { Economy.CompactorScrapPerKg, 0.25f, 0.30f, 0.35f };
-    /// <summary>Chamber and bulk compact $/kg: 0.20 / 0.25 / 0.30 / 0.35; always below base recycling.</summary>
+    static readonly float[] compactPerKg = { Economy.CompactorScrapPerKg, 1.00f, 1.20f, 1.40f };
+    /// <summary>Chamber and bulk compact $/kg: 0.80 / 1.00 / 1.20 / 1.40; always below base recycling (paper 1.80).</summary>
     public static float CompactPerKg => CompactPerKgAtLevel(Compactor);
     public static float CompactPerKgAtLevel(int level) => compactPerKg[Mathf.Clamp(level, 0, compactPerKg.Length - 1)];
     /// <summary>Compatibility multiplier: ordinary loose scrap earns exactly the same rate as bulk compaction.</summary>
@@ -133,8 +133,8 @@ public static class UpgradeEffects
     /// <summary>Recycling pay ×(1 / 1.5 / 2 / 3 / 4) by recycling_contracts, after the combo.</summary>
     public static float RecycleMult => recycleMult[L(ShopIds.RecyclingContracts, 4)];
     public static float RecycleMultAtLevel(int level) => recycleMult[Mathf.Clamp(level, 0, recycleMult.Length - 1)];
-    static readonly float[] hazardPay = { Economy.HazardDisposalPay, 1.50f, 4.00f };
-    /// <summary>$ per hazard binned: 0.75 / 1.50 / 4.00 by hazmat_contract.</summary>
+    static readonly float[] hazardPay = { Economy.HazardDisposalPay, 6.00f, 16.00f };
+    /// <summary>$ per hazard binned: 3.00 / 6.00 / 16.00 by hazmat_contract.</summary>
     public static float HazardPay => hazardPay[L(ShopIds.HazmatContract, 2)];
     public static float HazardPayAtLevel(int level) => hazardPay[Mathf.Clamp(level, 0, hazardPay.Length - 1)];
 
@@ -154,13 +154,13 @@ public static class UpgradeEffects
 
     public const int PlankShelfSlots = 3, TrophyShelfSlots = 6, MuseumWingSlots = 18, GlassCaseSlots = 4, PedestalSlots = 1, VaultSlots = 6;
     /// <summary>Base Rep per midnight while the piece shows at least one find (a plank impresses nobody).</summary>
-    public const float PlankShelfRep = 0f, GlassCaseRep = 10f, PedestalRep = 25f, VaultRep = 40f;
+    public const float PlankShelfRep = 0f, GlassCaseRep = 30f, PedestalRep = 75f, VaultRep = 120f;
     /// <summary>The pedestal's spotlight doubles the Showcase Rep of its find.</summary>
     public const float PedestalShowcaseMult = 2f;
     /// <summary>The vault only takes Epic and Legendary finds.</summary>
     public const Rarity VaultMinRarity = Rarity.Epic;
-    static readonly float[] showcaseRep = { 0f, 0f, 2f, 4f, 8f };   // Common, Uncommon, Rare, Epic, Legendary
-    /// <summary>Showcase Rep per midnight for a find of this rarity in a fancy piece: Rare +2, Epic +4, Legendary +8.</summary>
+    static readonly float[] showcaseRep = { 0f, 0f, 6f, 12f, 24f };  // Common, Uncommon, Rare, Epic, Legendary
+    /// <summary>Showcase Rep per midnight for a find of this rarity in a fancy piece: Rare +6, Epic +12, Legendary +24.</summary>
     public static float ShowcaseRep(Rarity r) => showcaseRep[Mathf.Clamp((int)r, 0, showcaseRep.Length - 1)];
 
     // ------------------------------------------------------------------ MAGNUS (§6.3: a career path, see MagnusCareer)

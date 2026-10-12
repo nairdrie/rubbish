@@ -207,7 +207,7 @@ public class CurbTrashSpawner : MonoBehaviour
 
     /// <summary>Expected bags a day for one district right now (0 when locked).</summary>
     public static float DistrictBagsPerDay(DistrictDef d) =>
-        d == null || !DistrictAccess.OpenInTown(d) ? 0f : d.bagsPerDay * SubscribedShare(d);
+        d == null || !DistrictAccess.OpenInTown(d) ? 0f : d.bagsPerDay * SubscribedShare(d) * Campaign.RateMult(d); // a contract district sets its trash out more often (Campaign)
 
     // ------------------------------------------------------------------ runner
 
@@ -297,6 +297,7 @@ public class CurbTrashSpawner : MonoBehaviour
         var bags = GameSession.CurbBags;
         for (int i = bags.Count - 1; i >= 0; i--) GameSession.RemoveCurbBag(bags[i].bagId);
         CurbTrash.Invalidate();
+        Campaign.OnSessionBegin();
         simulatedTo = GameClock.TotalHours;
         lastDayIndex = GameClock.DayIndex;
         Debug.Log($"[CurbTrashSpawner] started at {GameClock.ClockText} (starter target {TargetBagsPerDay} bags/day at 100% Trust, cap {GlobalCap}, ×{RateScale:0.0} for {Businesses.OnlineCount} business(es)).");
@@ -322,6 +323,8 @@ public class CurbTrashSpawner : MonoBehaviour
 
     void SeedStartingTrash()
     {
+        // The contract districts' old heaps go out first, so they get the room under the curb caps (Campaign).
+        Campaign.OnSpawnerSession();
         // A fresh server starts with a few bags out in the trickle districts (scaled to what's open: 9 solo, otherwise 8).
         double now = GameClock.TotalHours;
         float perDay = 0f;
@@ -478,13 +481,22 @@ public class CurbTrashSpawner : MonoBehaviour
     {
         int placed = 0;
         var d = h.District;
+        // A shop puts out its curb bags AND fills its dumpster (Trash/Dumpsters): one more bag per put-out, and each
+        // bag goes to whichever of the two has room (mostly the dumpster while both do).
+        bool dumpster = DumpsterRules.HasDumpster(d.id);
+        if (dumpster) n++;
         for (int k = 0; k < n; k++)
         {
             if (GameSession.CurbBags.Count >= Cap) break;
             if (CurbTrash.BagsIn(d) >= CurbCap(d)) break;
-            int slot = CurbTrash.FreeSlot(h.stopId, h.capacity);
-            if (slot < 0) break; // curb full: no more until it's picked up
             string bagId = $"{h.stopId}/{GameSession.NewUid()}";
+            int slot = CurbTrash.FreeSlot(h.stopId, h.capacity);
+            if (dumpster)
+            {
+                int inDumpster = DumpsterRules.FreeSlot(CurbTrash.StatsFor(h.stopId).usedSlotMask);
+                if (DumpsterRules.GoesInDumpster(bagId, slot >= 0, inDumpster >= 0)) slot = inDumpster;
+            }
+            if (slot < 0) break; // curb (and dumpster) full: no more until it's picked up
             float trust = GameSession.GetDistrictTrust(d.id, d.trustStart);
             var contents = ItemCatalog.RollBag(bagId, PickupVisuals.StableHash(bagId), h.wealth, h.address, CurbProfile(d), trust);
             if (contents == null) break;

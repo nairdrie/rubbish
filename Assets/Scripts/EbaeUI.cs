@@ -6,13 +6,14 @@ using UnityEngine.UIElements;
 using Random = UnityEngine.Random;
 
 /// <summary>The apps on the shop laptop's tab strip. The third only exists once the business has found its floppy disk
-/// (<see cref="Workshop.HasPrinter"/>).</summary>
-public enum LaptopApp { Ebae, Scrapazon, Printer }
+/// (<see cref="Workshop.HasPrinter"/>); the fourth only in a Town with the one world on (<see cref="Payroll.Available"/>).</summary>
+public enum LaptopApp { Ebae, Scrapazon, Printer, Payroll }
 
 /// <summary>
 /// The shop laptop screen (UI Toolkit, Assets/UI/ebae/ebae.uxml): a tiny browser with an app tab strip —
 /// ebag (sell-side, this class) | Scrapazon (buy-side, <see cref="ScrapazonApp"/>, Assets/UI/shop/) | SolidWaste 3D
-/// (print your own gear and the Monument, <see cref="SolidWasteApp"/>, Assets/UI/print/; installed by a floppy disk).
+/// (print your own gear and the Monument, <see cref="SolidWasteApp"/>, Assets/UI/print/; installed by a floppy disk) |
+/// Payroll (hire and fire your friends, <see cref="PayrollApp"/>, Assets/UI/payroll/; only in a co-op Town).
 /// ebag, the parody auction site. Tabs: Your Junk (GameSession.Inventory: list at a preset/custom price or
 /// pawn now), Listings (live offers with accept/decline + countdowns) and Sold (history). All economy goes
 /// through <see cref="EbaeMarket"/>. Show()/Hide() push/pop the player's UI lock exactly once each; switching
@@ -35,6 +36,9 @@ public partial class EbaeUI : MonoBehaviour
     public static bool ScrapazonVisited { get; private set; }
 
     enum Tab { Junk, Listings, Sold, Neighbours }
+
+    /// <summary>The laptop is open on ebag's Listings tab (new offers appear in the list itself, so they skip the toast).</summary>
+    public static bool ViewingListings => IsOpen && Instance != null && Instance.app == LaptopApp.Ebae && Instance.tab == Tab.Listings;
 
     class OfferView
     {
@@ -61,10 +65,12 @@ public partial class EbaeUI : MonoBehaviour
     readonly List<VisualElement> logoLetters = new List<VisualElement>();
 
     // laptop app strip
-    VisualElement ebaePage, shopPage, printPage, appTabEbae, appTabShop, appTabPrint;
+    VisualElement ebaePage, shopPage, printPage, payrollPage, appTabEbae, appTabShop, appTabPrint, appTabPayroll;
     Label appTabEbaeLabel, appTabEbaeBadge, appTabShopLabel, appTabShopBadge, appTabPrintLabel, appTabPrintBadge, osClockLabel;
     ScrapazonApp shop;
     SolidWasteApp printer;
+    PayrollApp payroll;
+    bool payrollShown;
     LaptopApp app = LaptopApp.Ebae;
     static LaptopApp lastApp = LaptopApp.Ebae;
     float nextClockAt;
@@ -159,6 +165,7 @@ public partial class EbaeUI : MonoBehaviour
     {
         ReleaseLock();
         printer?.Dispose();
+        payroll?.Dispose();
         itemThumbnails.Dispose();
         if (Instance == this) Instance = null;
     }
@@ -172,6 +179,7 @@ public partial class EbaeUI : MonoBehaviour
         ClearFx();
         shop?.SetActive(false);
         printer?.SetActive(false);
+        payroll?.SetActive(false);
         PlayerController.PopUILock();
     }
 
@@ -202,6 +210,8 @@ public partial class EbaeUI : MonoBehaviour
         TickClock();
         if (app == LaptopApp.Scrapazon) shop?.Tick();
         else if (app == LaptopApp.Printer) printer?.Tick();
+        else if (app == LaptopApp.Payroll) payroll?.Tick();
+        if (PayrollAvailable != payrollShown) RefreshAppTabs(); // a Town opened / closed under the open laptop
     }
 
     // ------------------------------------------------------------------ show / hide
@@ -257,14 +267,21 @@ public partial class EbaeUI : MonoBehaviour
         if (GameSession.HasRabies && GameSession.GetConsumable(ShopIds.RabiesShot) == 0) return LaptopApp.Scrapazon;
         if (PrinterIsNew) return LaptopApp.Printer;
         if (EbaeMarket.PendingOfferCount > 0 || NeighbourWaiting > 0) return LaptopApp.Ebae;
-        return lastApp == LaptopApp.Printer && !Workshop.HasPrinter ? LaptopApp.Ebae : lastApp;
+        if (lastApp == LaptopApp.Printer && !Workshop.HasPrinter) return LaptopApp.Ebae;
+        if (lastApp == LaptopApp.Payroll && !PayrollAvailable) return LaptopApp.Ebae;
+        return lastApp;
     }
+
+    /// <summary>The Payroll tab exists (and the app can open) only in a Town with the one world on.</summary>
+    static bool PayrollAvailable => Payroll.Available;
 
     /// <summary>SolidWaste 3D is installed on this business's laptop and has never been opened (the tab wears a NEW badge).</summary>
     public static bool PrinterIsNew => Workshop.HasPrinter && GameSession.GetCounter(SolidWasteApp.SeenCounter) == 0;
 
-    VisualElement TabOf(LaptopApp which) => which == LaptopApp.Ebae ? appTabEbae : which == LaptopApp.Scrapazon ? appTabShop : appTabPrint;
-    VisualElement PageOf(LaptopApp which) => which == LaptopApp.Ebae ? ebaePage : which == LaptopApp.Scrapazon ? shopPage : printPage;
+    VisualElement TabOf(LaptopApp which) =>
+        which == LaptopApp.Ebae ? appTabEbae : which == LaptopApp.Scrapazon ? appTabShop : which == LaptopApp.Printer ? appTabPrint : appTabPayroll;
+    VisualElement PageOf(LaptopApp which) =>
+        which == LaptopApp.Ebae ? ebaePage : which == LaptopApp.Scrapazon ? shopPage : which == LaptopApp.Printer ? printPage : payrollPage;
 
     /// <summary>The floppy just went in (this machine's own business): the tab appears, and says so if the laptop is open.</summary>
     void OnDiskInstalled()
@@ -288,6 +305,11 @@ public partial class EbaeUI : MonoBehaviour
             which = LaptopApp.Ebae;
             if (animate) UiToast("no such program. (if only somebody threw out a disk.)", "info");
         }
+        if (which == LaptopApp.Payroll && (payroll == null || !PayrollAvailable))
+        {
+            which = LaptopApp.Ebae;
+            if (animate) UiToast("payroll needs a Town with friends in it. (the router is not that kind of friend.)", "info");
+        }
         bool changed = which != app;
         app = which;
         lastApp = which;
@@ -295,6 +317,7 @@ public partial class EbaeUI : MonoBehaviour
         if (ebaePage != null) ebaePage.style.display = which == LaptopApp.Ebae ? DisplayStyle.Flex : DisplayStyle.None;
         shop?.SetActive(which == LaptopApp.Scrapazon);
         printer?.SetActive(which == LaptopApp.Printer);
+        payroll?.SetActive(which == LaptopApp.Payroll);
         // SolidWaste keeps its PRINT button bottom right, where the toasts land: there they drop in at the top of its inspector
         toastLayer?.EnableInClassList("toast-layer--sw", which == LaptopApp.Printer);
         if (which == LaptopApp.Scrapazon) ScrapazonVisited = true;
@@ -337,6 +360,15 @@ public partial class EbaeUI : MonoBehaviour
             if (appTabPrintLabel != null) appTabPrintLabel.text = SolidWaste.TabLabel;
             appTabPrintBadge?.EnableInClassList("app-tab-badge--hidden", !PrinterIsNew);
             if (!installed && app == LaptopApp.Printer && isOpen) SwitchApp(LaptopApp.Ebae, false);
+        }
+        // Payroll: only in a Town with the one world on
+        payrollShown = PayrollAvailable;
+        if (appTabPayroll != null)
+        {
+            bool available = payroll != null && payrollShown;
+            appTabPayroll.style.display = available ? DisplayStyle.Flex : DisplayStyle.None;
+            appTabPayroll.EnableInClassList("app-tab--active", app == LaptopApp.Payroll);
+            if (!available && app == LaptopApp.Payroll && isOpen) SwitchApp(LaptopApp.Ebae, false);
         }
     }
 
@@ -482,9 +514,12 @@ public partial class EbaeUI : MonoBehaviour
         appTabPrint = root.Q<VisualElement>("appTabPrint");
         appTabPrintLabel = root.Q<Label>("appTabPrintLabel");
         appTabPrintBadge = root.Q<Label>("appTabPrintBadge");
+        payrollPage = root.Q<VisualElement>("payrollPage");
+        appTabPayroll = root.Q<VisualElement>("appTabPayroll");
         OnClick(appTabEbae, () => SwitchApp(LaptopApp.Ebae, true));
         OnClick(appTabShop, () => SwitchApp(LaptopApp.Scrapazon, true));
         OnClick(appTabPrint, () => SwitchApp(LaptopApp.Printer, true));
+        OnClick(appTabPayroll, () => SwitchApp(LaptopApp.Payroll, true));
         OnClick(root.Q<VisualElement>("appTabPlus"), () =>
         {
             Sfx.Play("squeak", null, 0.6f, 1.2f);
@@ -498,6 +533,10 @@ public partial class EbaeUI : MonoBehaviour
         try { printer = SolidWasteApp.Create(this, root); }
         catch (Exception e) { Debug.LogException(e); printer = null; }
         if (printer == null) Debug.LogWarning("[EbaeUI] No SolidWaste 3D page in ebae.uxml (solidWastePage); the laptop cannot print.");
+        payroll?.Dispose();
+        try { payroll = PayrollApp.Create(this, root); }
+        catch (Exception e) { Debug.LogException(e); payroll = null; }
+        if (payroll == null) Debug.LogWarning("[EbaeUI] No Payroll page in ebae.uxml (payrollPage); the laptop has no Payroll tab.");
         if (ebaePage != null) ebaePage.style.display = DisplayStyle.Flex;
 
         builtSignature = null;
@@ -733,7 +772,7 @@ public partial class EbaeUI : MonoBehaviour
         actions.Add(appraisal);
         bool precious = wanted || neededFor.Length > 0;
         var row = V("pawn-row");
-        row.Add(Btn($"{(precious ? "Pawn one anyway" : "Pawn one")} {Economy.Money(each)}  (Pawn Pete, less than recycling)", "btn-pawn", () => DoScrap(name, group.GetRange(0, 1))));
+        row.Add(Btn($"{(precious ? "Pawn one anyway" : "Pawn one")} {Economy.Money(each)}", "btn-pawn", () => DoScrap(name, group.GetRange(0, 1))));
         actions.Add(row);
         // One at a time through a Town host (each is confirmed), and never a whole stack of something you need.
         if (group.Count > 1 && !precious && !EbaeNeighbours.UsesHostNpc)
@@ -834,7 +873,7 @@ public partial class EbaeUI : MonoBehaviour
         actions.Add(hint);
 
         var pawnRow = V("pawn-row");
-        pawnRow.Add(Btn($"Pawn now {Economy.Money(EbaeMarket.PawnPrice(it))}  ({(EbaeNeighbours.UsesHostNpc ? "host-confirmed" : "instant")}, Pawn Pete)",
+        pawnRow.Add(Btn($"Pawn now {Economy.Money(EbaeMarket.PawnPrice(it))}" + (EbaeNeighbours.UsesHostNpc ? "\n<size=70%>host-confirmed</size>" : ""),
             "btn-pawn", () => DoPawn(card, it)));
         actions.Add(pawnRow);
         card.Add(actions);
@@ -1302,6 +1341,7 @@ public partial class EbaeUI : MonoBehaviour
     {
         dirty = true;
         if (!isOpen) return;
+        if (ViewingListings) { RefreshAppTabs(); return; } // the Listings list rebuilds with the new offer: no toast, sounds or pulse on top of it
         bool full = o.amount >= l.askingPrice - 0.001f;
         Sfx.Play("notify");
         if (o.isSpecial || full) Sfx.Play("sparkle", null, 0.6f);

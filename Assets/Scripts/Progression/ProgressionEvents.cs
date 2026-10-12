@@ -30,17 +30,17 @@ public struct ItemSortedFact
 /// <summary>What a neighbour incident was (Docs/WorldLife.md §9.1).</summary>
 public enum NeighborIncidentKind : byte
 {
-    /// <summary>A resident / pedestrian flattened by a truck (Rep −4).</summary>
+    /// <summary>A resident / pedestrian flattened by a truck (Rep −8).</summary>
     Flattened = 0,
-    /// <summary>A car shunted, moving or parked (Rep −3).</summary>
+    /// <summary>A car shunted, moving or parked (Rep −6).</summary>
     CarShunt = 1,
-    /// <summary>A dog leapt clear of a truck; the owner is furious (Rep −1).</summary>
+    /// <summary>A dog leapt clear of a truck; the owner is furious (Rep −2).</summary>
     DogNearMiss = 2,
-    /// <summary>A thrown bag / item flopped a resident (Rep −1).</summary>
+    /// <summary>A thrown bag / item flopped a resident (Rep −2).</summary>
     ThrownFlop = 3,
-    /// <summary>A night honk near houses (Rep −1; at most 3 a night per district).</summary>
+    /// <summary>A night honk near houses (Rep −2; at most 3 a night per district).</summary>
     NoiseComplaint = 4,
-    /// <summary>A resident handed their bag over (Rep +1; at most 10 a day).</summary>
+    /// <summary>A resident handed their bag over (Rep +3; at most 10 a day).</summary>
     Neighborly = 5,
     /// <summary>A burglar was seen at a house (Scavenger calling; Rep ScavengerTuning.BurglaryRep). Host-side fact, never on the wire.</summary>
     Burglary = 6,

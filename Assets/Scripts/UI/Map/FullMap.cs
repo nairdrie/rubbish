@@ -606,7 +606,7 @@ public sealed class FullMap : UiScreen
             legRowKey[r] = key;
             row.stats.text = unlocked
                 ? $"{UiText.MapTrust} {trust}% · {subs}/{houses} houses · {out1} out"
-                : $"<color=#FFD45A>{UiText.MapLocked}</color> · Rank {row.d.rankRequired} + {Economy.Money(row.d.permitPrice)} permit";
+                : $"<color=#FFD45A>{UiText.MapLocked}</color> · " + (Campaign.LockedReason(row.d.id) ?? $"Rank {row.d.rankRequired} + {Economy.Money(row.d.permitPrice)} permit");
             row.name.color = unlocked ? Color.white : new Color(0.7f, 0.68f, 0.78f);
         }
         bool cb = !live || GameSettings.ColorblindMarkers;
@@ -666,7 +666,9 @@ public sealed class FullMap : UiScreen
         {
             var d = Districts.AtPosition(new Vector3(xz.x, 0f, xz.y));
             if (d != null && !Districts.IsUnlocked(d))
-                text = UiText.MapLockedCard(d.name, d.rankRequired, Economy.Money(d.permitPrice), Progression.Rank);
+                text = Campaign.LockedReason(d.id) is string contractLock
+                    ? $"{d.name} · {contractLock}"
+                    : UiText.MapLockedCard(d.name, d.rankRequired, Economy.Money(d.permitPrice), Progression.Rank);
         }
         if (text == null) { cardRt.gameObject.SetActive(false); return; }
         cardText.text = text;

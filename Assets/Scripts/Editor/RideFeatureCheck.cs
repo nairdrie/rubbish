@@ -2,31 +2,29 @@ using System;
 using System.Reflection;
 using UnityEngine;
 
-/// <summary>Focused F1 check for the grip upgrades, shared Safety Bar visuals, hedge catching and trampoline bounce.
-/// Run in the isolated Editor copy with -batchmode -nographics -quit -executeMethod RideFeatureCheck.Run.</summary>
+/// <summary>Focused F1 check for the crash rule and its two truck upgrades, the shared Safety Bar visuals, hedge catching and
+/// trampoline bounce. Run in the isolated Editor copy with -batchmode -nographics -quit -executeMethod RideFeatureCheck.Run.</summary>
 public static class RideFeatureCheck
 {
     public static void Run()
     {
         Check(RideHolds.Count == 4, "four holds");
-        Check(RideTruck.Drain(6f, 0f, 0f) > RideTruck.Drain(3f, 0f, 0f), "cornering is the main drain");
-        Check(RideTruck.Drain(0f, 7f, 0f) > 0f, "hard braking drains grip");
-        Check(RideTruck.Drain(0f, 0f, 3f) > 0f, "drifting drains grip");
-        Check(RideShop.GloveDrainMult(1) < 1f && RideShop.GloveDrainMult(2) < RideShop.GloveDrainMult(1),
-            "both glove levels reduce drain");
-        Check(RideShop.PadJoltMult(1) < 1f && RideShop.PadJoltMult(2) < RideShop.PadJoltMult(1),
-            "both padded-step levels reduce jolts");
-        Check(RideTuning.SafetyBarSpeedFor(1) == 8f && RideTuning.SafetyBarSpeedFor(0) == 0f,
-            "Safety Bar protects only equipped trucks below threshold");
-        Check(RideTuning.BarSaves(1, true, 7.99f) && !RideTuning.BarSaves(1, true, 8f) &&
-            !RideTuning.BarSaves(1, false, 2f) && !RideTuning.BarSaves(0, true, 2f),
-            "bar protection switches off at 8 m/s, when raised or when unequipped");
+        Check(RideTuning.CrashFlingDv(0, 0, true) == 5f && RideTuning.CrashFlingDv(0, 1, false) == 5f,
+            "a 5 m/s hit throws riders off a bare truck or one with its Safety Bar up");
+        Check(RideTuning.CrashFlingDv(0, 1, true) == 8f, "the Safety Bar holds through crashes under 8 m/s while it's down");
+        Check(RideTuning.CrashFlingDv(1, 0, true) == 6.5f && RideTuning.CrashFlingDv(2, 0, true) == 8f &&
+            RideTuning.CrashFlingDv(2, 1, true) == 11f, "the Padded Step adds 1.5 / 3 m/s on top");
+        // Ordinary driving over the crash window (50 Hz): locked-wheel braking (~2.1 g), a hard corner (10 m/s round a
+        // 10 m radius) and a drift spinning at 2 rad/s all stay well under the base threshold.
+        float window = RideTuning.CrashWindowSteps * 0.02f;
+        Check(21f * window < RideTuning.FlingAllDv * 0.5f && 10f * 1f * window < RideTuning.FlingAllDv * 0.5f &&
+            10f * 2f * window < RideTuning.FlingAllDv * 0.5f, "braking, cornering and drifting stay far below a crash");
         var down = new RideModsNet { truck = 1, bar = 1, barDown = true };
         var up = new RideModsNet { truck = 1, bar = 1, barDown = false };
         Check(!down.Equals(up), "a bar flip changes replicated mod state");
         CheckBarGeometry();
         CheckHedgeAndTrampoline();
-        Debug.Log("[RideFeatureCheck] PASS: grip/upgrades, shared bar visuals, hedge and trampoline flight checks");
+        Debug.Log("[RideFeatureCheck] PASS: crash rule/upgrades, shared bar visuals, hedge and trampoline flight checks");
     }
 
     static void CheckBarGeometry()

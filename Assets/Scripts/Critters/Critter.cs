@@ -426,6 +426,9 @@ public abstract class Critter : MonoBehaviour
     Vector3 anchorLocal;
     Quaternion anchorRot = Quaternion.identity;
     bool anchorSet;
+    Transform anchorFrame;      // axes the local offset is expressed in (null = the anchor itself); lets a bone supply position only
+    Vector3 anchorScaleBackup;  // root scale to restore when the anchor is cleared
+    bool anchorScaled;
 
     /// <summary>Guest: this object copies the host's critter <paramref name="id"/>.</summary>
     public void MakePuppet(ushort id) { NetPuppet = true; NetId = id; }
@@ -474,26 +477,51 @@ public abstract class Critter : MonoBehaviour
     public Transform AnchorTransform => anchor;
 
     /// <summary>Ride along with <paramref name="t"/> (a truck's hopper, a player's head) at a local offset (no scale).</summary>
-    public void SetAnchor(Transform t, Vector3 localPos, Quaternion localRot)
+    public void SetAnchor(Transform t, Vector3 localPos, Quaternion localRot) => SetAnchor(t, null, localPos, localRot, 0f);
+
+    /// <summary>
+    /// Ride along with <paramref name="bone"/> (position only) at <paramref name="localPos"/> world metres, expressed in the axes of
+    /// <paramref name="frame"/> (e.g. the player root, so the unknown bone orientation can't tip the critter). <paramref name="scale"/>
+    /// &gt; 0 also sets the critter's root scale until <see cref="ClearAnchor"/>.
+    /// </summary>
+    public void SetAnchor(Transform bone, Transform frame, Vector3 localPos, Quaternion localRot, float scale)
     {
-        anchor = t;
+        RestoreAnchorScale();
+        anchor = bone;
+        anchorFrame = frame;
+        if (scale > 0f && bone != null)
+        {
+            anchorScaleBackup = transform.localScale;
+            anchorScaled = true;
+            transform.localScale = anchorScaleBackup * scale;
+        }
         anchorLocal = localPos;
         anchorRot = localRot;
-        anchorSet = t != null;
+        anchorSet = bone != null;
         if (anchorSet) FollowAnchor();
+    }
+
+    void RestoreAnchorScale()
+    {
+        if (!anchorScaled) return;
+        anchorScaled = false;
+        transform.localScale = anchorScaleBackup;
     }
 
     public void ClearAnchor()
     {
+        RestoreAnchorScale();
         anchorSet = false;
         anchor = null;
+        anchorFrame = null;
         netHas = false; // puppets: snap to the next snapshot
     }
 
     void FollowAnchor()
     {
         if (anchor == null) { ClearAnchor(); OnAnchorLost(); return; }
-        transform.SetPositionAndRotation(anchor.position + anchor.rotation * anchorLocal, anchor.rotation * anchorRot);
+        Quaternion fr = anchorFrame != null ? anchorFrame.rotation : anchor.rotation;
+        transform.SetPositionAndRotation(anchor.position + fr * anchorLocal, fr * anchorRot);
     }
 
     /// <summary>The thing we rode on vanished.</summary>

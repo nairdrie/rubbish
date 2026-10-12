@@ -2,38 +2,24 @@ using UnityEngine;
 
 public static partial class ItemCatalog
 {
-    // Attempts per non-valuable slot, NOT multipliers on the rare loot table. Some attempts have
-    // no eligible same-weight collectible and leave the slot alone. No Rare+ outcomes in this lane.
-    public const float EverydayCommonChance = 0.012f, EverydayUncommonChance = 0.004f;
-
-    public static Rarity? EverydayFindRarity(double roll, float existingValuableChance)
+    /// <summary>
+    /// The Keepsake bonus: a lucky bag (profile.keepsakeChance) gets ONE extra Common or Uncommon valuable, in the same
+    /// proportion as the normal pool (<see cref="CommonShare"/>). It is added, never swapped in, so the bag's original contents
+    /// are untouched, and it never produces Rare+ outcomes.
+    /// </summary>
+    static void ApplyKeepsakeBonus(BagContents bag, int seed, float houseWealth, Theme theme, LootProfile profile, string foundAt)
     {
-        double start = Mathf.Clamp01(existingValuableChance);
-        if (double.IsNaN(roll) || roll < start || roll >= 1.0) return null;
-        if (roll < start + EverydayCommonChance) return Rarity.Common;
-        if (roll < start + EverydayCommonChance + EverydayUncommonChance) return Rarity.Uncommon;
-        return null;
-    }
-
-    static void ApplyEverydayFinds(BagContents bag, int seed, Theme theme, LootProfile profile, string foundAt)
-    {
-        // Run only after all original draws, minimum-weight filling, guarantees, shuffling and
-        // personality shaping. Never consume their RNG stream or re-evaluate an existing treasure.
+        if (profile == null || profile.keepsakeChance <= 0f) return;
+        // Runs only after all original draws, minimum-weight filling, guarantees, shuffling and personality shaping,
+        // on its own RNG lane so it never consumes or re-evaluates the bag's own stream.
         var extra = new System.Random(unchecked(seed ^ 0x49bc71ad)); // coop:allow(random) deterministic lane derived from the authoritative bag seed, never local time
-        string tag = ThemeTag(theme);
-        for (int i = 0; i < bag.items.Count; i++)
-        {
-            var source = bag.items[i];
-            if (source?.Def == null || source.Def.category == ItemCategory.Valuable) continue;
-            var rarity = EverydayFindRarity(extra.NextDouble(), 0f);
-            if (!rarity.HasValue) continue;
-            var def = WeightedPick(extra, d => d.category == ItemCategory.Valuable && d.rarity == rarity.Value &&
-                d.minMass <= source.massKg && d.maxMass >= source.massKg, tag, theme, profile);
-            if (def == null) continue;
-            var find = RollItem(def, extra, foundAt);
-            find.massKg = source.massKg; // exact same legal catalog-range mass: same bags fit the same truck
-            bag.items[i] = find;
-        }
+        if (extra.NextDouble() >= profile.keepsakeChance) return;
+        var rarity = extra.NextDouble() < CommonShare(houseWealth, profile) ? Rarity.Common : Rarity.Uncommon;
+        var def = WeightedPick(extra, d => d.category == ItemCategory.Valuable && d.rarity == rarity, ThemeTag(theme), theme, profile);
+        if (def == null) return;
+        var find = RollItem(def, extra, foundAt);
+        if (bag.TotalMassKg + find.massKg > MaxBagKg) return;
+        bag.items.Insert(extra.Next(bag.items.Count + 1), find);
     }
 
     // One unique mesh key per new collectible. Existing U/R/E/L normal-loot variety grows by

@@ -413,7 +413,7 @@ public static partial class Progression
         int bags = Mathf.Max(r.bagsIntoTruckToday, DailyStats.Today.bags);
 
         // 1. Clean Day first, so a promotion that waited on it can land in step 7 (§4.2).
-        bool cleanDay = Clean(r, top) >= CleanDayTopDistrictMin && bags >= CleanDayMinBags;
+        bool cleanDay = Clean(r, Campaign.CleanDayDistrict(top)) >= CleanDayTopDistrictMin && bags >= CleanDayMinBags;
         if (cleanDay) GameSession.AddCleanDay();
 
         // 2. Rep (§4.1)
@@ -434,7 +434,9 @@ public static partial class Progression
         {
             if (!r.clean01.TryGetValue(d.id, out float c)) continue;
             float t = Trust01(d);
-            t += c >= TrustGreatClean ? TrustGreatGain : c >= TrustGoodClean ? TrustGoodGain : -TrustDirtyLoss;
+            float dt = c >= TrustGreatClean ? TrustGreatGain : c >= TrustGoodClean ? TrustGoodGain : -TrustDirtyLoss;
+            if (dt < 0f && Campaign.IsUnderContract(d.id)) dt = 0f;   // a district under contract may be filthy without losing its customers
+            t += dt;
             GameSession.SetDistrictTrust(d.id, Mathf.Clamp01(t));
             GameSession.SetCounter("clean_last_" + d.id, Mathf.RoundToInt(Mathf.Clamp01(c) * 1000f) + 1);
         }
@@ -498,6 +500,7 @@ public static partial class Progression
         {
             string key = "dirty_nights_" + d.id;
             if (!r.clean01.TryGetValue(d.id, out float c)) continue;
+            if (Campaign.IsUnderContract(d.id)) continue;             // dirty on purpose: no complaints, no crew nudge
             int n = c < DirtyLetterBelow ? GameSession.GetCounter(key) + 1 : 0;
             GameSession.SetCounter(key, n);
             if (c < DirtyLetterBelow && c < worst) { worst = c; dirtiest = d; }

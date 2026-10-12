@@ -66,7 +66,7 @@ public sealed class TownRulesCardView : MonoBehaviour
         if (pillBody != null) pillBody.color = on ? UiTheme.Go : UiTheme.Disabled;
         if (pillWord != null) pillWord.text = on ? UiText.On : UiText.Off;
         if (description != null) description.text = on
-            ? "A rabid player's knockdown can infect the victim (50%). A Rabies Shot at any shop still cures it."
+            ? $"A rabid player's knockdown can infect the victim (50%). A Rabies Shot from {Scrapazon.Name} still cures it."
             : "Raccoons can still infect players, but players cannot pass rabies to one another.";
         if (toggle != null) toggle.SetLabel(on ? "TURN OFF" : "TURN ON");
     }

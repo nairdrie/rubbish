@@ -6,8 +6,10 @@ using UnityEngine;
 /// Adds random pitch/volume variation per play and throttles identical ids fired within ~30 ms
 /// (so two systems reacting to the same event don't double up).
 /// Volume categories (Settings → Audio, Docs/UIPass.md §6.2): ambience ids (cricket, owl, rooster) follow the Ambience
-/// slider, everything else the Sound effects slider (Master is AudioListener.volume). The 2D pool ignores listener pause,
-/// so UI sounds still play during the solo freeze (§5.4).
+/// slider, everything else the Sound effects slider (Master is AudioListener.volume). Music never goes through here: the
+/// background tracks, the casino's house band and the workshop radio own their AudioSources and follow the Music slider
+/// (<see cref="GameSettings.MusicVolume"/>). The 2D pool ignores listener pause, so UI sounds still play during the solo
+/// freeze (§5.4).
 /// </summary>
 public sealed class FeelSfxPlayer
 {
@@ -30,7 +32,8 @@ public sealed class FeelSfxPlayer
         Application.isPlaying ? (ambience.Contains(key) ? GameSettings.AmbienceVolume : GameSettings.SfxVolume) : 1f;
 
     static readonly HashSet<string> musical = new HashSet<string>
-    { "ding", "cash", "rare", "legendary", "notify", "combo", "beep", "horn", "truck_full", "sparkle", "car_horn", "car_alarm" };
+    { "ding", "cash", "rare", "legendary", "notify", "combo", "beep", "horn", "truck_full", "sparkle", "car_horn", "car_alarm",
+      "streak_note", "streak_up", "streak_max" };
 
     public FeelSfxPlayer(Transform parent)
     {

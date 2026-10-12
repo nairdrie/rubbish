@@ -331,6 +331,8 @@ public class PickupStop : MonoBehaviour
         CurbTrash.BagsAt(stopId, tmpRecords);
         // Co-op: a bag another player is carrying is gone from this curb (it's in their hands).
         if (HiddenHere != null) tmpRecords.RemoveAll(r => IsHidden(r.bagId));
+        // A shop's dumpster bags are records of this stop too, but they are in the dumpster, never on the curb.
+        tmpRecords.RemoveAll(r => DumpsterRules.IsDumpsterSlot(r.slot));
         tmpIds.Clear();
         foreach (var r in tmpRecords) tmpIds.Add(r.bagId);
 

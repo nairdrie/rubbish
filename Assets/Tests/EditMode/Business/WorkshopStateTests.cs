@@ -174,15 +174,15 @@ public class WorkshopStateTests
             Assert.AreEqual(Mathf.RoundToInt(rate * 100f), (int)T("WorkshopCatalog").GetField(consts[m]).GetRawConstantValue(), categories[m]);
         }
         long Cents(int metal, int plastic, int glass, int paper) => (long)Static("WorkshopCatalog", "BankCents", Materials(metal, plastic, glass, paper));
-        Assert.AreEqual(0, Cents(0, 0, 0, 0)); Assert.AreEqual(410, Cents(1000, 1000, 1000, 1000)); Assert.AreEqual(200, Cents(1000, 0, 0, 0));
-        Assert.AreEqual(1, Cents(0, 0, 0, 12), "0.54 cents rounds half up"); Assert.AreEqual(0, Cents(0, 0, 0, 11)); Assert.AreEqual(0, Cents(-5000, 0, 0, 0));
-        Assert.AreEqual(205000, Cents(500000, 500000, 500000, 500000), "the most two full banks could ever pay: $2,050");
+        Assert.AreEqual(0, Cents(0, 0, 0, 0)); Assert.AreEqual(1640, Cents(1000, 1000, 1000, 1000)); Assert.AreEqual(800, Cents(1000, 0, 0, 0));
+        Assert.AreEqual(1, Cents(0, 0, 0, 3), "0.54 cents rounds half up"); Assert.AreEqual(0, Cents(0, 0, 0, 2)); Assert.AreEqual(0, Cents(-5000, 0, 0, 0));
+        Assert.AreEqual(820000, Cents(500000, 500000, 500000, 500000), "the most two full banks could ever pay: $8,200");
 
         var state = New("WorkshopState");
         Set(state, "bank", Materials(12500, 3000, 2200, 7000)); Set(state, "allocated", Materials(1000, 500, 0, 0)); Set(state, "activeRecipe", "spring_launcher");
         Set(state, "completed", (ushort)0b10011); Set(state, "colorIndex", 3);
         Assert.IsFalse(Valid(state), "a state that still has a bank has not been through the migration");
-        long expected = (13500L * 200 + 3500L * 110 + 2200L * 55 + 7000L * 45 + 500) / 1000; Assert.AreEqual(3521, expected);
+        long expected = (13500L * 800 + 3500L * 440 + 2200L * 220 + 7000L * 180 + 500) / 1000; Assert.AreEqual(14084, expected);
         Assert.AreEqual(expected, (long)Call(state, "RetireBank"));
         Assert.AreEqual(0, Total(Get(state, "bank"))); Assert.AreEqual(0, Total(Get(state, "allocated"))); Assert.AreEqual("", Get(state, "activeRecipe"));
         Assert.AreEqual((ushort)0b10011, Get(state, "completed"), "built pieces stay built"); Assert.AreEqual(3, Get(state, "colorIndex")); Assert.IsTrue(Valid(state));
@@ -190,7 +190,7 @@ public class WorkshopStateTests
         Assert.AreEqual(0L, (long)Call(New("WorkshopState"), "RetireBank"));
         // a corrupt number pays nothing rather than a fortune
         var corrupt = New("WorkshopState"); Set(corrupt, "bank", Materials(int.MaxValue, -7, 250001, 1000));
-        Assert.AreEqual(45L, (long)Call(corrupt, "RetireBank")); Assert.IsTrue(Valid(corrupt));
+        Assert.AreEqual(180L, (long)Call(corrupt, "RetireBank")); Assert.IsTrue(Valid(corrupt));
     }
 
     [Test]
@@ -206,7 +206,7 @@ public class WorkshopStateTests
             var old = New("WorkshopState");
             Set(old, "bank", Materials(10000, 0, 0, 2000)); Set(old, "allocated", Materials(0, 6000, 0, 0)); Set(old, "activeRecipe", "break_sofa"); Set(old, "completed", (ushort)(1 << 13));
             long refund = (long)Static("GameSession", "LoadWorkshop", old);
-            Assert.AreEqual(2000 + 660 + 90, refund, "10 kg metal + 6 kg plastic + 2 kg paper at bin rates");
+            Assert.AreEqual(8000 + 2640 + 360, refund, "10 kg metal + 6 kg plastic + 2 kg paper at bin rates");
             Assert.AreEqual(10000, Amount(Get(old, "bank"), 0), "the caller's object is never edited");
             var loaded = workshopField.GetValue(null);
             Assert.IsTrue(Valid(loaded)); Assert.AreEqual(0, Total(Get(loaded, "bank"))); Assert.AreEqual("", Get(loaded, "activeRecipe"));
@@ -222,7 +222,7 @@ public class WorkshopStateTests
             Assert.IsFalse(counters.ContainsKey(pending));
             // a workshop that cannot be kept (a corrupt colour) still pays its bank before it is reset
             var broken = New("WorkshopState"); Set(broken, "bank", Materials(0, 0, 2000, 0)); Set(broken, "colorIndex", 99);
-            Assert.AreEqual(110L, (long)Static("GameSession", "LoadWorkshop", broken)); Assert.AreEqual(0, Get(workshopField.GetValue(null), "colorIndex"));
+            Assert.AreEqual(440L, (long)Static("GameSession", "LoadWorkshop", broken)); Assert.AreEqual(0, Get(workshopField.GetValue(null), "colorIndex"));
             // the letter says the amount, and says the bench takes kept items now
             var args = new object[] { 2750L, null, null }; T("WorkshopBankRefund").GetMethod("Letter").Invoke(null, args);
             Assert.IsNotEmpty((string)args[1]); StringAssert.Contains("$27.50", (string)args[2]); StringAssert.Contains("KEEP", (string)args[2]);
@@ -405,7 +405,7 @@ public class WorkshopStateTests
         Assert.IsTrue(Completed(restored, "break_sofa")); Assert.IsTrue((bool)Call(restored, "IsPinned", 99));
         // a save written before the bank was retired still parses with its bank intact, so the load migration can pay it out
         var old = dto.GetField("workshop").GetValue(JsonUtility.FromJson("{\"workshop\":{\"bank\":{\"metal\":4231,\"paper\":10},\"activeRecipe\":\"doorbell\",\"displays\":[]}}", dto));
-        Assert.AreEqual(4231, Amount(Get(old, "bank"), 0)); Assert.AreEqual(847L, (long)Call(old, "RetireBank"));
+        Assert.AreEqual(4231, Amount(Get(old, "bank"), 0)); Assert.AreEqual(3387L, (long)Call(old, "RetireBank"));
     }
 
     [Test]

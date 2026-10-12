@@ -293,7 +293,7 @@ public class ScavengerTests
         Assert.AreEqual(100f, F(Rules("Fine", 20f, 1.25f)), 1e-4f, "the second burglar caught that day pays x1.25");
         Assert.AreEqual(60f, F(Rules("Fine", 5f, 3f)), 1e-4f); Assert.AreEqual(20f, F(Rules("Fine", 5f, 0.2f)), 1e-4f, "never below the base");
         Assert.AreEqual(0f, F(Rules("Fine", -5f, 1f)));
-        Assert.AreEqual(-8f, F(Tune("BurglaryRep")), "two flattened neighbours' worth of Rep");
+        Assert.AreEqual(-16f, F(Tune("BurglaryRep")), "two flattened neighbours' worth of Rep (flattened is -8 since the pace pass)");
 
         Assert.AreEqual(0f, F(Rules("TrustPenalty", 0, 0))); Assert.AreEqual(0.04f, F(Rules("TrustPenalty", 1, 0)), 1e-5f);
         Assert.AreEqual(0.03f, F(Rules("TrustPenalty", 0, 3)), 1e-5f, "unseen thefts still cost: things went missing");

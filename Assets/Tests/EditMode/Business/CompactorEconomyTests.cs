@@ -13,10 +13,10 @@ public class CompactorEconomyTests
     static float Rate(string name, int level) =>
         (float)Effects.GetMethod(name, BindingFlags.Public | BindingFlags.Static).Invoke(null, new object[] { level });
 
-    [TestCase(0, 0.20f)]
-    [TestCase(1, 0.25f)]
-    [TestCase(2, 0.30f)]
-    [TestCase(3, 0.35f)]
+    [TestCase(0, 0.80f)]
+    [TestCase(1, 1.00f)]
+    [TestCase(2, 1.20f)]
+    [TestCase(3, 1.40f)]
     public void ChamberAndBulkHaveTheSameRewardAtEveryUpgrade(int level, float expected)
     {
         Assert.AreEqual(expected, Rate("CompactPerKgAtLevel", level), 0.00001f);

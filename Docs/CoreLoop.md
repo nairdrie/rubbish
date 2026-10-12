@@ -48,7 +48,7 @@ when `!GameSession.IsGuest`; no new scene-name checks or static `Current` single
    items spill out on the table and *reveal* (name, category-colored outline; rares sparkle with a
    big "RARE FIND!" card + slow-mo). Grab items and toss them into:
    - **Recycling bins** (Metal / Plastic / Glass / Paper) — instant `$` by weight × rate, with a
-     combo multiplier for quick consecutive correct sorts. Wrong bin → buzzer, "Contaminated!",
+     streak multiplier (up to ×10) for quick consecutive correct sorts. Wrong bin → buzzer, "Contaminated!",
      small penalty.
    - **Compactor** — junk or unopened bags. **COMPACT** processes only what's in the chamber;
      bags can go straight in without ripping them first. The press slams (shake, crunch), pays by
@@ -76,13 +76,15 @@ when `!GameSession.IsGuest`; no new scene-name checks or static `Current` single
 |---|---|
 | Truck capacity (start) | 160 kg |
 | Bag | 5–10 items, ~3–15 kg total |
-| Pay per stop cleared | $8; route completion bonus $25 |
-| Recycling $/kg | Metal 2.00, Plastic 1.10, Glass 0.55, Paper 0.45 (min $0.10/item) |
-| Hazard binned correctly | $0.75 |
-| Wrong bin | −$0.30 |
-| Compaction, chamber or bulk | $0.20/kg stock; $0.25 / $0.30 / $0.35 at compactor L1 / L2 / L3 |
+| Pay per stop cleared | $8; route completion bonus $25 (legacy fixed route; the living-world pickup fee below replaces it) |
+| Pickup fee per curb bag (Acres) | $12 on time, down to 60% when late; $6 curb-clean bonus (pace pass 2026-10-12: ×3) |
+| Recycling $/kg | Metal 8.00, Plastic 4.40, Glass 2.20, Paper 1.80 (min $0.40/item) (×4) |
+| Hazard binned correctly | $3.00 |
+| Wrong bin | −$1.00 and the streak is gone |
+| Compaction, chamber or bulk | $0.80/kg stock; $1.00 / $1.20 / $1.40 at compactor L1 / L2 / L3 |
 | Compaction downside | Lower pay than recycling; valuables destroyed (L3 grate saves them at 30% value). No hazard or landfill fees. |
-| Combo | +10% per consecutive correct sort within 2.5 s, cap ×2 |
+| Sort streak | consecutive correct hand sorts climb ×1.5 (3) / ×2 (6) / ×3 (10) / ×4 (15) / ×5 (22) / ×10 (35 in a row); each tier allows less time between sorts (3.0 s down to 1.8 s); a wrong bin ends it, running out of clock cools it one tier (`SortLadder`, Progression.md §3.6) |
+| Rank | rank 2 (350 Rep) comes with one full first load; see Progression.md §3.6 |
 | Pawn | 45% of value; ebag fee 8% |
 
 Valuable drop chance per item ≈ 2% + 4% × house wealth (tuned in ItemCatalog loot tables),

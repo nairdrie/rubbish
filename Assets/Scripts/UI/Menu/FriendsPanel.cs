@@ -703,6 +703,15 @@ public sealed class FriendsPanel : MonoBehaviour
 
     void OnJoin(ulong lobby, string why)
     {
+        // On the main menu: which save are you bringing (or a new one), THEN connect. In a game the join goes straight
+        // through and the Town asks, as before.
+        if (NetSession.MenuOpen && !NetSession.Busy && !BusinessPicker.IsShowing)
+        { BusinessPicker.ShowFor(BusinessPicker.Purpose.Join, () => JoinNow(lobby, why)); return; }
+        JoinNow(lobby, why);
+    }
+
+    void JoinNow(ulong lobby, string why)
+    {
         if (SteamFriendsFeed.Join(lobby, why, out string whyNot))
         {
             UiTheme.Play(UiTheme.SfxConfirm, 0.5f, 1f);
@@ -786,7 +795,9 @@ public sealed class FriendsPanel : MonoBehaviour
             tint = TintFor(inv.fromSteamId),
             join = () =>
             {
-                if (!SteamFriendsFeed.Join(lobby, "Invite card from " + from, out string whyNot)) SteamHud.Say(whyNot, false);
+                void Go() { if (!SteamFriendsFeed.Join(lobby, "Invite card from " + from, out string whyNot)) SteamHud.Say(whyNot, false); }
+                if (NetSession.MenuOpen && !NetSession.Busy && !BusinessPicker.IsShowing) BusinessPicker.ShowFor(BusinessPicker.Purpose.Join, Go);
+                else Go();
             },
         };
         if (InviteCards.Push(card)) return; // plays Sfx notify itself

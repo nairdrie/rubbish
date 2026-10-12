@@ -245,8 +245,11 @@ public static class GameSettings
     public static float MasterVolume => Current.audio.master * 0.01f;
     /// <summary>Sound-effects volume 0–1 (Feel's per-play multiplier, category SFX).</summary>
     public static float SfxVolume => Current.audio.sfx * 0.01f;
-    /// <summary>Ambience volume 0–1 (cricket, owl, rooster).</summary>
+    /// <summary>Ambience volume 0–1 (cricket, owl, rooster, the rain and wind beds).</summary>
     public static float AmbienceVolume => Current.audio.ambience * 0.01f;
+    /// <summary>Music volume 0–1: every music source follows this and only this (the background tracks, the Lucky Raccoon's
+    /// house band, the workshop radio's tune); the Sound effects and Ambience sliders never scale music.</summary>
+    public static float MusicVolume => Current.audio.music * 0.01f;
     public static bool MuteWhenUnfocused => Current.audio.muteUnfocused;
     public static bool ColorblindMarkers => Current.access.colorblind;
     public static bool ReduceFlashing => Current.access.reduceFlashing;

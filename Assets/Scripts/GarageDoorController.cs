@@ -5,8 +5,9 @@ using UnityEngine;
 /// CONTRACT (fields are set by scene builders): targetSceneName, targetSpawnPointName,
 /// targetSpawnPointNameDriving, promptOnFoot, promptDriving.
 ///
-/// Usually paired with an InteractionZone (mode Either) in front of it so you can drive up and press E
-/// without aiming. On foot you arrive at targetSpawnPointName; driving you arrive in the truck at
+/// Usually paired with an InteractionZone (mode Either) in front of it so you can drive up and press F (gamepad Y)
+/// without aiming. The door is <see cref="IAltKeyPinned"/>: it is ALWAYS on F, whatever else is in range; E stays free
+/// for the other interactable (Exit Truck, Arrange, a bag...). On foot you arrive at targetSpawnPointName; driving you arrive in the truck at
 /// targetSpawnPointNameDriving (SceneController / PlayerSpawner / TruckRequester do the rest).
 /// <para><b>Depot Row (co-op one world, package N3):</b> a door with <see cref="depotLot"/> ≥ 0 belongs to that lot's shop
 /// (built by Setup_DepotRow): <see cref="depotExit"/> false = the street-side garage door, true = the door inside the pocket
@@ -16,7 +17,7 @@ using UnityEngine;
 /// door: it swaps to ShopScene (on foot, or driving with the truck), and ShopScene's door brings you back to that lot's
 /// apron. Every other Depot Row door is shut. One way in, one way out, in both flows.</para>
 /// </summary>
-public class GarageDoorController : MonoBehaviour, IInteractable
+public class GarageDoorController : MonoBehaviour, IInteractable, IAltKeyPinned
 {
     /// <summary>The town scene's name, for code that has no HouseDirectory to ask.</summary>
     public const string DefaultTownScene = "Neighborhood";

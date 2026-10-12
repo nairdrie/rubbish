@@ -6,16 +6,17 @@ using UnityEngine;
 /// One truck's riding state on this machine (package F1, Docs/Multiplayer.md §14.1, §4.4 "How the truck works on the
 /// network", red-team T4). Added at runtime to every truck with a hopper (with <see cref="HitchStep"/>; no prefab edit).
 /// <list type="bullet">
-/// <item><b>Sensor</b> (only where the truck's physics runs: the driver's machine, or the host for an empty truck):
-/// sideways g, braking and drift from the Rigidbody, smoothed over 0.15 s, sampled 10× a second; <b>jolts</b> from
-/// per-step velocity spikes (bumps, curbs, potholes, crashes, props). Samples and jolts are stamped with NGO server
-/// time and, while anyone rides, streamed to every machine (<see cref="HandsNet"/>, ~35 B per sample).</item>
+/// <item><b>Crash sensor</b> (only where the truck's physics runs: the driver's machine, or the host for an empty truck):
+/// a heavy hit is the truck's horizontal velocity changing by ≥ 5 m/s within ~0.06 s (a tree, a wall, another truck,
+/// being rear-ended). Braking, cornering, drifting, curbs and potholes never get near it, so they never throw anyone off.
+/// Crashes are stamped with NGO server time and, while anyone rides, sent to every machine (<see cref="HandsNet"/>) along
+/// with 10 pose samples a second (~21 B each).</item>
 /// <item><b>Display timeline</b> (every machine): a 5 s history of where this machine SHOWS the truck, and the lag
-/// between the driver's clock and that display, measured by matching each sample's position against the displayed
-/// path. A rider applies stress and jolts when their displayed truck reaches that moment, so you're never flung before
-/// the corner you see; the owner sends that tick and its exact world start for the flight.</item>
+/// between the driver's clock and that display, measured by matching each pose sample against the displayed path. A
+/// rider applies a crash when their displayed truck reaches that moment, so you're never thrown before the hit you see;
+/// the owner sends that tick and its exact world start for the flight.</item>
 /// <item><b>Crew Comfort</b> (the driver's machine): a smooth leg ending in a stop with riders aboard earns a small tip
-/// for the truck's business.</item>
+/// for the truck's business (sideways g, braking, drift, bumps and knocks, measured right here, spoil it).</item>
 /// <item><b>Kit</b>: side ladder rungs and grab rails (cosmetic, no colliders); a padded step and a safety bar when the
 /// truck's business owns them.</item>
 /// </list>
@@ -134,6 +135,11 @@ public class RideTruck : MonoBehaviour
     /// <summary>The truck's velocity as this machine shows it (smoothed).</summary>
     public Vector3 Velocity { get; private set; }
     public float Speed => new Vector2(Velocity.x, Velocity.z).magnitude;
+    /// <summary>Sideways (x, + = toward the truck's right) and braking (y) acceleration of the truck as this machine shows it,
+    /// smoothed, m/s². Cosmetic only: riders' puppets sway with it (ChuckPuppet); nothing is decided from it.</summary>
+    public Vector2 SwayAccel { get; private set; }
+    Vector3 swayPrevV;
+    bool swayHasPrev;
 
     void ResetHistory()
     {
@@ -141,6 +147,10 @@ public class RideTruck : MonoBehaviour
         histCount = 0;
         pending.Clear();
         Velocity = Vector3.zero;
+        lastSampleT = double.MinValue;
+        hasLastSamplePos = false;
+        swayHasPrev = false;
+        SwayAccel = Vector2.zero;
     }
 
     void Push(double t, Vector3 p, Quaternion r)
@@ -250,98 +260,68 @@ public class RideTruck : MonoBehaviour
         }
     }
 
-    // ==================================================================================== stress samples and jolts
+    // ==================================================================================== pose samples and crashes
 
-    public struct Sample { public double t; public float lat, brake, drift, speed; public Vector3 pos; }
+    /// <summary>Where the truck was at a driver-clock tick (lag matching only; ~21 B on the wire).</summary>
+    public struct Sample { public double t; public float speed; public Vector3 pos; }
 
-    public struct Jolt
+    /// <summary>A heavy hit: the driver-clock tick and the truck's Δv (m/s). Each rider's machine compares it with the
+    /// truck's Safety Bar and Padded Step (<see cref="RideTuning.CrashFlingDv"/>).</summary>
+    public struct Crash
     {
-        public const byte KindBump = 1, KindImpact = 2;
         public double t;
-        public float cost;
-        public byte kind;
-        public bool flingAll;
-        // Local receipt order. The wire still sends only the driver-clock tick and the jolt data.
+        public float dv;
+        // Local receipt order. The wire still sends only the driver-clock tick and the Δv.
         public int serial;
+
+        public static byte PackDv(float dv) => (byte)Mathf.Clamp(Mathf.RoundToInt(dv * 8f), 0, 255);
+        public static float UnpackDv(byte packed) => packed / 8f;
     }
 
-    readonly List<Sample> samples = new List<Sample>(64);
-    readonly List<Jolt> jolts = new List<Jolt>(16);
-    int lastJoltSerial;
-    public int LastJoltSerial => lastJoltSerial;
+    readonly List<Crash> crashes = new List<Crash>(8);
+    int lastCrashSerial;
+    public int LastCrashSerial => lastCrashSerial;
+    double lastSampleT = double.MinValue;
     Vector3 lastSamplePos;
     bool hasLastSamplePos;
 
     public void ReceiveSample(in Sample s)
     {
-        // Ordered insert (unreliable samples can arrive out of order); duplicates dropped.
-        int i = samples.Count;
-        while (i > 0 && samples[i - 1].t > s.t) i--;
-        if (i > 0 && System.Math.Abs(samples[i - 1].t - s.t) < 1e-6) return;
-        samples.Insert(i, s);
-        while (samples.Count > 0 && samples[samples.Count - 1].t - samples[0].t > 4.0) samples.RemoveAt(0);
-        if (!Simulated && i == samples.Count - 1)
+        // Unreliable samples can arrive late or twice: only the newest extends the matched path.
+        if (s.t <= lastSampleT) return;
+        if (!Simulated && hasLastSamplePos)
         {
-            if (hasLastSamplePos)
-            {
-                Vector3 d = s.pos - lastSamplePos; d.y = 0f;
-                if (s.speed > 1.2f && d.sqrMagnitude > 0.01f && d.sqrMagnitude < 100f) AddMatch(s.t, s.pos, d.normalized);
-            }
-            lastSamplePos = s.pos;
-            hasLastSamplePos = true;
+            Vector3 d = s.pos - lastSamplePos; d.y = 0f;
+            if (s.speed > 1.2f && d.sqrMagnitude > 0.01f && d.sqrMagnitude < 100f) AddMatch(s.t, s.pos, d.normalized);
         }
+        lastSampleT = s.t;
+        lastSamplePos = s.pos;
+        hasLastSamplePos = true;
     }
 
-    public void ReceiveJolt(in Jolt j)
+    public void ReceiveCrash(in Crash c)
     {
-        var received = j;
-        received.serial = ++lastJoltSerial;
-        jolts.Add(received);
-        if (jolts.Count > 24) jolts.RemoveAt(0);
+        var received = c;
+        received.serial = ++lastCrashSerial;
+        crashes.Add(received);
+        if (crashes.Count > 8) crashes.RemoveAt(0);
     }
 
-    /// <summary>Stress at driver-clock <paramref name="t"/> (zero when the stream went quiet: no driver, parked).</summary>
-    public bool StressAt(double t, out float lat, out float brake, out float drift, out float speed)
+    /// <summary>New crashes whose driver tick is visible. Receipt serials, rather than arrival order or a time-only
+    /// cursor, let a delayed older crash pass a future-stamped one without being skipped or applied twice.</summary>
+    public void CrashesSince(int afterSerial, double upTo, HashSet<int> consumed, List<Crash> into)
     {
-        lat = brake = drift = 0f;
-        speed = Speed;
-        int n = samples.Count;
-        if (n == 0) return false;
-        var last = samples[n - 1];
-        if (t > last.t + RideTuning.StaleAfter || t < samples[0].t - 0.5) return false;
-        if (t >= last.t) { lat = last.lat; brake = last.brake; drift = last.drift; speed = last.speed; return true; }
-        for (int i = n - 2; i >= 0; i--)
+        for (int i = 0; i < crashes.Count; i++)
         {
-            var a = samples[i];
-            if (a.t > t) continue;
-            var b = samples[i + 1];
-            float f = b.t > a.t ? (float)((t - a.t) / (b.t - a.t)) : 0f;
-            lat = Mathf.Lerp(a.lat, b.lat, f);
-            brake = Mathf.Lerp(a.brake, b.brake, f);
-            drift = Mathf.Lerp(a.drift, b.drift, f);
-            speed = Mathf.Lerp(a.speed, b.speed, f);
-            return true;
+            var c = crashes[i];
+            if (c.serial <= afterSerial || c.t > upTo || consumed.Contains(c.serial)) continue;
+            into.Add(c);
+            consumed.Add(c.serial);
         }
-        var s0 = samples[0];
-        lat = s0.lat; brake = s0.brake; drift = s0.drift; speed = s0.speed;
-        return true;
-    }
-
-    /// <summary>New jolts whose driver tick is visible. Receipt serials, rather than arrival order or a time-only
-    /// cursor, let a delayed older jolt pass a future-stamped one without being skipped or applied twice.</summary>
-    public void JoltsSince(int afterSerial, double upTo, HashSet<int> consumed, List<Jolt> into)
-    {
-        for (int i = 0; i < jolts.Count; i++)
+        // The truck retains at most 8 crashes. Prune the rider's receipts when that window advances.
+        if (consumed.Count > 8)
         {
-            var j = jolts[i];
-            if (j.serial <= afterSerial || j.t > upTo || consumed.Contains(j.serial)) continue;
-            into.Add(j);
-            consumed.Add(j.serial);
-        }
-        // The truck retains at most 24 jolts. Prune the rider's receipts when that window advances.
-        if (consumed.Count > 24)
-        {
-            int oldest = jolts.Count > 0 ? jolts[0].serial : lastJoltSerial;
+            int oldest = crashes.Count > 0 ? crashes[0].serial : lastCrashSerial;
             consumed.RemoveWhere(serial => serial < oldest);
         }
     }
@@ -350,14 +330,18 @@ public class RideTruck : MonoBehaviour
 
     Vector3 prevV, prevPos;
     bool hasPrev;
-    float latEma, brakeEma, driftEma;
-    double nextSampleAt, lastJoltAt = -9;
+    // The last few steps' velocities: a hit the solver spreads over two or three steps still reads as one Δv.
+    readonly Vector3[] recentV = new Vector3[RideTuning.CrashWindowSteps];
+    int recentCount, recentHead;
+    float latEma, brakeEma, driftEma, lastCrashDv;
+    double nextSampleAt, lastCrashAt = -9, lastKnockAt = -9;
 
-    /// <summary>Grip per second the stress would drain from an unprotected rider (the doc's formula; no lean, no gloves).</summary>
-    public static float Drain(float lat, float brake, float drift) =>
-        RideTuning.LatDrain * Mathf.Max(0f, Mathf.Abs(lat) - RideTuning.LatFree) +
-        RideTuning.BrakeDrain * Mathf.Max(0f, brake - RideTuning.BrakeFree) +
-        RideTuning.DriftDrain * Mathf.Max(0f, drift - RideTuning.DriftFree);
+    /// <summary>How rough the ride is right now, for the driver's Crew Comfort tip only (the simulating machine's smoothed
+    /// sideways g, braking and drift). Nobody's hold on the truck depends on it.</summary>
+    public static float Roughness(float lat, float brake, float drift) =>
+        RideTuning.ComfortLatCost * Mathf.Max(0f, Mathf.Abs(lat) - RideTuning.ComfortLatFree) +
+        RideTuning.ComfortBrakeCost * Mathf.Max(0f, brake - RideTuning.ComfortBrakeFree) +
+        RideTuning.ComfortDriftCost * Mathf.Max(0f, drift - RideTuning.ComfortDriftFree);
 
     /// <summary>Smoothed sideways accel (+ = toward the right) and braking right now (simulating machine; tests).</summary>
     public float LatNow => latEma;
@@ -366,17 +350,26 @@ public class RideTruck : MonoBehaviour
     /// <summary>Peak per-step |Δv| seen by the sensor (tuning / tests).</summary>
     public float MaxStepDvY { get; private set; }
     public float MaxStepDvH { get; private set; }
+    /// <summary>Peak horizontal Δv over the crash window (tuning / tests): what ordinary driving reaches next to
+    /// <see cref="RideTuning.FlingAllDv"/>.</summary>
+    public float MaxWindowDv { get; private set; }
+
+    /// <summary>Start the peak readings over (the test rig does it per lap).</summary>
+    public void ResetSensorPeaks() => MaxStepDvY = MaxStepDvH = MaxWindowDv = 0f;
 
     void FixedUpdate()
     {
         SoloCruiseTick(Time.fixedDeltaTime);
-        if (!Simulated || body == null || body.isKinematic) { hasPrev = false; sensing = false; return; }
+        if (!Simulated || body == null || body.isKinematic) { hasPrev = false; recentCount = 0; sensing = false; return; }
         float dt = Time.fixedDeltaTime;
         Vector3 v = body.linearVelocity;
         Vector3 pos = body.position;
         if (!hasPrev || (pos - prevPos).sqrMagnitude > 25f)
         {
+            // A teleport (garage door, recovery) or the first simulated step: no Δv to read yet.
             prevV = v; prevPos = pos; hasPrev = true;
+            recentCount = 0;
+            Remember(v);
             latEma = brakeEma = driftEma = 0f;
             return;
         }
@@ -387,13 +380,22 @@ public class RideTruck : MonoBehaviour
         MaxStepDvY = Mathf.Max(MaxStepDvY, Mathf.Abs(dvL.y));
         MaxStepDvH = Mathf.Max(MaxStepDvH, dvH);
         double now = RideClock.Now;
+
+        // A crash: the horizontal velocity jumped within the last few steps, from any speed (a parked truck that gets
+        // rear-ended counts as much as one that drives into a tree).
+        float crashDv = 0f;
+        for (int i = 0; i < recentCount; i++)
+        {
+            Vector3 d = inv * (v - recentV[i]);
+            crashDv = Mathf.Max(crashDv, new Vector2(d.x, d.z).magnitude);
+        }
+        MaxWindowDv = Mathf.Max(MaxWindowDv, crashDv);
+        if (crashDv >= RideTuning.FlingAllDv) EmitCrash(now, crashDv);
+
+        // The rest only feeds the driver's Crew Comfort tip.
         float k = 1f - Mathf.Exp(-dt / 0.15f);
         float preSpeed = new Vector2(prevV.x, prevV.z).magnitude;
-        if (dvH > RideTuning.ImpactDv)
-        {
-            bool all = dvH >= RideTuning.FlingAllDv && preSpeed >= RideTuning.FlingAllDv;
-            EmitJolt(now, Mathf.Min(RideTuning.MaxJoltCost, RideTuning.ImpactCostPerDv * dvH), Jolt.KindImpact, all);
-        }
+        if (dvH > RideTuning.ComfortKnockDv) Knock(now);
         else
         {
             Vector3 aL = dvL / dt;
@@ -405,13 +407,20 @@ public class RideTruck : MonoBehaviour
         }
         float slip = Mathf.Abs(vL.x) + (handling != null && handling.Drifting ? 2f : 0f);
         driftEma += (slip - driftEma) * k;
-        if (Mathf.Abs(dvL.y) > RideTuning.BumpDv && preSpeed > 1f)
-            EmitJolt(now, Mathf.Min(RideTuning.MaxJoltCost, RideTuning.BumpCostPerDv * Mathf.Abs(dvL.y)), Jolt.KindBump, false);
+        if (Mathf.Abs(dvL.y) > RideTuning.ComfortBumpDv && preSpeed > 1f) Knock(now);
         prevV = v;
         prevPos = pos;
+        Remember(v);
         simSpeed = new Vector2(v.x, v.z).magnitude;
         sensing = true;
         ComfortTick(dt, simSpeed);
+    }
+
+    void Remember(Vector3 v)
+    {
+        recentV[recentHead] = v;
+        recentHead = (recentHead + 1) % recentV.Length;
+        if (recentCount < recentV.Length) recentCount++;
     }
 
     float simSpeed;
@@ -423,30 +432,39 @@ public class RideTruck : MonoBehaviour
     {
         if (!sensing || !Simulated || now < nextSampleAt) return;
         nextSampleAt = now + 1.0 / RideTuning.SampleHz;
-        var s = new Sample { t = now, lat = latEma, brake = brakeEma, drift = driftEma, speed = simSpeed, pos = transform.position };
+        var s = new Sample { t = now, speed = simSpeed, pos = transform.position };
         ReceiveSample(s);
         var net = Net;
         if (net != null && NetId != 0 && net.AnyRiderOn(NetId)) net.SendRideSample(this, s);
     }
 
-    void EmitJolt(double now, float cost, byte kind, bool all)
+    void EmitCrash(double now, float dv)
     {
-        if (!all && now - lastJoltAt < RideTuning.JoltCooldown) return;
-        lastJoltAt = now;
-        var j = new Jolt { t = now, cost = cost, kind = kind, flingAll = all };
-        ReceiveJolt(j);
-        legJolts++;
+        // One crash per hit, unless the hit is still building: a bigger reading may beat a Safety Bar the first didn't.
+        if (now - lastCrashAt < RideTuning.CrashCooldown && dv < lastCrashDv + RideTuning.CrashGrowth) return;
+        lastCrashAt = now;
+        lastCrashDv = dv;
+        var c = new Crash { t = now, dv = dv };
+        ReceiveCrash(c);
+        Knock(now);
         var net = Net;
-        if (net != null && NetId != 0 && net.AnyRiderOn(NetId)) net.SendRideJolt(this, j);
-        if (Truck != null && Truck.IsLocalPlayerSeated && Riding.AnyRiders(Truck) && cost >= RideTuning.PromptCost)
-            Juice.Shake(0.06f, 0.12f);
+        if (net != null && NetId != 0 && net.AnyRiderOn(NetId)) net.SendRideCrash(this, c);
+        if (Truck != null && Truck.IsLocalPlayerSeated && Riding.AnyRiders(Truck)) Juice.Shake(0.06f, 0.12f);
+    }
+
+    /// <summary>A bump, curb, pothole or knock on this leg (Crew Comfort; at most one per <see cref="RideTuning.ComfortKnockGap"/>).</summary>
+    void Knock(double now)
+    {
+        if (now - lastKnockAt < RideTuning.ComfortKnockGap) return;
+        lastKnockAt = now;
+        legKnocks++;
     }
 
     // ==================================================================================== Crew Comfort (driver)
 
     bool legActive;
     float legDist, legPeak, stoppedFor;
-    int legRidersMin, legJolts, flingsSeen, legFlingsAtStart;
+    int legRidersMin, legKnocks, flingsSeen, legFlingsAtStart;
 
     /// <summary>A rider on this truck was flung (any machine's event): spoils the driver's comfort leg.</summary>
     public void NoteFling() => flingsSeen++;
@@ -461,20 +479,20 @@ public class RideTruck : MonoBehaviour
             if (speed > 2.5f && riders > 0)
             {
                 legActive = true;
-                legDist = 0f; legPeak = 0f; stoppedFor = 0f; legJolts = 0;
+                legDist = 0f; legPeak = 0f; stoppedFor = 0f; legKnocks = 0;
                 legRidersMin = riders;
                 legFlingsAtStart = flingsSeen;
             }
             return;
         }
         legDist += speed * dt;
-        legPeak = Mathf.Max(legPeak, Drain(latEma, brakeEma, driftEma));
+        legPeak = Mathf.Max(legPeak, Roughness(latEma, brakeEma, driftEma));
         legRidersMin = Mathf.Min(legRidersMin, riders);
         if (speed < RideTuning.ComfortStopSpeed) stoppedFor += dt; else stoppedFor = 0f;
         if (stoppedFor < 0.6f) return;
         legActive = false;
         if (legDist < RideTuning.ComfortMinLeg || legRidersMin <= 0 || flingsSeen != legFlingsAtStart) return;
-        float smooth = Mathf.Clamp01(1f - legPeak / 160f - legJolts * 0.15f);
+        float smooth = Mathf.Clamp01(1f - legPeak / 160f - legKnocks * 0.15f);
         if (smooth < 0.35f) return;
         int cents = Mathf.RoundToInt(RideTuning.ComfortPerRider * legRidersMin * smooth * 100f);
         if (cents <= 0) return;
@@ -511,8 +529,22 @@ public class RideTruck : MonoBehaviour
                 Velocity = Vector3.Lerp(Velocity, v, 1f - Mathf.Exp(-12f * Time.deltaTime));
             }
         }
+        SwayTick(r, Time.deltaTime);
         MatchPending();
         KitTick();
+    }
+
+    void SwayTick(Quaternion r, float dt)
+    {
+        if (swayHasPrev && dt > 1e-4f)
+        {
+            Vector3 aL = Quaternion.Inverse(r) * ((Velocity - swayPrevV) / dt);
+            float fwd = Vector3.Dot(Velocity, r * Vector3.forward);
+            var a = new Vector2(aL.x, Mathf.Abs(fwd) > 0.3f ? Mathf.Max(0f, -aL.z * Mathf.Sign(fwd)) : 0f);
+            SwayAccel = Vector2.Lerp(SwayAccel, a, 1f - Mathf.Exp(-dt / 0.2f));
+        }
+        swayPrevV = Velocity;
+        swayHasPrev = true;
     }
 
     // ==================================================================================== upgrades and the kit
@@ -783,8 +815,9 @@ public sealed class SoloCruiseRoute
     static bool Blocked(TruckControllerV2 truck, PlayerController rider)
     {
         var t = truck.transform;
-        Vector3 f = Flat(t.forward).normalized;
-        Vector3 origin = t.position + Vector3.up * 1.45f + f * 3.45f;
+        // along the truck's own nose: on a climb a level cast would call the road ahead an obstacle
+        Vector3 f = t.forward;
+        Vector3 origin = t.position + t.up * 1.45f + f * 3.45f;
         int n = Physics.BoxCastNonAlloc(origin, new Vector3(1.2f, 0.65f, 0.4f), f, obstacleHits,
             t.rotation, ObstacleLook, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
         for (int i = 0; i < n; i++)

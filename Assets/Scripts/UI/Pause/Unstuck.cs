@@ -1,21 +1,28 @@
 using System;
+using System.Collections;
 using Unity.Netcode.Components;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 /// <summary>
-/// The Esc menu's Unstuck (Docs/UIPass.md §5.5). Owner authority only: it moves this machine's own player, or asks the truck the
-/// local player drives for the existing tow drone. Never moves anyone else.
+/// The Esc menu's Unstuck (Docs/UIPass.md §5.5). Owner authority only: it moves this machine's own player, or asks the
+/// host (through <see cref="TruckCall"/>) to fly the player's truck over. Never moves anyone else.
 /// <list type="bullet">
-/// <item><b>On foot:</b> drop what you hold, then teleport to the best safe point: (a) the newest <b>safe-position ring</b>
-/// sample more than 3 m away (sampled every 2 s while grounded on layer Ground and not overlapping a wall or a static prop);
-/// else (b) the nearest sidewalk point (the town's <c>Sidewalk_*</c> slabs); else (c) the scene's PlayerSpawner. Toast
-/// "Unstuck!".</item>
-/// <item><b>Driving:</b> <see cref="TruckRecovery.TryStartTow"/> (lift, right and set down on the nearest road; −$25 through
-/// the Ledger, free with handling L1+).</item>
-/// <item><b>Carried by a friend or flopped</b> (M2): disabled with "Wriggle free first!" through <see cref="BlockedReason"/>.</item>
+/// <item><b>On foot:</b> calls YOUR truck to where you are: the Scrapazon Prime Tow drone lifts it from wherever it is
+/// (parked across town, flipped, wedged, in the river) and sets it down upright on the nearest clear, drivable ground beside
+/// you, roads preferred (−$25 through the Ledger, free with handling L1+). You are only moved when you are really stuck
+/// (<see cref="Embedded"/> in a wall or a prop, or <see cref="FellOutOfWorld"/>), or when there is nothing to call (no truck in
+/// this scene, you are indoors): drop what you hold, then teleport to the best safe point, (a) the newest <b>safe-position
+/// ring</b> sample more than 3 m away (sampled every 2 s while grounded on layer Ground and not overlapping a wall or a static
+/// prop), else (b) the nearest sidewalk point (the town's <c>Sidewalk_*</c> slabs), else (c) the scene's PlayerSpawner, toast
+/// "Unstuck!". When you were really stuck and a truck can be called, it then comes to the new spot.</item>
+/// <item><b>Driving:</b> <see cref="TruckRecovery.TryStartTow"/> (lift, right and set down on the nearest road; same fee).</item>
+/// <item><b>Rear step:</b> hop off first (<see cref="RideRider.Unhitch"/>), then the on-foot rule.</item>
+/// <item><b>Disabled</b> with a reason on the button: carried or flopped (M2: "Wriggle free first!" through
+/// <see cref="BlockedReason"/>), piloting or flung ("Land first!"), and a truck that exists but is out on a job or already on
+/// its way (you are not stuck, so the old hop would be a surprise).</item>
 /// </list>
-/// Cooldown 10 s (real time). Every use is logged with <c>NetAudit.Event("unstuck", …)</c>.
+/// Cooldown 10 s (real time); a call the host refuses gives it back. Every use is logged with <c>NetAudit.Event("unstuck", …)</c>.
 /// </summary>
 public static class Unstuck
 {
@@ -24,6 +31,8 @@ public static class Unstuck
     public const float MinSampleDistance = 3f;
     public const int RingSize = 8;
     const float SidewalkSearchRadius = 80f;
+    /// <summary>Below this (and not in a shop's or the casino's pocket, which sit 20 m under the town on purpose) you fell through the world. The sea bed is -7.</summary>
+    const float FellBelow = -12f;
 
     const int GroundMask = 1 << 6;
     /// <summary>What counts as "stuck in something": Walls (7) and static Default props (houses, hedges, lamps).</summary>
@@ -34,6 +43,7 @@ public static class Unstuck
     static int ringCount, ringNext;
     static float lastUse = -999f, nextSample;
     static int ringScene = -1;
+    static bool callHopped;
     static readonly Collider[] overlap = new Collider[16];
     static readonly Collider[] nearby = new Collider[128];
     static Runner runner;
@@ -47,8 +57,32 @@ public static class Unstuck
     /// <summary>Safe samples in the ring right now (tests).</summary>
     public static int RingCount => ringCount;
 
-    /// <summary>What the last use did ("ring 6.2 m", "sidewalk", "spawn", "tow", "failed: …"), for tests and logs.</summary>
+    /// <summary>What the last use did ("ring 6.2 m", "sidewalk", "spawn", "tow", "call", "ring 6.2 m + call", "failed: …"), for tests and logs.</summary>
     public static string LastResult { get; private set; }
+
+    /// <summary>What a press does right now.</summary>
+    public enum Kind { None, Tow, Call, Hop, Dismount }
+
+    /// <summary>What a press would do for this player (<see cref="MakePlan"/>): the button, its confirm and <see cref="Use"/> all read it.</summary>
+    public readonly struct Plan
+    {
+        public readonly Kind kind;
+        /// <summary>The player is moved to a safe spot first (really stuck, or nothing to call).</summary>
+        public readonly bool hop;
+        /// <summary>Their truck is called (after the hop, if any).</summary>
+        public readonly bool call;
+        /// <summary>It costs the tow fee (the confirm says so).</summary>
+        public readonly bool fee;
+        /// <summary>Why nothing can be done (<see cref="Kind.None"/>), short enough for the button's tape.</summary>
+        public readonly string whyNot;
+
+        public Plan(Kind kind, bool hop = false, bool call = false, bool fee = false, string whyNot = null)
+        {
+            this.kind = kind; this.hop = hop; this.call = call; this.fee = fee; this.whyNot = whyNot;
+        }
+
+        public static Plan Blocked(string why) => new Plan(Kind.None, whyNot: why);
+    }
 
     /// <summary>The reason the button is disabled right now, or null when it can be pressed.</summary>
     public static string Unavailable()
@@ -63,23 +97,79 @@ public static class Unstuck
             if (!string.IsNullOrEmpty(r)) return r;
         }
         if (CooldownLeft > 0f) return Mathf.CeilToInt(CooldownLeft).ToString();
-        return null;
+        return MakePlan(me).whyNot;
+    }
+
+    /// <summary>What a press would do for <paramref name="me"/> right now. Cheap: the pause menu asks twice a second.</summary>
+    public static Plan MakePlan(PlayerController me)
+    {
+        if (me.IsDriving)
+        {
+            // In the seat: the tow. Piloting something else (the Hoverhog sets IsDriving too): nothing to hop or call.
+            var seat = me.currentTruck;
+            return seat != null ? new Plan(Kind.Tow, fee: !TruckCall.IsFree(seat)) : Plan.Blocked(UiText.Pause.LandFirst);
+        }
+        var rider = me.GetComponent<RideRider>();
+        if (rider != null && rider.IsFlying) return Plan.Blocked(UiText.Pause.LandFirst);
+        var look = LookAround(me, me.GetComponent<CharacterController>());
+        if (rider != null && rider.IsRiding)
+            return new Plan(Kind.Dismount, call: look.callable, fee: look.callable && !TruckCall.IsFree(look.truck) && !TruckCall.IsRightHere(look.truck, me.transform.position));
+        if (!look.callable && !look.stuck)
+        {
+            // Nothing to call and not stuck: the old hop. Unless the truck exists and is simply busy right now: say so.
+            if (look.truck != null && look.block != null && !look.indoors) return Plan.Blocked(look.block);
+            return new Plan(Kind.Hop, hop: true);
+        }
+        bool fee = look.callable && !TruckCall.IsFree(look.truck) && (look.stuck || !TruckCall.IsRightHere(look.truck, me.transform.position));
+        return new Plan(look.callable ? Kind.Call : Kind.Hop, hop: look.stuck || !look.callable, call: look.callable, fee: fee);
+    }
+
+    struct Look
+    {
+        public bool stuck, indoors, callable;
+        public TruckControllerV2 truck;
+        public string block;
+    }
+
+    static Look LookAround(PlayerController me, CharacterController cc)
+    {
+        var look = new Look();
+        Vector3 feet = me.transform.position;
+        look.stuck = FellOutOfWorld(feet) || Embedded(me, cc, feet);
+        look.indoors = DepotRowLayout.InteriorAt(feet) >= 0 || CasinoLayout.Contains(feet);
+        ulong client = Permissions.LocalClientId;
+        look.truck = TruckCall.TruckFor(client);
+        look.block = look.truck != null ? TruckCall.WhyNotCallable(look.truck, client) : null;
+        look.callable = look.truck != null && look.block == null && !look.indoors;
+        return look;
     }
 
     /// <summary>
-    /// Unstick this machine's player now. Returns false (and a readable <paramref name="whyNot"/>) when nothing happened.
-    /// The pause menu resumes first, so the tow (which runs on scaled time) can fly.
+    /// Do it now for this machine's player. Returns false (and a readable <paramref name="whyNot"/>, empty when there is
+    /// nothing to say) when nothing happened and the cooldown shouldn't start. The pause menu resumes first, so the tow
+    /// (which runs on scaled time) can fly.
     /// </summary>
     public static bool Use(out string whyNot)
     {
         whyNot = Unavailable();
         if (whyNot != null) { LastResult = "refused: " + whyNot; return false; }
         var me = PauseService.Me;
+        var plan = MakePlan(me);
+        // Start the cooldown first: the host's own answer to a call arrives inside OnFoot and may hand it back.
+        float before = lastUse;
+        lastUse = Time.realtimeSinceStartup;
         bool ok;
-        if (me.IsDriving && me.currentTruck != null) ok = Tow(me, out whyNot);
-        else ok = OnFoot(me, out whyNot);
-        if (ok) lastUse = Time.realtimeSinceStartup;
-        else LastResult = "failed: " + whyNot;
+        switch (plan.kind)
+        {
+            case Kind.Tow: ok = Tow(me, out whyNot); break;
+            case Kind.Dismount: ok = Dismount(me, out whyNot); break;
+            default: ok = OnFoot(me, out whyNot); break;
+        }
+        if (!ok)
+        {
+            lastUse = before;
+            if (!string.IsNullOrEmpty(whyNot)) LastResult = "failed: " + whyNot;
+        }
         return ok;
     }
 
@@ -93,7 +183,102 @@ public static class Unstuck
         return true;
     }
 
+    /// <summary>Climb off the rear step first (solo at once; in co-op the host takes you off a moment later), then the on-foot rule.</summary>
+    static bool Dismount(PlayerController me, out string whyNot)
+    {
+        whyNot = null;
+        var rider = me.GetComponent<RideRider>();
+        rider.Unhitch();
+        if (!rider.IsRiding) return OnFoot(me, out whyNot);
+        if (runner != null) runner.StartCoroutine(AfterDismount(me, rider));
+        LastResult = "dismount";
+        return true;
+    }
+
+    static IEnumerator AfterDismount(PlayerController me, RideRider rider)
+    {
+        float until = Time.realtimeSinceStartup + 1.5f;
+        while (rider != null && rider.IsRiding && Time.realtimeSinceStartup < until) yield return null;
+        if (me == null || rider == null || rider.IsRiding) yield break;
+        if (OnFoot(me, out string why)) yield break;
+        lastUse = -999f; // hopping off was all it came to
+        if (!string.IsNullOrEmpty(why)) GameHUD.Toast(why, ToastStyle.Bad, 2.5f);
+    }
+
     static bool OnFoot(PlayerController me, out string whyNot)
+    {
+        whyNot = null;
+        var cc = me.GetComponent<CharacterController>();
+        var look = LookAround(me, cc);
+        // Not stuck, and the truck is out on a job (you hopped off a friend's truck, say): the button already told you.
+        if (!look.stuck && !look.callable && look.truck != null && look.block != null && !look.indoors) { whyNot = look.block; return false; }
+        // Only a really stuck player is moved, or one with nothing to call; everyone else keeps their feet (and their bag).
+        bool hopped = false;
+        string how = null;
+        if (look.stuck || !look.callable)
+        {
+            if (!Hop(me, cc, me.transform.position, out how, out whyNot)) return false;
+            hopped = true;
+        }
+        if (!look.callable) return true;
+
+        var result = CallTruck(me, look.truck, hopped, how);
+        if (result == Called.NoRoom && !hopped)
+        {
+            // Nowhere near you to put it (a garage, a fenced-in yard): the old hop, then try again from the new spot.
+            if (!Hop(me, cc, me.transform.position, out how, out _)) { whyNot = UiText.Pause.TruckNoRoom; return false; }
+            hopped = true;
+            result = CallTruck(me, look.truck, hopped, how);
+        }
+        switch (result)
+        {
+            case Called.Here:
+                GameHUD.Toast(UiText.Pause.TruckHere, ToastStyle.Info, 2f);
+                return hopped; // just looking at it costs nothing, and starts no cooldown
+            case Called.NoRoom:
+                GameHUD.Toast(UiText.Pause.TruckNoRoom, ToastStyle.Bad, 2.5f);
+                return hopped;
+            default:
+                return true;
+        }
+    }
+
+    enum Called { Sent, Here, NoRoom }
+
+    /// <summary>Call the player's truck to where they stand now (after the hop, if there was one).</summary>
+    static Called CallTruck(PlayerController me, TruckControllerV2 truck, bool hopped, string how)
+    {
+        Vector3 at = me.transform.position;
+        string moved = hopped ? how + " + " : "";
+        if (TruckCall.IsRightHere(truck, at)) { LastResult = moved + "here"; return Called.Here; }
+        if (!TruckCall.TryFindDrop(truck, at, me.transform.eulerAngles.y, me.transform, out Vector3 root, out float rootYaw))
+        {
+            LastResult = moved + "no room";
+            return Called.NoRoom;
+        }
+        callHopped = hopped;
+        LastResult = moved + "call";
+        TruckCall.Send(at, root, rootYaw); // the answer comes back through OnCallReply
+        return Called.Sent;
+    }
+
+    /// <summary>The host's answer to the call (its own at once, a guest's a moment after the press).</summary>
+    internal static void OnCallReply(bool ok, string text)
+    {
+        if (ok)
+        {
+            GameHUD.Toast(UiText.Pause.TruckComing, ToastStyle.Good, 2.4f);
+            Sfx.Play("notify", null, 0.6f, 1.1f);
+            return;
+        }
+        if (!string.IsNullOrEmpty(text)) GameHUD.Toast(text, ToastStyle.Bad, 2.8f);
+        Sfx.Play("buzz", null, 0.5f, 1f);
+        LastResult = "refused: " + text;
+        if (!callHopped) lastUse = -999f; // nothing happened to anyone: no cooldown
+    }
+
+    /// <summary>Drop what you hold and teleport to the best safe point (ring, sidewalk, spawn). False when there is none.</summary>
+    static bool Hop(PlayerController me, CharacterController cc, Vector3 from, out string how, out string whyNot)
     {
         whyNot = null;
         var carrier = me.GetComponent<TrashCarrier>();
@@ -102,9 +287,6 @@ public static class Unstuck
             try { carrier.Drop(); }
             catch (Exception e) { Debug.LogException(e); }
         }
-        var cc = me.GetComponent<CharacterController>();
-        Vector3 from = me.transform.position;
-        string how;
         if (!TryRing(me, cc, from, out Vector3 to)) { if (TrySidewalk(me, cc, from, out to)) how = "sidewalk"; else if (TrySpawn(out to)) how = "spawn"; else how = null; }
         else how = $"ring {Vector3.Distance(from, to):0.0} m";
         if (how == null) { whyNot = UiText.Pause.UnstuckNowhere; return false; }
@@ -119,6 +301,13 @@ public static class Unstuck
         ForgetNear(from, 1.5f);
         return true;
     }
+
+    /// <summary>The player's capsule is buried in a wall or a prop (a smaller probe than <see cref="IsSafe"/>, at the player's real size, so brushing past one never counts).</summary>
+    static bool Embedded(PlayerController me, CharacterController cc, Vector3 feet) => Overlaps(me, cc, feet, 0.6f, true);
+
+    /// <summary>Fell through the floor: far under the town, and not in a shop's or the casino's pocket (those sit 20 m down).</summary>
+    public static bool FellOutOfWorld(Vector3 feet) =>
+        feet.y < FellBelow && DepotRowLayout.InteriorAt(feet) < 0 && !CasinoLayout.Contains(feet);
 
     static void Teleport(PlayerController me, CharacterController cc, Vector3 to)
     {
@@ -194,8 +383,8 @@ public static class Unstuck
         {
             float dx = point.x - from.x, dz = point.z - from.z;
             if (dx * dx + dz * dz > SidewalkSearchRadius * SidewalkSearchRadius) return;
-            // TownMap is XZ data and coastal streets are level. Raycast from the street datum, not from under it.
-            point.y = 0f;
+            // TownMap is XZ data. Raycast from the street's own height (the relief), not from under it.
+            point.y = TownRelief.Height(point.x, point.z);
             foreach (var existing in candidates) if ((existing - point).sqrMagnitude < .01f) return;
             candidates.Add(point);
         }
@@ -229,21 +418,34 @@ public static class Unstuck
     }
 
     /// <summary>Standing at <paramref name="feet"/> overlaps no wall or static prop (the player's own capsule).</summary>
-    public static bool IsSafe(PlayerController me, CharacterController cc, Vector3 feet)
+    public static bool IsSafe(PlayerController me, CharacterController cc, Vector3 feet) => !Overlaps(me, cc, feet, 0.95f, false);
+
+    /// <summary>
+    /// The player's capsule (<paramref name="shrink"/> × its radius) at <paramref name="feet"/> overlaps a wall or a static prop.
+    /// <paramref name="worldSize"/>: use the player's real (scaled) size; the ring's own probe has always used the local one.
+    /// </summary>
+    static bool Overlaps(PlayerController me, CharacterController cc, Vector3 feet, float shrink, bool worldSize)
     {
         float r = cc != null ? cc.radius : 0.28f, h = cc != null ? cc.height : 1.8f;
         Vector3 c = cc != null ? cc.center : new Vector3(0f, 0.9f, 0f);
+        if (worldSize && me != null)
+        {
+            Vector3 s = me.transform.lossyScale;
+            r *= Mathf.Max(Mathf.Abs(s.x), Mathf.Abs(s.z));
+            h *= Mathf.Abs(s.y);
+            c.y *= Mathf.Abs(s.y);
+        }
         Vector3 a = feet + Vector3.up * (c.y - h * 0.5f + r + 0.05f);
         Vector3 b = feet + Vector3.up * (c.y + h * 0.5f - r);
-        int n = Physics.OverlapCapsuleNonAlloc(a, b, r * 0.95f, overlap, SolidMask, QueryTriggerInteraction.Ignore);
+        int n = Physics.OverlapCapsuleNonAlloc(a, b, r * shrink, overlap, SolidMask, QueryTriggerInteraction.Ignore);
         for (int i = 0; i < n; i++)
         {
             var col = overlap[i];
             if (col == null || col.attachedRigidbody != null) continue; // bags, trucks, critters move
             if (me != null && col.transform.IsChildOf(me.transform)) continue;
-            return false;
+            return true;
         }
-        return true;
+        return false;
     }
 
     /// <summary>Grounded on layer Ground right now (a short ray from the feet).</summary>
@@ -304,6 +506,7 @@ public static class Unstuck
         lastUse = -999f;
         nextSample = 0f;
         runner = null;
+        callHopped = false;
         BlockedReason = null;
         LastResult = null;
     }

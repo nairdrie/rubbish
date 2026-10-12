@@ -126,6 +126,7 @@ public static class RaccoonCrew
             if (bag == null) continue;
             var district = Districts.ForStopId(bag.stopId);
             if (!Permitted(business, district) || HeldByAPlayer(bag)) continue;
+            if (DumpsterRules.IsDumpsterSlot(bag.slot)) continue; // raccoons cannot lift a dumpster lid (a rear-loader's job)
             tmpBags.Add(bag);
             tmpFees[bag.bagId ?? ""] = district.fee;
         }

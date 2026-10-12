@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Payroll: the crew app on the shop laptop (instanced inside Assets/UI/ebae/ebae.uxml as "payrollPage").
+     Static skeleton only; the job, crew and town rows are built by PayrollApp (Assets/Scripts/Business/Payroll/PayrollUi.cs). -->
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+  <ui:Style src="payroll.uss" />
+  <ui:VisualElement name="prPage" class="pr-page">
+    <ui:VisualElement name="prHeader" class="pr-header">
+      <ui:Label text="PAYROLL" class="pr-title" />
+      <ui:Label name="prSub" text="Fixed wages: every 50 s. Earnings shares: paid as your business earns. Joining this Town does not automatically hire anybody." class="pr-sub" />
+    </ui:VisualElement>
+    <!-- rows are built by PayrollApp -->
+    <ui:ScrollView name="prScroll" class="pr-scroll" />
+  </ui:VisualElement>
+</ui:UXML>

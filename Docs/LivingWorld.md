@@ -61,7 +61,9 @@ Extends `Docs/CoreLoop.md` (read it first: conventions, ownership rules, setup-s
   or get within ~2 m)). Retreat and despawn at dawn. Simple steering on flat ground (no NavMesh), ground-snapped, avoid houses.
 - **Pile Goblins**: at any time of day, a neglected pile may get a sleeping goblin (snoring Z's). Disturbing it (grabbing a bag from its
   pile, bumping it) wakes it: grumpy chase + bonk (knockback, drop your bag), gives up after a bit or when you've driven off; clearing the
-  whole pile evicts it (it stomps off muttering). Derpy primitive gremlin, swappable look.
+  whole pile evicts it (it stomps off muttering). Derpy primitive gremlin, swappable look. In co-op the "You woke the Pile Goblin! RUN!"
+  toast goes only to the player who woke it (host brain decides who: the grabber, else the player it is watching; a guest gets it
+  through `NightNet.HostToastTo`), and the eviction toast goes to everyone within 40 m of the heap.
 - **Bites / bonks**: knockback on the player's CharacterController (short impulse), `TrashCarrier.Local.Drop()`, camera shake, "OW!"
   floating text, Sfx. Rabid raccoon bite → 50 % chance `GameSession.Infect(GameClock.TotalHours)`.
 - **Scaring**: truck horn (H while driving — poll it; Flow may later add an event) scatters raccoons within ~12 m (more with the

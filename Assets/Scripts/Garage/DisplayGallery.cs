@@ -20,10 +20,6 @@ public class DisplayGallery : MonoBehaviour
     public float gazeMaxCamera = 9f;
     [Tooltip("Max distance (m) from your character to a find you can read.")]
     public float gazeMaxPlayer = 5.5f;
-    [Tooltip("Arrange takes E (over the garage door / truck prompts) while you look straight at a slot from within this many metres (flat).")]
-    public float arrangeFocusDistance = 2.2f;
-    [Tooltip("InteractionZone score while focused: above line-of-sight picks (0..2) and the garage door (1), below the sort station's step-up (4).")]
-    public float arrangeFocusScore = 3f;
 
     DisplayPlan plan;
     float refreshAt = -1f;
@@ -48,7 +44,6 @@ public class DisplayGallery : MonoBehaviour
         GameSession.Changed -= MarkDirty;
         GameSession.UpgradeChanged -= OnUpgrade;
         if (placard != null) placard.Hide(true);
-        UpdateArrangeFocus(null, -1);
     }
 
     void OnUpgrade(string id, int level) => MarkDirty();
@@ -151,29 +146,11 @@ public class DisplayGallery : MonoBehaviour
         }
         GazePiece = best;
         GazeSlot = bestSlot;
-        UpdateArrangeFocus(best, bestSlot);
         if (best == null) { if (placard != null) placard.Hide(false); return; }
         if (placard == null) placard = DisplayPlacard.Create(transform);
         var item = best.ShownAt(bestSlot);
         placard.Show(PlacardText(best, bestSlot, item), item != null && item.Def != null ? RarityInfo.Color(item.Def.rarity) : new Color(0.6f, 0.6f, 0.65f),
                      best.SlotCenter(bestSlot), cam);
-    }
-
-    /// <summary>
-    /// Fix for "Arrange is unreachable at the south-wall pieces" (E = Exit Garage, F = Enter Truck): the piece you're looking
-    /// straight at from up close lifts its InteractionZone's score so Arrange gets E; every other piece drops back.
-    /// </summary>
-    void UpdateArrangeFocus(DisplayPiece best, int slot)
-    {
-        bool close = false;
-        if (best != null && slot >= 0 && SortingKit.TryGetLocalPlayer(out Vector3 me))
-        {
-            Vector3 d = best.SlotCenter(slot) - me;
-            d.y = 0f;
-            close = d.sqrMagnitude <= arrangeFocusDistance * arrangeFocusDistance;
-        }
-        foreach (var piece in pieces)
-            if (piece != null) piece.SetArrangeFocus(close && piece == best, arrangeFocusScore);
     }
 
     /// <summary>Nothing solid between the camera and the find (the piece itself, the player and triggers don't count).</summary>

@@ -122,7 +122,7 @@ public static class CurbTrash
 
     // ------------------------------------------------------------------ pay + urgency
 
-    /// <summary>Pickup fee for a bag of this age in the starter suburb (full $4 on time, decaying to 25 % by 12 h).</summary>
+    /// <summary>Pickup fee for a bag of this age in the starter suburb (full $12 on time, decaying to 60 % by 12 h).</summary>
     public static float PayFor(double ageHours) => Economy.PickupFeePerBag * Economy.PickupPayFraction(ageHours);
 
     /// <summary>Pickup pay for a bag of this age in a district: fee × pay fraction + (on time ? tip : 0).</summary>
@@ -148,7 +148,7 @@ public static class CurbTrash
     }
 
     /// <summary>
-    /// How much more a district's curbs are worth to the route planner than the starter suburb's: √((fee + tip) / $4).
+    /// How much more a district's curbs are worth to the route planner than the starter suburb's: √((fee + tip) / the Acres fee).
     /// 1 in Mildly Pleasant (so its routing is unchanged), ≈ 1.9 / 3.7 / 5.5 in the richer districts.
     /// </summary>
     public static float PayWeight(DistrictDef d)
@@ -157,7 +157,7 @@ public static class CurbTrash
         return Mathf.Sqrt(Mathf.Max(0.25f, (d.fee + d.tip) / Mathf.Max(0.01f, Economy.PickupFeePerBag)));
     }
 
-    /// <summary>Planner bonus for being able to leave a curb completely clean (the $2 bonus).</summary>
+    /// <summary>Planner bonus for being able to leave a curb completely clean (the curb bonus).</summary>
     public const float CurbCleanAppeal = 0.35f;
 
     // ------------------------------------------------------------------ per-stop stats (cached per frame)

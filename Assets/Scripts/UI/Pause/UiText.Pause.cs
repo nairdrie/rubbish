@@ -119,5 +119,20 @@ public static partial class UiText
         public const string TowBody = "A {0} Prime Tow lifts the truck onto the nearest road. {1}, thanks.";
         public const string TowYes = "Call the tow";
         public const string UnstuckNowhere = "Couldn't find a safe spot nearby. Try walking a bit first.";
+        // On foot, Unstuck calls your truck to you (TruckCall). The short ones fit the tape on the disabled button.
+        public const string CallTitle = "Call your truck?";
+        public const string CallBody = "A {0} Prime Tow drone flies it over to wherever you're standing. {1}, thanks.";
+        public const string CallYes = "Send the drone";
+        public const string TruckComing = "Truck's on its way! Don't stand under it.";
+        public const string TruckHere = "Your truck is right there. Wave at it.";
+        public const string TruckNoRoom = "No room for the truck near you. Try a wider spot.";
+        public const string TruckIndoors = "Step outside first. The drone can't do doorways.";
+        public const string TruckNone = "No truck here to call.";
+        public const string TruckInUse = "Truck's in use!";
+        public const string TruckInTransit = "Truck's coming!";
+        public const string TruckRolling = "The truck is still rolling to a stop. Try again in a sec.";
+        public const string TruckTooFast = "The drone needs a minute. Try again.";
+        public const string TruckOffline = "The tow service can't reach the Town yet. Try again in a sec.";
+        public const string LandFirst = "Land first!";
     }
 }

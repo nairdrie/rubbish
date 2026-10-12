@@ -879,6 +879,8 @@ public static class TownLifePark
         }
         void Pond()
         {
+            // water lies level, a little down in its hollow, whatever the park's slope does (terrain relief)
+            Kit.LevelPad(gGround, "park_pond", pond, new Vector2(pondR.x * 2.6f + 3f, pondR.y * 2.6f + 3f), 0f, 5f, -0.2f);
             Kit.Polygon(gGround, "park_pond_bank", PondOutline(1f, 1.3f), "park.sand", SoilY);
             Kit.Polygon(gGround, "park_pond_water", PondOutline(1f, 0f), "water", PavingY);
             Kit.Polygon(gGround, "park_pond_deep", PondOutline(0.62f, 0f, 18), "park.water.deep", MarkingY);

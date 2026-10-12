@@ -44,6 +44,8 @@ public class PileGoblin : Critter
     float bubbleT;
     int breathCount;
     bool announced;
+    /// <summary>Who woke it (host brain / solo): the one player the "You woke it!" warning is for.</summary>
+    NightTarget waker;
     CritterZs zs;
 
     float animHip, animLean, animMouth, animSpin, animRoll;
@@ -163,6 +165,8 @@ public class PileGoblin : Critter
             case State.Sleeping:
                 stateDur = 0f;
                 stirTimer = 0f;
+                announced = false; // a fresh nap: whoever wakes it next (maybe someone else) gets their own warning
+                waker = default;
                 break;
             case State.Stirring:
                 stateDur = 1.6f;
@@ -178,10 +182,10 @@ public class PileGoblin : Critter
                 Juice.Punch(Rig.juice, 0.4f, 0.35f);
                 Rig.KickEyes(7f);
                 Fx.Dust(head + Vector3.up * 0.2f, 0.6f); // steam out of the ears
-                if (!announced)
+                if (!announced && !NetPuppet)
                 {
                     announced = true;
-                    GameHUD.Toast($"You woke the {DisplayName}! RUN!", ToastStyle.Bad, 2.2f);
+                    WarnWaker();
                 }
                 break;
             case State.Jumping:
@@ -225,8 +229,9 @@ public class PileGoblin : Critter
                 PopBubble(false);
                 Sfx.Play(Look.angrySfx, head, 1f, 0.85f);
                 GameHUD.FloatingText(head + Vector3.up * 0.6f, Pick(Look.evictLines), new Color(1f, 0.4f, 0.3f), 1.3f);
-                if (Home != null && playerDist < 40f)
-                    GameHUD.Toast($"The {DisplayName} got evicted from {Home.address}! Clean streets win.", ToastStyle.Good, 3f);
+                // Everyone near the heap hears about it, not just whoever happens to be the goblin's nearest player.
+                if (Home != null && !NetPuppet)
+                    NightNet.HostToastNear(transform.position, 40f, $"The {DisplayName} got evicted from {Home.address}! Clean streets win.", ToastStyle.Good);
                 break;
             case State.Leaving:
                 stateDur = Random.Range(5f, 8f);
@@ -316,10 +321,14 @@ public class PileGoblin : Critter
         }
     }
 
-    /// <summary>Angry wake-up (you messed with its pile).</summary>
-    public void Wake()
+    /// <summary>Angry wake-up (you messed with its pile): blamed on the player it is watching right now.</summary>
+    public void Wake() => Wake(target);
+
+    /// <summary>Angry wake-up caused by <paramref name="by"/> (a bag grabbed off its pile may not be the nearest player).</summary>
+    void Wake(NightTarget by)
     {
         if (Despawning) return;
+        if (by.Valid) waker = by;
         if (bonks >= 2)
         {
             // Too tired for another chase: just grumbles at you.
@@ -327,6 +336,19 @@ public class PileGoblin : Critter
             return;
         }
         Enter(State.Waking);
+    }
+
+    /// <summary>
+    /// "You woke the Pile Goblin! RUN!" is for the player who woke it, not for everyone who can see the goblin (the host's
+    /// brain and every guest's puppet all enter Waking): this machine's own player directly, a guest through the host.
+    /// </summary>
+    void WarnWaker()
+    {
+        var who = waker.Valid ? waker : target;
+        if (!who.Valid) return;
+        string text = $"You woke the {DisplayName}! RUN!";
+        if (who.local) GameHUD.Toast(text, ToastStyle.Bad, 2.2f);
+        else NightNet.HostToastTo(who.client, text, ToastStyle.Bad);
     }
 
     void WakeAndLeave()
@@ -558,7 +580,8 @@ public class PileGoblin : Critter
         {
             case State.Sleeping:
             case State.Stirring:
-                Wake();
+                var grabber = by != null ? by.GetComponentInParent<PlayerController>() : null;
+                Wake(grabber != null ? NightPlayers.Describe(grabber, transform.position) : target);
                 break;
             case State.Return:
             case State.Gloat:

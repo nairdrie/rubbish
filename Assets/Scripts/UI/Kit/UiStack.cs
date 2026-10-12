@@ -249,6 +249,21 @@ public static class UiStack
         SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
+    /// <summary>
+    /// A closed screen can leave one of its buttons selected in the EventSystem. The UI module maps W/S/A/D to
+    /// "navigate", so in the street every W then moved that focus to a sibling button and played the menu hover squeak.
+    /// With no screen, menu or lock holding the UI, a leftover UiButton selection is dropped.
+    /// </summary>
+    internal static void DropStrayFocus()
+    {
+        var es = EventSystem.current;
+        if (es == null) return;
+        var sel = es.currentSelectedGameObject;
+        if (sel == null || AnyOpen || MainMenuCoopUI.Instance != null || PlayerController.IsUIBlocking) return;
+        if (sel.GetComponent<UiButton>() == null) return;
+        es.SetSelectedGameObject(null);
+    }
+
     internal static void TickEsc()
     {
         Prune();
@@ -334,6 +349,6 @@ public static class UiStack
 [DefaultExecutionOrder(500)]
 public sealed class UiStackRunner : MonoBehaviour
 {
-    void Update() => UiStack.TickEsc();
+    void Update() { UiStack.TickEsc(); UiStack.DropStrayFocus(); }
     void LateUpdate() => UiStack.Snapshot();
 }

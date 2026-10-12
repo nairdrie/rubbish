@@ -5,8 +5,8 @@ using UnityEngine;
 
 /// <summary>
 /// Focused F4 integration brain: two trapped raccoons (Animal Control and pet), a friend bonking off a latch,
-/// Rabies Tag through real shoves, a host-charged self-shot, then a flopped friend carried and jabbed (no kiosk any more).
-/// Three bots, ~120 seconds.
+/// Rabies Tag through real shoves, a host-charged self-shot, then a rabid friend flopped and carried and a shot asked for them
+/// anyway (nobody can jab a friend any more, so the host must refuse it). Three bots, ~120 seconds.
 /// NightBots covers heist/stowaway/latch/King payout; this covers the previously unexercised paths.
 /// </summary>
 public static class NightExtrasBots
@@ -144,7 +144,6 @@ public static class NightExtrasBots
                 Log("summary", new Dictionary<string, object>
                 {
                     { "traps", NightNet.Instance.Traps.Count }, { "tag", NightShift.RabiesTag },
-                    { "jabs", UnityEngine.Object.FindObjectsByType<RabiesJab>(FindObjectsSortMode.None).Length },
                 });
         }
 
@@ -220,6 +219,8 @@ public static class NightExtrasBots
             }
             if (t > 108 && Once("friend-shot"))
             {
+                // Everything the old jab asked for is in place (a rabid friend who is down and carried by a payer with cash), and
+                // the host must still say no: a shot is only ever for yourself.
                 ulong target = PlayerAtIndex(2);
                 bool carrying = hands.BodyOf(c.Nm.LocalClientId).carrying == target;
                 if (target != HandsNet.None) NightNet.ShotFor(target);
@@ -261,7 +262,7 @@ public static class NightExtrasBots
                 HandsNet.Instance.LocalFlop(true);
                 Log("flop", new Dictionary<string, object> { { "kiosk", atKiosk } });
             }
-            if (t > 118 && Once("friend-shot-result"))
+            if (t > 118 && Once("friend-shot-result")) // still rabid: nobody can cure a friend
                 Log("friend-shot-result", new Dictionary<string, object> { { "rabid", GameSession.HasRabies }, { "pets", CountPets() } });
         }
 

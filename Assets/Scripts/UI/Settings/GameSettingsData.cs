@@ -47,7 +47,8 @@ public sealed class GameSettingsData
         public int sfx = 100;
         /// <summary>Night ambience multiplier (cricket, owl, rooster).</summary>
         public int ambience = 100;
-        /// <summary>Hidden until a music track exists (§13 Q5).</summary>
+        /// <summary>Music multiplier: the background tracks, the casino's house band and the workshop radio's tune
+        /// (BackgroundMusic, CasinoMusic, WorkshopGadget). Separate from the Sound effects and Ambience sliders.</summary>
         public int music = 70;
         /// <summary>Hidden until M3's voice chat.</summary>
         public int voice = 100;

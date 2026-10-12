@@ -2,8 +2,9 @@
 //
 // ECONOMICS (Docs/Progression.md 6.9.3 has the full table). The chipped crew is the game's ONLY background collection:
 // it has to stay a joke early and be able to keep the cheaper districts collected late, without ever out-earning the
-// route you drive yourself. District numbers are Districts.cs: Acres 35 bags a day at $4, Meadows 30 at $15, Commons 28
-// at $25 (93 bags a day between them at full Trust), then Snootington 24 at $40 and Stackington 26 at $55.
+// route you drive yourself. District numbers are Districts.cs: Acres 35 bags a day at $12, Meadows 30 at $45, Commons 28
+// at $75 (93 bags a day between them at full Trust), then Snootington 24 at $120 and Stackington 26 at $165 (all x3 since
+// the 2026-10-12 pace pass; the dollar figures further down in this comment are the old ones unless they say otherwise).
 //   Pay        35% of fee x lateness fraction (CrewFeeSharePercent), no tip. A night sweep also earns the Night Shift x1.5
 //              every night pickup gets (52.5%). Half Rep, no Work Order credit (BagCollectedFact.byRaccoon).
 //   Volume     bags per raccoon per sweep = 1 (Carry 6+: 2, Carry 10: 3), a Zoom chance of one more, and with a Brain Chip
@@ -16,9 +17,10 @@
 //              ever works a district above CrewMaxDistrictTier (the Bluffs' Butler Drops are yours).
 //   Losses     3% per Greed point of what they take is eaten (no pay, gone); Collar Chip raccoons lose about a fifth of
 //              their sweeps to naps, dogs and garden gnomes.
-//   Kibble     $5 a head a day for everybody; a crew raccoon costs $8 on a Brain Chip and $70 on a Full-Time Chip
+//   Kibble     $15 a head a day for everybody; a crew raccoon costs $24 on a Brain Chip and $210 on a Full-Time Chip
 //              (CrewFoodCents*). That is the wage: it keeps the crew's net fee income near break-even at every stage
-//              (about -$9, +$25 and +$35 to +$65 a day in the expected-value model, 100% Trust, nobody else collecting).
+//              (about -$27, +$75 and +$105 to +$195 a day in the expected-value model, 100% Trust, nobody else collecting).
+//              Pace pass 2026-10-12: fees x3, so kibble x3 (was $5 / $8 / $70) and the crew stays what it was: company, not income.
 //   Why        The crew's real worth is clean kerbs (Clean Streets, Trust, no neglect fines) and the bags on your tipping
 //              floor, not the fees.
 public static class RaccoonTuning
@@ -32,10 +34,10 @@ public static class RaccoonTuning
     public const int WildTraitMin = 2, WildTraitMax = 7;
     public const int NameMaxChars = 12;
     /// <summary>Hutch kibble, per raccoon (kits too), per in-game day, in cents. Charged at the day rollover.</summary>
-    public const int FoodCentsPerHeadPerDay = 500;
+    public const int FoodCentsPerHeadPerDay = 1500;
     /// <summary>What a raccoon ON THE CREW eats instead, per in-game day, once the business has a Brain Chip (brain food)
     /// or a Full-Time Chip (premium, and they know it). Resting raccoons, kits and the pack stay on the plain kibble.</summary>
-    public const int CrewFoodCentsBrain = 800, CrewFoodCentsFullTime = 7000;
+    public const int CrewFoodCentsBrain = 2400, CrewFoodCentsFullTime = 21000;
     public const string LedgerFood = "hutch_food", LedgerCrew = "raccoon_crew", LedgerCrewEvent = "raccoon_antics",
         LedgerRival = "kings_rival", LedgerTribute = "kings_tribute";
     public const int MaxGnomeTrophies = 3;

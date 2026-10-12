@@ -150,7 +150,7 @@ public static class ScavengerTuning
     /// escalated like any neighbour incident (x1.25 per repeat that day, at most x3).</summary>
     public const float FineInShunts = 4f;
     /// <summary>Base Rep (the district multiplier applies): two flattened neighbours' worth.</summary>
-    public const float BurglaryRep = -8f;
+    public const float BurglaryRep = -16f;
     /// <summary>District Trust at the next midnight: per theft someone saw, per theft nobody saw, and the most one night
     /// can cost. Yardstick: a dirty district loses 0.10 a night; a sparkling one gains 0.15.</summary>
     public const float TrustPerWitnessed = 0.04f, TrustPerUnwitnessed = 0.01f, TrustNightCap = 0.20f;
@@ -166,7 +166,7 @@ public static class ScavengerTuning
     /// <summary>Band edges in dollars for the best valuable's appraisal: band 0 = no valuable at all, 1 = under $25, ...</summary>
     public static readonly float[] CallBandEdges = { 25f, 100f, 500f };
     public static readonly string[] CallBandNames = { "Nothing but trash", "Pocket change (under $25)", "A decent find ($25 to $100)", "A proper score ($100 to $500)", "JACKPOT ($500 and up)" };
-    /// <summary>Paid for a correct call, by band. A pickup fee is $4; a Work Order pays $25 and up.</summary>
+    /// <summary>Paid for a correct call, by band. A pickup fee is $12; a Work Order pays $75 and up.</summary>
     public static readonly float[] CallBonus = { 2f, 10f, 30f, 120f, 400f };
     public const float CallRange = 6f;
 }

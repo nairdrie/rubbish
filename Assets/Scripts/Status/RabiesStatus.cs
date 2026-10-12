@@ -18,8 +18,8 @@ using UnityEngine.SceneManagement;
 /// Everything (volume, camera, inputs, foam) is restored on cure, scene change, disable and destroy.
 /// F4 night shift (Docs/Multiplayer.md §14.4): rabies is per player in co-op (<see cref="NightNet"/> keeps a host record keyed
 /// by PlayerKey, so it survives a reconnect, and everyone sees everyone's foam); symptomatic players get goofy hiccups (a
-/// little hop + "*HIC*"); in the one world, passing out means lying there for up to 30 s so a friend can jab you with a
-/// Rabies Shot (<see cref="RabiesJab"/>), then the hospital bill where you fell (no scene trip).
+/// little hop + "*HIC*"); in the one world, passing out is the same fade and hospital bill, then you wake where you fell (no
+/// scene trip). Nobody can cure a friend on the street: everyone buys their own shot on their laptop.
 ///
 /// Movement drift nudges StarterAssetsInputs.move before the ThirdPersonController reads it (execution order -80)
 /// and puts the real input back in LateUpdate — never while a UI lock / the sort station / driving owns the input.
@@ -190,7 +190,7 @@ public class RabiesStatus : MonoBehaviour
         Hiss(shown);
         Hiccup(shown);
 
-        if (!passOutInProgress && FeralStatus.LocalPassesOut && GameSession.HasRabies && HoursInfected >= Economy.RabiesPassOutHours
+        if (!passOutInProgress && !DrunkStatus.PassingOut && FeralStatus.LocalPassesOut && GameSession.HasRabies && HoursInfected >= Economy.RabiesPassOutHours
             && !SceneController.IsTransitioning && !ScreenFader.IsFading)
         {
             var host = (MonoBehaviour)CritterSpawner.Instance ?? this;
@@ -384,26 +384,6 @@ public class RabiesStatus : MonoBehaviour
         }
         Sfx.Play("thud", null, 1f, 0.7f);
         Juice.Shake(0.35f, 0.3f);
-
-        // Co-op one world (F4): lie there for up to 30 s; a friend can jab you with a Rabies Shot where you lie.
-        if (DepotRowWorld.Active)
-        {
-            var hn = HandsNet.Instance;
-            bool flopped = hn != null && hn.Active;
-            if (flopped) hn.LocalFlop(true);
-            GameHUD.Toast($"You passed out! A friend can jab you with a Rabies Shot ({Economy.Money(NightShift.RabiesShotPrice)})...", ToastStyle.Bad, 4f);
-            float waitUntil = Time.unscaledTime + 30f;
-            if (Local != null) Local.passOutTip = 0.3f;
-            while (Time.unscaledTime < waitUntil && GameSession.HasRabies) yield return null;
-            if (flopped && hn != null) hn.LocalFlop(false);
-            if (!GameSession.HasRabies)
-            {
-                passOutVisuals = false;
-                if (Local != null) Local.RestoreAll();
-                passOutInProgress = false;
-                yield break;
-            }
-        }
         yield return ScreenFader.FadeOut(0.6f, false);
 
         // Hospital: the full bill (yes, even if it puts you in the red), cure.
@@ -414,9 +394,19 @@ public class RabiesStatus : MonoBehaviour
         passOutVisuals = false;
         if (Local != null) Local.RestoreAll(); // wake up clear-headed (the black screen hides the snap)
         string msg = !debt
-            ? $"You passed out foaming and woke up in the garage. Hospital bill: -{Economy.Money(bill)}"
+            ? $"You passed out foaming and woke up {(DepotRowWorld.Active ? "where you fell" : "in the garage")}. Hospital bill: -{Economy.Money(bill)}"
             : $"You passed out. Hospital bill: -{Economy.Money(bill)}. You're in debt now. And missing a shoe.";
 
+        yield return ArriveAtGarage(msg);
+        passOutInProgress = false;
+    }
+
+    /// <summary>
+    /// The end of a pass-out, with the screen already black: wake in the garage (the truck is towed home) when this machine
+    /// can travel there, otherwise where you fell; show <paramref name="msg"/> and fade back in. Shared with DrunkStatus.
+    /// </summary>
+    internal static IEnumerator ArriveAtGarage(string msg)
+    {
         var nm = NetworkManager.Singleton;
         var sc = SceneController.Instance;
         bool canTravel = !CritterWorld.InGarage && sc != null && nm != null && nm.IsServer && !DepotRowWorld.Active
@@ -451,7 +441,6 @@ public class RabiesStatus : MonoBehaviour
             Sfx.Play("buzz", null, 0.7f, 0.8f);
             yield return ScreenFader.FadeIn(0.8f);
         }
-        passOutInProgress = false;
     }
 
     // ------------------------------------------------------------------ tow the truck home on pass-out

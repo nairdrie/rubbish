@@ -29,31 +29,33 @@ public static partial class Progression
     }
 
     // §4.3: a promotion needs Rep ≥ threshold AND Clean Days ≥ minimum. §4.4: one deadpan Head Office line per rank.
+    // Pace pass 2026-10-12 (§3.6): rank 2 now 350 Rep (one full first load; was 450) and the Clean Day minimums are roughly
+    // 40% of what they were (0/0/0/2/3/4/6/8/9/12/15/20 before), so the Rep that now arrives 3-4x faster is not parked behind them.
     static readonly RankRow[] ranks =
     {
         new RankRow("rank_trash_intern", "Trash Intern (Unpaid)", 0f, 0,
             "Welcome to Rubbish Co. Your desk is the truck. Your chair is also the truck."),
-        new RankRow("rank_bag_wrangler", "Bag Wrangler", 450f, 0,
+        new RankRow("rank_bag_wrangler", "Bag Wrangler", 350f, 0,
             "Congratulations. You may now touch the bags with both hands."),
         new RankRow("rank_curbside_associate", "Curbside Associate", 950f, 0,
             "Your business cards are on order. They say 'Curbside Associat'. We ran out of E."),
-        new RankRow("rank_certified_bin_technician", "Certified Bin Technician", 1800f, 2,
+        new RankRow("rank_certified_bin_technician", "Certified Bin Technician", 1800f, 1,
             "Please stop telling residents you are a doctor."),
-        new RankRow("rank_senior_sack_specialist", "Senior Sack Specialist", 3250f, 3,
+        new RankRow("rank_senior_sack_specialist", "Senior Sack Specialist", 3250f, 2,
             "Your salary is unchanged. Please stop feeding the raccoons."),
-        new RankRow("rank_hopper_whisperer", "Hopper Whisperer", 4900f, 4,
+        new RankRow("rank_hopper_whisperer", "Hopper Whisperer", 4900f, 2,
             "The truck has asked HR about you. HR is a raccoon."),
-        new RankRow("rank_regional_rubbish_manager", "Regional Rubbish Manager", 6650f, 6,
+        new RankRow("rank_regional_rubbish_manager", "Regional Rubbish Manager", 6650f, 3,
             "You now manage a region. The region is mostly hedges."),
-        new RankRow("rank_garbage_guru", "Garbage Guru", 9600f, 8,
+        new RankRow("rank_garbage_guru", "Garbage Guru", 9600f, 4,
             "Staff report you meditating in the compactor. Please don't."),
-        new RankRow("rank_duke_of_dumpsters", "Duke of Dumpsters", 13100f, 9,
+        new RankRow("rank_duke_of_dumpsters", "Duke of Dumpsters", 13100f, 4,
             "Your title is legally binding in zero countries."),
-        new RankRow("rank_trash_tycoon", "Trash Tycoon", 17400f, 12,
+        new RankRow("rank_trash_tycoon", "Trash Tycoon", 17400f, 5,
             "The billionaires have asked for you by name. They got it wrong."),
-        new RankRow("rank_baron_of_bins", "Baron of Bins", 27550f, 15,
+        new RankRow("rank_baron_of_bins", "Baron of Bins", 27550f, 6,
             "Magnus has requested a raise on your behalf. Denied."),
-        new RankRow("rank_supreme_garbage_overlord", "Supreme Garbage Overlord", 43900f, 20,
+        new RankRow("rank_supreme_garbage_overlord", "Supreme Garbage Overlord", 43900f, 8,
             "There are no more promotions. We checked. We're a little scared of you."),
     };
 
@@ -169,6 +171,9 @@ public static partial class Progression
         if (item == null) { whyNot = "that product doesn't exist (yet)"; return false; }
         int i = level - 1;
         if (i < 0) return true;
+
+        // A district opened by contract (Campaign) has no permit for sale: the city hands it over when the contract is won.
+        if (Campaign.IsContractPermit(item.id)) { whyNot = Campaign.PermitLockedReason(item.id); return false; }
 
         if (item.rankRequired != null && i < item.rankRequired.Length)
         {

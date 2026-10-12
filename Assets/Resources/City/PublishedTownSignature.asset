@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: PublishedTownSignature
   m_EditorClassIdentifier: Rubbish.Net.Core::PublishedTownSignature
   schema: 1
-  sha256: 6901a04c5f80e15303ce7d12968c7a9f63c4c488acc004878df1b8cc3739c329
-  dependencyCount: 1736
+  sha256: 11aba8f56d2c118c44f45e2d27ecafc02be616b424ed981bf53c4a23b939cb95
+  dependencyCount: 1818

@@ -4,13 +4,16 @@
   <!-- the template's own <Style> isn't carried through <Instance>, so the laptop attaches Scrapazon's sheet too -->
   <ui:Style src="../shop/scrapazon.uss" />
   <ui:Style src="../print/solidwaste.uss" />
+  <ui:Style src="../payroll/payroll.uss" />
   <ui:Template name="ScrapazonPage" src="../shop/scrapazon.uxml" />
   <ui:Template name="SolidWastePage" src="../print/solidwaste.uxml" />
+  <ui:Template name="PayrollPage" src="../payroll/payroll.uxml" />
   <ui:VisualElement name="ebaeScreen" class="ebae-screen">
     <ui:VisualElement name="window" class="window">
 
       <!-- laptop app strip: one browser, ebag (sells), Scrapazon (buys) and, once its floppy disk has been found and
-           kept, SolidWaste 3D (prints). Tabs switch apps. The third tab stays hidden until EbaeUI shows it. -->
+           kept, SolidWaste 3D (prints) and, in a Town with the one world on, Payroll (hire friends). Tabs switch apps. The
+           third and fourth tabs stay hidden until EbaeUI shows them. -->
       <ui:VisualElement name="appStrip" class="app-strip">
         <ui:VisualElement name="closeButton" class="chrome-dot chrome-dot--red" tooltip="close (Esc)" />
         <ui:VisualElement class="chrome-dot chrome-dot--yellow" />
@@ -29,6 +32,10 @@
           <ui:Label text="3D" class="app-tab-icon app-tab-icon--print" picking-mode="Ignore" />
           <ui:Label name="appTabPrintLabel" text="SolidWaste 3D" class="app-tab-label" picking-mode="Ignore" />
           <ui:Label name="appTabPrintBadge" text="NEW" class="app-tab-badge app-tab-badge--new app-tab-badge--hidden" picking-mode="Ignore" />
+        </ui:VisualElement>
+        <ui:VisualElement name="appTabPayroll" class="app-tab" style="display: none;">
+          <ui:Label text="$" class="app-tab-icon app-tab-icon--payroll" picking-mode="Ignore" />
+          <ui:Label name="appTabPayrollLabel" text="Payroll - hire your friends" class="app-tab-label" picking-mode="Ignore" />
         </ui:VisualElement>
         <ui:Label name="appTabPlus" text="+" class="app-tab-plus" />
         <ui:VisualElement class="app-strip-spacer" />
@@ -102,6 +109,9 @@
 
       <!-- app: SolidWaste 3D (print-side; Assets/UI/print/solidwaste.uxml, driven by SolidWasteApp.cs) -->
       <ui:Instance template="SolidWastePage" name="solidWastePage" class="app-page" style="display: none;" />
+
+      <!-- app: Payroll (crew; Assets/UI/payroll/payroll.uxml, driven by PayrollApp in PayrollUi.cs) -->
+      <ui:Instance template="PayrollPage" name="payrollPage" class="app-page" style="display: none;" />
 
       <ui:VisualElement name="toastLayer" class="toast-layer" picking-mode="Ignore" />
     </ui:VisualElement>

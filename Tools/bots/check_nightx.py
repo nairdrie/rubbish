@@ -49,11 +49,13 @@ def run(folder, mode):
         check("rabid shove attempted and passed infection", len(rows(1, "night.rabiestag")) >= 1 and
               any(r.get("pass") is True for r in rows(1, "night.rabiestag")))
         shots = rows(1, "night.shot")
-        check("self and friend shots authorized by host", len(shots) >= 2 and len({r.get("for") for r in shots}) >= 2)
-        check("two $35 Rabies Shots charged", len([r for r in rows(1, "bizledger", id="rabies_shot") if r.get("cents") == -3500]) >= 2)
+        check("the self shot authorized by host (and only that one)", len(shots) == 1 and shots[0].get("by") == shots[0].get("for"))
+        check("one $35 Rabies Shot charged", len([r for r in rows(1, "bizledger", id="rabies_shot") if r.get("cents") == -3500]) == 1)
         check("self shot cured guest", any(r.get("rabid") is False for r in rows(2, "nightx", op="self-shot-result")))
-        check("friend carried into kiosk", any(r.get("carrying") is True for r in rows(2, "nightx", op="friend-shot-request")))
-        check("friend shot cured patient", any(r.get("rabid") is False for r in rows(3, "nightx", op="friend-shot-result")))
+        # Nobody can jab a friend any more: the rabid, flopped, carried patient is asked for and the host refuses it.
+        check("friend carried while a shot was asked for them", any(r.get("carrying") is True for r in rows(2, "nightx", op="friend-shot-request")))
+        check("host refused the shot for a friend", any(r.get("by") != r.get("for") for r in rows(1, "night.shot.refused")))
+        check("friend patient still rabid", any(r.get("rabid") is True for r in rows(3, "nightx", op="friend-shot-result")))
         check("all traps resolved", any(r.get("traps") == 0 for r in rows(1, "nightx", op="summary")))
     elif mode == "natural":
         check("guest entered shop", any(r.get("indoors") is True for r in rows(2, "nightx", op="natural-guest-inside")))

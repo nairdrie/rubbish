@@ -898,11 +898,13 @@ public sealed class PauseMenu : UiScreen
         string why = Unstuck.Unavailable();
         if (why != null) { UiTheme.Play(UiTheme.SfxError, 0.4f, 1f); return; }
         var me = PauseService.Me;
-        bool driving = me != null && me.IsDriving && me.currentTruck != null;
-        if (driving && !UpgradeEffects.Handling.freeUnflip)
+        var plan = me != null ? Unstuck.MakePlan(me) : default;
+        if (plan.fee)
         {
-            UiKit.Confirm(PT.TowTitle, string.Format(PT.TowBody, Scrapazon.Name, Economy.Money(Economy.TowFee)), PT.TowYes, UiText.NeverMind,
-                          yes => { if (yes) DoUnstuck(); });
+            // The tow drone costs money whether it brings your truck to you or rights the one you sit in.
+            bool tow = plan.kind == Unstuck.Kind.Tow;
+            UiKit.Confirm(tow ? PT.TowTitle : PT.CallTitle, string.Format(tow ? PT.TowBody : PT.CallBody, Scrapazon.Name, Economy.Money(Economy.TowFee)),
+                          tow ? PT.TowYes : PT.CallYes, UiText.NeverMind, yes => { if (yes) DoUnstuck(); });
             return;
         }
         DoUnstuck();

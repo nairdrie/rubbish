@@ -304,26 +304,6 @@ public class DisplayPiece : MonoBehaviour, IInteractable
 
     // ------------------------------------------------------------------ Arrange (IInteractable via InteractionZone)
 
-    InteractionZone zone;
-    float zoneBaseScore = -1f;
-
-    /// <summary>
-    /// Looking straight at one of this piece's slots from up close: its InteractionZone outbids the garage door's and the
-    /// truck's prompts (and line-of-sight picks), so Arrange gets E right where you'd press it; F keeps the door / truck.
-    /// Anywhere else the zone keeps its low base score. Never above the sort station's step-up zone (score 4).
-    /// </summary>
-    public void SetArrangeFocus(bool focused, float focusScore)
-    {
-        if (zone == null)
-        {
-            zone = GetComponent<InteractionZone>();
-            if (zone == null) return;
-            zoneBaseScore = zone.score;
-        }
-        float want = focused ? Mathf.Max(zoneBaseScore, focusScore) : zoneBaseScore;
-        if (!Mathf.Approximately(zone.score, want)) zone.score = want;
-    }
-
     public bool CanInteract() => gallery != null && gallery.CanArrange(this);
 
     public string GetInteractionPrompt() => gallery != null ? gallery.ArrangePrompt(this) : "Arrange";

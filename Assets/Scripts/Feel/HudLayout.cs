@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>The HUD's screen zones (Docs/UIPass.md §8.2).</summary>
-public enum HudZone { TopLeft, TopRight, LeftColumn, RightColumn, ToastLane, CenterStage, BottomDock, Minimap, BottomLane }
+public enum HudZone { TopLeft, TopRight, LeftColumn, RightColumn, ToastLane, CenterStage, BottomDock, Minimap, BottomLane, Pocket }
 
 /// <summary>How much fits in the top bar (§8.2): Full ≥ 1608 reference px wide, Compact ≥ 1258, else Tight.</summary>
 public enum HudDensity { Full, Compact, Tight }
@@ -16,14 +16,15 @@ public enum HudMode { Hidden, Map, Paused, Station, Laptop, Driving, Street, Dep
 /// <para><b>Coordinates.</b> Zone rects are reference units with the origin at the HUD's <b>top-left</b> corner and y growing
 /// <b>downward</b> (<c>Rect.y</c> = distance from the top edge). <see cref="Place"/> turns one into a RectTransform position.</para>
 /// <para><b>Lanes.</b> Under the top bar the screen is three lanes: the left lane (left column over the minimap), the centre
-/// lane (toasts at the top, centre cards, the bottom dock) and the right lane (route panel + Head Office memo). The dock may
-/// reach under a side lane only where that lane's content stops above it. Zones never overlap by construction; content that
-/// doesn't fit its zone waits or hides by priority (§8.2 collision rules):</para>
+/// lane (toasts at the top, centre cards, the bottom dock) and the right lane (route panel + Head Office memo, over the pocket
+/// / gear bar in the bottom-right corner). The dock may reach under a side lane only where that lane's content stops above
+/// it. Zones never overlap by construction; content that doesn't fit its zone waits or hides by priority (§8.2 collision rules):</para>
 /// <list type="number">
 /// <item>The toast lane never overlaps the side columns (it's the centre lane; toasts that don't fit its height wait).</item>
 /// <item>The minimap steps L → M → S if the left column would reach it; if it still would, it hides while rabies is up.</item>
 /// <item>The bottom dock wraps to 2 rows before it shrinks (<see cref="FeelHudHints"/>).</item>
 /// <item>A centre card clamps the toast lane's bottom above it (extra toasts queue).</item>
+/// <item>The pocket bar owns the bottom-right corner: the right column ends above it and the (centred) dock stays clear of its width.</item>
 /// </list>
 /// </summary>
 public static class HudLayout
@@ -57,6 +58,14 @@ public static class HudLayout
     /// <summary>The bottom dock: hint chips from y 12 above the bottom edge, the prompt above them; never wider than this.</summary>
     public const float DockBottom = 12f, DockMaxWidth = 1100f, DockMinWidth = 360f;
 
+    /// <summary>The thin co-op row (YOUR BUSINESS / WORKING FOR) that pushes the side columns down.</summary>
+    public const float BusinessRowH = 30f;
+
+    /// <summary>The pocket / gear bar sits in the bottom-right corner, <see cref="Margin"/> from both edges (the minimap's mirror
+    /// image). It prefers to stay under this share of the screen height (a second column takes the overflow) and is never so
+    /// tall that the route panel's header loses its room above it.</summary>
+    public const float PocketTallShare = 0.4f;
+
     /// <summary>The minimap block: the lid, then the street-label pill under it.</summary>
     public const float MinimapPillH = 34f, MinimapPillGap = 6f, MinimapSmallest = 200f, MinimapStep = 50f;
 
@@ -85,6 +94,8 @@ public static class HudLayout
         public float leftWanted;
         /// <summary>Height the bottom dock wants (prompt + hint chips).</summary>
         public float dockWanted;
+        /// <summary>Size the pocket / gear bar wants in the bottom-right corner (zero = hidden or empty). Station mode has none.</summary>
+        public Vector2 pocketWanted;
         /// <summary>A centre card is up (reveal, PROMOTED, Work Order) at <see cref="centerCard"/> (top-down rect).</summary>
         public bool hasCenterCard;
         public Rect centerCard;
@@ -105,6 +116,8 @@ public static class HudLayout
         public Rect pill;
 
         public Rect leftColumn, rightColumn, toastLane, centerStage, bottomDock, bottomLane;
+        /// <summary>The pocket / gear bar's corner (bottom-right); width 0 = none this frame.</summary>
+        public Rect pocket;
         /// <summary>The whole minimap block (lid + label pill); <see cref="minimapLid"/> is the lid itself.</summary>
         public Rect minimap, minimapLid;
         public float minimapDiameter;
@@ -112,6 +125,17 @@ public static class HudLayout
         /// <summary>The minimap stepped down from the setting (L → M → S) to clear the left column.</summary>
         public bool minimapStepped;
         public float leftWidth, rightWidth;
+    }
+
+    /// <summary>What the pocket / gear bar may take in the bottom-right corner of a given screen (<see cref="PocketFor"/>).</summary>
+    public struct PocketLimits
+    {
+        /// <summary>The widest it may be: the right lane's width.</summary>
+        public float maxWidth;
+        /// <summary>A stack taller than this goes into a second column instead.</summary>
+        public float preferredHeight;
+        /// <summary>The tallest it may be at all: the route panel's header keeps its room above it. Rows past this are dropped.</summary>
+        public float maxHeight;
     }
 
     static Frame frame;
@@ -133,6 +157,7 @@ public static class HudLayout
             case HudZone.BottomDock: return frame.bottomDock;
             case HudZone.Minimap: return frame.minimap;
             case HudZone.BottomLane: return frame.bottomLane;
+            case HudZone.Pocket: return frame.pocket;
         }
         return default;
     }
@@ -174,6 +199,30 @@ public static class HudLayout
     public static HudDensity DensityFor(float refWidth) =>
         refWidth >= FullMinWidth ? HudDensity.Full : refWidth >= CompactMinWidth ? HudDensity.Compact : HudDensity.Tight;
 
+    /// <summary>
+    /// The dock's width on a screen <paramref name="refW"/> wide. The dock is centred, so it keeps clear of whichever is wider on
+    /// either side: the minimap block (<paramref name="minimapDiameter"/>, never less than the smallest lid) or the pocket bar
+    /// (<paramref name="pocketW"/>, 0 when there is none).
+    /// </summary>
+    public static float DockWidth(float refW, float minimapDiameter, float pocketW = 0f)
+    {
+        float side = Mathf.Max(Mathf.Max(MinimapSmallest, minimapDiameter), pocketW);
+        return Mathf.Clamp(Mathf.Min(DockMaxWidth, refW - 2f * (Margin + side + Gap)), Mathf.Min(DockMinWidth, refW - 2f * Margin), DockMaxWidth);
+    }
+
+    /// <summary>What the pocket / gear bar may take on a screen of <paramref name="size"/> reference units.</summary>
+    public static PocketLimits PocketFor(Vector2 size, bool businessContext) => new PocketLimits
+    {
+        maxWidth = RightWidth(DensityFor(size.x)),
+        preferredHeight = size.y * PocketTallShare,
+        maxHeight = PocketMaxHeight(size.y, businessContext),
+    };
+
+    /// <summary>The tallest the pocket bar can be on a screen <paramref name="refHeight"/> high: the right column (the route
+    /// panel) always keeps at least its header's height above it.</summary>
+    public static float PocketMaxHeight(float refHeight, bool businessContext) =>
+        Mathf.Max(0f, refHeight - Margin - Gap - (ColumnTop + (businessContext ? BusinessRowH : 0f) + FeelHudRoute.HeaderHeight));
+
     /// <summary>Lay out every zone for this frame (pure: same inputs, same frame).</summary>
     public static Frame Compute(Inputs i)
     {
@@ -182,7 +231,7 @@ public static class HudLayout
         var d = DensityFor(W);
         f.density = d;
         float L = LeftWidth(d), R = RightWidth(d);
-        float columnTop = ColumnTop + (i.businessContext ? 30f : 0f);
+        float columnTop = ColumnTop + (i.businessContext ? BusinessRowH : 0f);
         f.leftWidth = L;
         f.rightWidth = R;
 
@@ -200,14 +249,23 @@ public static class HudLayout
         f.topRight = Rect.MinMaxRect(f.truck.xMin, TopBarTop, f.truck.xMax, TopBarBottom);
         f.pill = new Rect(Margin, PillTop, PillW, PillH);
 
-        // ---- bottom dock (centred; as wide as the minimap block on both sides allows)
-        float dCfg = Mathf.Max(MinimapSmallest, i.minimapDiameter);
-        float dockW = Mathf.Clamp(Mathf.Min(DockMaxWidth, W - 2f * (Margin + dCfg + Gap)), Mathf.Min(DockMinWidth, W - 2f * Margin), DockMaxWidth);
+        bool station = i.mode == HudMode.Station;
+
+        // ---- pocket / gear bar (bottom-right corner, the minimap's mirror image; Station mode has none: its keys belong to the station)
+        float pocketW = 0f, pocketH = 0f;
+        if (!station)
+        {
+            pocketW = Mathf.Clamp(i.pocketWanted.x, 0f, R);
+            pocketH = Mathf.Clamp(i.pocketWanted.y, 0f, PocketMaxHeight(H, i.businessContext));
+            if (pocketW < 0.5f || pocketH < 0.5f) pocketW = pocketH = 0f;
+        }
+        f.pocket = pocketW > 0f ? new Rect(W - Margin - pocketW, H - Margin - pocketH, pocketW, pocketH) : default;
+
+        // ---- bottom dock (centred; as wide as the minimap block and the pocket bar on both sides allow)
+        float dockW = DockWidth(W, i.minimapDiameter, pocketW);
         float dockH = Mathf.Clamp(i.dockWanted, 0f, H * 0.45f);
         f.bottomDock = new Rect((W - dockW) * 0.5f, H - DockBottom - dockH, dockW, dockH);
         float dockTop = dockH > 0.5f ? f.bottomDock.yMin : H - DockBottom;
-
-        bool station = i.mode == HudMode.Station;
 
         // ---- minimap (bottom-left: lid, then the label pill)
         float pillTotal = i.minimapLabel ? MinimapPillH + MinimapPillGap : 0f;
@@ -244,6 +302,7 @@ public static class HudLayout
 
             float rightBottom = H - Margin;
             if (dockH > 0.5f && f.bottomDock.xMax > W - Margin - R) rightBottom = Mathf.Min(rightBottom, dockTop - Gap);
+            if (pocketW > 0f) rightBottom = Mathf.Min(rightBottom, f.pocket.yMin - Gap);
             f.rightColumn = new Rect(W - Margin - R, columnTop, R, Mathf.Max(0f, rightBottom - columnTop));
         }
         else

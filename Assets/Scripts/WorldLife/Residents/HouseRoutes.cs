@@ -137,7 +137,7 @@ public sealed class WalkPath
         float seg = cum[hi] - cum[lo];
         float k = seg > 1e-5f ? (s - cum[lo]) / seg : 0f;
         dir = pts[hi] - pts[lo];
-        return Vector3.LerpUnclamped(pts[lo], pts[hi], k);
+        return TownRelief.Between(pts[lo], pts[hi], k);
     }
 
     /// <summary>Arc length of the closest point on the path to p (XZ).</summary>

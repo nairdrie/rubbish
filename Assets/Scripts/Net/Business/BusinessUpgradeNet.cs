@@ -75,8 +75,10 @@ public sealed class BusinessUpgradeNet : NetworkBehaviour
         ShopIds.TruckArm, ShopIds.AirHorn, ShopIds.GoldenTruck, ShopIds.TruckPaintPrimer,
         ShopIds.TruckPaintFlames, ShopIds.TruckPaintRaccoonCamo, ShopIds.TruckPaintChrome,
         ShopIds.HornPackMusical, ShopIds.TrashFmRadio,
+        HogShop.Hoverhog, // protocol 18
+        DumpsterRules.UpgradeId, // protocol 20. One nibble left (at 16 entries ValidTruckLevels' final shift needs a guard)
     };
-    static readonly int[] truckMaxima = { 1, 4, 3, 3, 3, 2, 1, 1, 1, 1, 1, 1, 1 };
+    static readonly int[] truckMaxima = { 1, 4, 3, 3, 3, 2, 1, 1, 1, 1, 1, 1, 1, 1, 2 };
     // Preserve this order: bit3 Meadows, bit4 Hills, bit5 Bluffs, bit6 Commons, bit7 Heights.
     static readonly string[] permitIds = {
         ShopIds.PermitMinivanMeadows, ShopIds.PermitSnootingtonHills, ShopIds.PermitBillionaireBluffs,

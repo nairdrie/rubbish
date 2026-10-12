@@ -224,6 +224,7 @@ public sealed class TruckModelVisuals : MonoBehaviour
         Part("Cab back", enamel, new Vector3(0f, 1.98f, 2.40f), new Vector3(1.94f, .92f, .12f), true, true);
         var glazing = ShopModKit.Pivot("Clear cab glazing collision", mini, new Vector3(0f, 2.01f, 3.12f));
         glazing.gameObject.AddComponent<BoxCollider>().size = new Vector3(1.86f, .81f, 1.29f);
+        glazing.gameObject.layer = Carryable.InteractableLayer;
         Part("Dashboard", dark, new Vector3(0f, 1.64f, 3.64f), new Vector3(1.78f, .16f, .27f));
         Chamfer(Part("Bumper", steel, new Vector3(0f, .86f, 3.85f), new Vector3(2.05f, .22f, .17f), true), .13f);
         Part("Grille surround", dark, new Vector3(0f, 1.17f, 3.825f), new Vector3(.87f, .28f, .025f));
@@ -293,16 +294,71 @@ public sealed class TruckModelVisuals : MonoBehaviour
 
         // Cosmetic cargo, never colliders or collectible items. It is driven by this truck's business cargo.
         var sack = ShopModKit.Lit("mini_truck_cargo_bag", new Color(.16f, .19f, .16f), .14f);
-        for (int i = 0; i < 18; i++)
+        var heap = CargoHeap();
+        for (int i = 0; i < heap.Length; i++)
         {
-            int row = i / 3;
-            var group = ShopModKit.Pivot("Visible load bag " + i, mini,
-                new Vector3((i % 3 - 1) * .53f, 1.43f + row / 2 * .67f, -.96f + row % 2 * 1.42f));
+            var group = ShopModKit.Pivot("Visible load bag " + i, mini, heap[i].Position);
             ShopModKit.Prim(PrimitiveType.Sphere, "Sack", group, sack, Vector3.zero, new Vector3(.64f, .73f, .75f));
             ShopModKit.Prim(PrimitiveType.Sphere, "Knot", group, sack, new Vector3(.06f, .39f, 0f), new Vector3(.16f, .18f, .17f));
-            group.localRotation = Quaternion.Euler(i * 7 % 15, i * 43, i % 2 == 0 ? -8f : 9f);
+            group.localRotation = heap[i].Rotation;
+            group.localScale = Vector3.one * heap[i].Scale;
             bags.Add(group);
         }
+    }
+
+    struct BagPose { public Vector3 Position; public Quaternion Rotation; public float Scale; }
+
+    static BagPose[] cargoHeap;
+
+    /// <summary>
+    /// Cosmetic heap for the starter van's bed, identical on every client and rebuild (fixed System.Random seed, no global
+    /// Random state). Bags are "dropped" one at a time as spheres onto the floor and onto the bags already placed, each
+    /// taking the lowest resting spot out of a batch of random candidates, so index order is low-first and the pile builds
+    /// upward as the fill rises (UpdateCargo shows bags 0..n-1). A small pull toward the middle makes it a mound.
+    /// Bed interior (model space): x +-0.87, z -2.1..1.95, floor top y 1.16. Centres are kept off the walls by the bag's size.
+    /// </summary>
+    static BagPose[] CargoHeap()
+    {
+        if (cargoHeap != null) return cargoHeap;
+        const int count = 18;
+        const float floorTop = 1.16f, wallInner = .87f, zMin = -1.75f, zMax = 1.58f, radius = .34f;
+        var rng = new System.Random(20260913);
+        var poses = new BagPose[count];
+        var radii = new float[count];
+        for (int k = 0; k < count; k++)
+        {
+            float scale = .85f + (float)rng.NextDouble() * .3f;
+            float r = radius * scale;
+            float xLim = wallInner - r - .04f;
+            float bestScore = float.MaxValue;
+            Vector3 best = default;
+            for (int c = 0; c < 160; c++)
+            {
+                float x = ((float)rng.NextDouble() * 2f - 1f) * xLim;
+                float z = Mathf.Lerp(zMin, zMax, (float)rng.NextDouble());
+                float y = floorTop + r * .95f;
+                for (int j = 0; j < k; j++)
+                {
+                    float dx = x - poses[j].Position.x, dz = z - poses[j].Position.z;
+                    float reach = r + radii[j];
+                    float d2 = dx * dx + dz * dz;
+                    if (d2 >= reach * reach) continue;
+                    y = Mathf.Max(y, poses[j].Position.y + Mathf.Sqrt(reach * reach - d2) * .92f);
+                }
+                // Lowest resting spot wins; a small pull toward the middle makes the pile a mound rather than a flat spread.
+                float edge = Mathf.Max(Mathf.Abs(x) / xLim, Mathf.Abs(z - (zMin + zMax) * .5f) / ((zMax - zMin) * .5f));
+                float score = y + .1f * edge * edge;
+                if (score < bestScore) { bestScore = score; best = new Vector3(x, y, z); }
+            }
+            radii[k] = r;
+            poses[k] = new BagPose
+            {
+                Position = best,
+                Rotation = Quaternion.Euler((float)rng.NextDouble() * 360f, (float)rng.NextDouble() * 360f, (float)rng.NextDouble() * 360f),
+                Scale = scale,
+            };
+        }
+        return cargoHeap = poses;
     }
 
     static Material Glass()
@@ -411,7 +467,13 @@ public sealed class TruckModelVisuals : MonoBehaviour
         var renderer = part.GetComponent<Renderer>();
         renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
         if (businessPaint) painted.Add(renderer);
-        if (solid) part.gameObject.AddComponent<BoxCollider>();
+        if (solid)
+        {
+            part.gameObject.AddComponent<BoxCollider>();
+            // The rear-loader's TruckBody collider sits on the Interactable layer, which is the only layer the player's
+            // "Enter Truck" scan looks at. The mini hides TruckBody, so its own shell must carry that layer.
+            part.gameObject.layer = Carryable.InteractableLayer;
+        }
         return part;
     }
 

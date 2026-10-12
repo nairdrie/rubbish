@@ -59,9 +59,10 @@ public struct DepotLotState : INetworkSerializable, IEquatable<DepotLotState>
 /// sign, shutters, colours).</item>
 /// </list>
 /// Pattern: ChessController (§9 rule 10): NetworkVariables/List written by the host, Rpc requests validated on the host.
+/// The messages of "call my truck" (Esc &gt; Unstuck on foot, <see cref="TruckCall"/>) live in <c>DepotRowNet.TruckCall.cs</c>.
 /// </summary>
 [NetSessionComponent(Order = 20)]
-public class DepotRowNet : NetworkBehaviour
+public partial class DepotRowNet : NetworkBehaviour
 {
     public static DepotRowNet Instance { get; private set; }
 

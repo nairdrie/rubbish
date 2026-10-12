@@ -109,7 +109,7 @@ public static class WorkshopCatalog
     // ------------------------------------------------------------------ the retired gram bank
     /// <summary>Cents per kilogram the retired bank converts at: exactly what the four recycling bins pay per kilogram
     /// (Economy.RecycleRatePerKg, before contracts and combos; pinned to it by WorkshopStateTests).</summary>
-    public const int MetalCentsPerKg = 200, PlasticCentsPerKg = 110, GlassCentsPerKg = 55, PaperCentsPerKg = 45;
+    public const int MetalCentsPerKg = 800, PlasticCentsPerKg = 440, GlassCentsPerKg = 220, PaperCentsPerKg = 180;
     /// <summary>What <paramref name="grams"/> of banked material would have paid in its bins, in whole cents (half up).</summary>
     public static long BankCents(WorkshopMaterials grams)
     {

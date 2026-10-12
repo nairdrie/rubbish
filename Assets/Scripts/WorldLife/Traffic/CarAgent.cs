@@ -234,7 +234,7 @@ public sealed class CarAgent : ILifeBody
     {
         position = pos;
         yaw = yawDeg;
-        root.SetPositionAndRotation(pos, Quaternion.Euler(0f, yawDeg, 0f));
+        root.SetPositionAndRotation(pos, TownRelief.Aligned(pos, yawDeg));    // nose up the hill, not level through it
         if (!full || dt <= 0f)
         {
             bodyPivot.localPosition = Vector3.zero;

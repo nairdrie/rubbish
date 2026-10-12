@@ -28,7 +28,6 @@ public class PlayerController : NetworkBehaviour
 
     IInteractable currentInteractable;
     IInteractable lastHighlighted;
-    int focusedIndex = 0;
     readonly List<IInteractable> options = new();
 
     private NetworkVariable<bool> isDriving = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
@@ -98,7 +97,9 @@ public class PlayerController : NetworkBehaviour
         }
 
         GatherOptions(options);
-        ChooseFocused(options, ref focusedIndex, out currentInteractable);
+        // E → primary, F → alt. An IAltKeyPinned option (the garage door) always takes F; the best other option gets E.
+        InteractionKeys.Resolve(options, out var primary, out var alt);
+        currentInteractable = primary ?? alt;
         // clean highlight swap
         if (lastHighlighted != null && lastHighlighted != currentInteractable)
             lastHighlighted.Highlight(false);
@@ -107,13 +108,15 @@ public class PlayerController : NetworkBehaviour
         if (currentInteractable != null)
         {
             currentInteractable.Highlight(true);
-            TooltipUI.Instance.Show(IInteractable.InteractKey, currentInteractable.GetInteractionPrompt());
-
-            // optional hint to cycle choices
-            if (options.Count > 1)
+            if (primary != null)
             {
-                var secondary = options[1];
-                TooltipUI.Instance.AppendAltHint(IInteractable.AltInteractKey, secondary.GetInteractionPrompt());
+                TooltipUI.Instance.Show(IInteractable.InteractKey, primary.GetInteractionPrompt());
+                if (alt != null) TooltipUI.Instance.AppendAltHint(IInteractable.AltInteractKey, alt.GetInteractionPrompt());
+            }
+            else
+            {
+                // Only the pinned option is in range: it still sits on F.
+                TooltipUI.Instance.Show(IInteractable.AltInteractKey, alt.GetInteractionPrompt());
             }
         }
         else
@@ -121,15 +124,15 @@ public class PlayerController : NetworkBehaviour
             TooltipUI.Instance.Hide();
         }
 
-        if (GameControls.Down(IInteractable.InteractKey, GameControls.Action.Interact) && options.Count > 0)
+        if (primary != null && GameControls.Down(IInteractable.InteractKey, GameControls.Action.Interact))
         {
             // E → primary
-            options[0].OnInteract(gameObject);
+            primary.OnInteract(gameObject);
         }
-        else if (GameControls.Down(IInteractable.AltInteractKey, GameControls.Action.Alternative) && options.Count > 1)
+        else if (alt != null && GameControls.Down(IInteractable.AltInteractKey, GameControls.Action.Alternative))
         {
-            // F → secondary
-            options[1].OnInteract(gameObject);
+            // F → alt (the garage door whenever it is in range, else the runner-up)
+            alt.OnInteract(gameObject);
         }
     }
 
@@ -195,6 +198,9 @@ public class PlayerController : NetworkBehaviour
         // A scoopable player should not disappear behind several loose pieces of trash in
         // the two-button E/F interaction list. This only boosts someone already found by
         // the normal range/facing/CanInteract scan (voluntary flop or punch-combo KO).
+        // Bags and trash you can reach come before everything ordinary (see PickUpScore), but only on foot: a driver's E is
+        // "Exit Truck" and a rider's is "Hop off", and a bag along the road ahead must not take either.
+        bool onFoot = !IsDriving && !(TryGetComponent(out RideRider rider) && rider.IsRiding);
         for (int k = 0; k < candidates.Count; k++)
         {
             var c = candidates[k];
@@ -202,6 +208,11 @@ public class PlayerController : NetworkBehaviour
                 (body.State == BodyState.Flopped || body.State == BodyState.KnockedOut))
             {
                 c.Score += 3f;
+                candidates[k] = c;
+            }
+            else if (onFoot && c.Target is Carryable item && Permissions.LocalCanWorkAt(item.transform.position))
+            {
+                c.Score = PickUpScore(c.Score);
                 candidates[k] = c;
             }
         }
@@ -212,8 +223,26 @@ public class PlayerController : NetworkBehaviour
             if (seen.Add(c.Target))
                 outList.Add(c.Target);
         }
+        // Only one thing fits in your hands: with a bag on E, F is better spent on the best thing that is NOT another bag (the
+        // ride, the truck, a door) than on its neighbour, so trash coming first never shuts everything else out of reach.
+        if (onFoot && outList.Count > 2 && outList[0] is Carryable && outList[1] is Carryable)
+            for (int i = 2; i < outList.Count; i++)
+                if (!(outList[i] is Carryable)) { var other = outList[i]; outList.RemoveAt(i); outList.Insert(1, other); break; }
         // HashSetPool is optional; just use a new HashSet if you prefer.
     }
+
+    /// <summary>
+    /// Where a bag or piece of trash you can reach sits in the E/F list (on foot: a driver's and a rider's E stay "Exit Truck" /
+    /// "Hop off"). A look-at or nearby scan scores 0..2 and the zone actions
+    /// around a truck (the ride on its back: <see cref="HitchStep.ZoneScore"/>, "Enter Truck", "Not your truck") score up to 2.05, so
+    /// standing at the back of a truck with a pile in reach used to put "Hitch a ride" on E and leave the pile to F (Nick, 12 Oct
+    /// 2026: "prioritize bags and trash over boarding"). The scan score is squeezed into a thin band just above all of those, so
+    /// the nearer, better aimed piece still comes first among trash, and just under the zone actions that are meant to dominate
+    /// (2.2+: workshop, heavy lift, raccoon shooing, the hutch door, a resident handing you a bag) and a downed friend (3+).
+    /// </summary>
+    public const float PickUpBandFloor = 2.1f, PickUpBandSpan = 0.09f;
+
+    public static float PickUpScore(float scanScore) => PickUpBandFloor + PickUpBandSpan * Mathf.Clamp01(scanScore * 0.5f);
 
     void CollectProximity(List<InteractionCandidate> candidates)
     {
@@ -295,19 +324,6 @@ public class PlayerController : NetworkBehaviour
         Local = null;
         InteractionFocusOverride = null;
     }
-
-    void ChooseFocused(List<IInteractable> list, ref int index, out IInteractable chosen)
-    {
-        if (list.Count == 0)
-        {
-            index = 0;
-            chosen = null;
-            return;
-        }
-        if (index >= list.Count) index = 0;
-        chosen = list[index];
-    }
-
 
     private void OnDriveStateChanged(bool oldValue, bool newValue)
     {

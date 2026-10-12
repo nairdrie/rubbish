@@ -51,7 +51,10 @@ public sealed class CityRoadAnchor : MonoBehaviour
         if (!CanResolveAnchor(road))
             throw new ArgumentException("A road anchor requires a finite, nonzero road and finite placement values; curb-relative anchors also require a positive finite road half-width.");
         float offset = lateralFromRoadEdge ? Mathf.Sign(lateral) * (road.halfWidth + Mathf.Abs(lateral)) : lateral;
-        return Resolve(road, u, offset, height, yawOffset);
+        var pose = Resolve(road, u, offset, height, yawOffset);
+        // The blueprint is flat; the lot stands on the baked relief (0 everywhere while a bake lays the town out).
+        pose.position = TownRelief.Lift(pose.position);
+        return pose;
     }
 
     /// <summary>Apply the current blueprint road explicitly; false means nothing moved.</summary>

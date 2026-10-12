@@ -257,7 +257,8 @@ public sealed class F5Brain : IBotBrain
 
 /// <summary>
 /// Focused F5 rider/dog acceptance probe. Unlike the regular f5 brain's bag-carrier runs, this puts an actual
-/// network rider on a parked truck beside a cast yard dog and requires the dog to chase/nip that rider through F1.
+/// network rider on a parked truck beside a cast yard dog and requires the dog to chase/nip that rider, and the rider to
+/// stay on (F1: only a crash throws riders off since 12 Oct 2026).
 /// The probe reports its own pass bit; use one bot so no other player can draw the dog away.
 /// </summary>
 public sealed class F5RiderDogBrain : IBotBrain
@@ -267,9 +268,8 @@ public sealed class F5RiderDogBrain : IBotBrain
 
     TruckControllerV2 truck;
     YardDogs.Dog dog;
-    bool placed, boarded, nipped, sawHoldOn;
-    float gripBefore, gripLowest;
-    float placedAt, nextHitch;
+    bool placed, boarded, nipped, fellOff, stayedOn;
+    float placedAt, nextHitch, nippedAt;
     int nipDog = -1;
 
     public void Begin(BotContext c)
@@ -285,18 +285,18 @@ public sealed class F5RiderDogBrain : IBotBrain
         NetAudit.Event("botf5", new Dictionary<string, object>
         {
             { "phase", "rider-dog-end" }, { "placed", placed }, { "boarded", boarded },
-            { "nipped", nipped }, { "dog", nipDog }, { "holdOn", sawHoldOn },
-            { "gripBefore", System.Math.Round(gripBefore, 1) }, { "gripLowest", System.Math.Round(gripLowest, 1) },
-            { "pass", placed && boarded && nipped && (sawHoldOn || gripLowest <= gripBefore - 10f) },
+            { "nipped", nipped }, { "dog", nipDog }, { "stayedOn", stayedOn },
+            { "pass", placed && boarded && nipped && stayedOn },
         });
         c.Stop();
     }
 
     void OnDog(int index, string what, ulong client, Carryable item)
     {
-        if (what != "rider-nip") return;
+        if (what != "rider-nip" || nipped) return;
         nipped = true;
         nipDog = index;
+        nippedAt = Time.time;
     }
 
     public void Tick(BotContext c, float dt)
@@ -307,8 +307,9 @@ public sealed class F5RiderDogBrain : IBotBrain
         if (rider == null) return;
         if (nipped)
         {
-            sawHoldOn |= rider.HoldOnActive;
-            gripLowest = Mathf.Min(gripLowest, rider.Grip);
+            // Riders stay on through a nip: still aboard 1.5 s later, and never off in between.
+            fellOff |= !rider.IsRiding;
+            if (!stayedOn && Time.time - nippedAt >= 1.5f) stayedOn = !fellOff;
             return;
         }
         if (!placed)
@@ -350,7 +351,6 @@ public sealed class F5RiderDogBrain : IBotBrain
         if (!boarded && rider.IsRiding)
         {
             boarded = true;
-            gripBefore = gripLowest = rider.Grip;
             NetAudit.Event("botf5", new Dictionary<string, object> { { "phase", "rider-dog-board" }, { "dog", dog.idx } });
         }
         if (!boarded && Time.time - placedAt >= 0.7f && Time.time >= nextHitch)
@@ -367,8 +367,8 @@ public sealed class F5RiderDogBrain : IBotBrain
 
 /// <summary>
 /// Focused host/solo weather probe: a real light loose item must be displaced by wind, then storm rain must make an
-/// outdoor player position slippery and increase rider grip drain. This checks the physical effect, not just synced
-/// weather labels. Run with one bot to leave the test item under one physics authority.
+/// outdoor player position slippery. This checks the physical effect, not just synced weather labels. Run with one bot to
+/// leave the test item under one physics authority.
 /// </summary>
 public sealed class F5WeatherProbeBrain : IBotBrain
 {
@@ -380,7 +380,7 @@ public sealed class F5WeatherProbeBrain : IBotBrain
     float changedAt;
     int phase, pushesAt;
     bool windPass, rainPass, comfortPass, rainSpawned;
-    float windMetres, slip, grip, rainMaxSlip, walkedAt;
+    float windMetres, slip, rainMaxSlip, walkedAt;
     int flopsAt;
 
     public void Begin(BotContext c) => c.Stop();
@@ -390,7 +390,7 @@ public sealed class F5WeatherProbeBrain : IBotBrain
         NetAudit.Event("botf5", new Dictionary<string, object>
         {
             { "phase", "weather-probe-end" }, { "windPass", windPass }, { "windMetres", System.Math.Round(windMetres, 2) },
-            { "rainPass", rainPass }, { "slip", System.Math.Round(slip, 2) }, { "grip", System.Math.Round(grip, 2) },
+            { "rainPass", rainPass }, { "slip", System.Math.Round(slip, 2) },
             { "rainPuddles", RainPuddles() }, { "comfortPass", comfortPass },
             { "pass", windPass && rainPass && comfortPass },
         });
@@ -454,13 +454,12 @@ public sealed class F5WeatherProbeBrain : IBotBrain
         {
             Vector3 at = c.Player.transform.position;
             slip = Puddles.SlipAt(at);
-            grip = Riding.GripDrainScale;
             rainPass = Weather.Kind == WeatherKind.Storm && Weather.IsOutdoors(at) &&
-                       Weather.Wetness >= 0.95f && slip >= 0.4f && grip >= 1.5f && RainPuddles() > 0;
+                       Weather.Wetness >= 0.95f && slip >= 0.4f && RainPuddles() > 0;
             NetAudit.Event("botf5", new Dictionary<string, object>
             {
                 { "phase", "weather-rain" }, { "wet", System.Math.Round(Weather.Wetness, 2) },
-                { "slip", System.Math.Round(slip, 2) }, { "grip", System.Math.Round(grip, 2) },
+                { "slip", System.Math.Round(slip, 2) },
                 { "rainPuddles", RainPuddles() }, { "pass", rainPass },
             });
             // Run through an ordinary rain puddle under a full storm. It should

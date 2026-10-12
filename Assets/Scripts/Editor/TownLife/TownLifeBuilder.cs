@@ -19,7 +19,7 @@ public sealed class TownLifeOptions
     public readonly Dictionary<string, string> extra = new Dictionary<string, string>();
 
     /// <summary>What the module alias "everything" expands to: the preview-only fence drawing plus the six real modules.</summary>
-    public static readonly string[] Everything = { "fences", "paint", "park", "meadows", "streets", "yards", "edges" };
+    public static readonly string[] Everything = { "fences", "paint", "park", "meadows", "streets", "yards", "edges", "commons", "estates" };
     /// <summary>Pseudo-module: build nothing (photograph the scene as it is). Never matches a real module.</summary>
     public const string None = "none";
 
@@ -68,6 +68,9 @@ public sealed class TownLifeContext
     /// <summary>Fixed levels for flat geometry so modules never z-fight each other: lawn paint (mown stripes, pitch
     /// grass), soil (beds, sand, bark, safety surface), paving (paths, plazas, patios), markings (lines on paving).</summary>
     public const float LawnY = GrassY + 0.03f, SoilY = GrassY + 0.06f, PavingY = GrassY + 0.09f, MarkingY = GrassY + 0.12f;
+    /// <summary>The street verge strip (Streets) sits between the base grass and every lawn layer, so wherever it meets a yard / park lawn the
+    /// lawn wins cleanly instead of z-fighting at LawnY. Keep it strictly between GrassY and LawnY.</summary>
+    public const float VergeY = GrassY + 0.015f;
 
     public Transform town;                 // NeighborhoodGen (read only for modules)
     public Transform root;                 // where TownLife objects go: NeighborhoodGen/TownLife, or the preview's temporary root
@@ -148,7 +151,7 @@ public static class TownLifeBuilder
     /// <summary>Name of the TownLife group inside NeighborhoodGen/Park.</summary>
     public const string ParkGroupName = "TL_Park";
     /// <summary>GameObject budget for both districts (DESIGN section 4); exceeding it is reported as an error.</summary>
-    public const int ObjectBudget = 4000;
+    public const int ObjectBudget = 9000;
     public const string MenuPath = "Rubbish/City/Rebuild Town Life";
     public const string EnabledMenuPath = "Rubbish/City/Town Life Enabled";
     const string DisabledPref = "Rubbish.TownLife.Disabled";
@@ -175,6 +178,8 @@ public static class TownLifeBuilder
         new Module { name = TownLifeStreets.Name, build = TownLifeStreets.Build },
         new Module { name = TownLifeYards.Name, build = TownLifeYards.Build },
         new Module { name = TownLifeEdges.Name, build = TownLifeEdges.Build },
+    new Module { name = TownLifeCommons.Name, build = TownLifeCommons.Build },
+    new Module { name = TownLifeEstates.Name, build = TownLifeEstates.Build },
     };
 
     /// <summary>Report of the last PipelineBuild in this domain (null until one ran). RebuildStandalone uses it to prove

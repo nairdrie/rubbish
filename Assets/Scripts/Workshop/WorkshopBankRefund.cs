@@ -7,8 +7,8 @@ using UnityEngine;
 /// <item>The load migration is <see cref="WorkshopState.RetireBank"/>, run by <c>GameSession.LoadWorkshop</c> inside
 /// <c>GameSession.ApplySaveJson</c> (so it covers the main save, every extra business slot and a business a guest brings
 /// into somebody else's Town). Every banked and allocated gram becomes cash at exactly what its recycling bin pays per
-/// kilogram before contracts and combos (<see cref="WorkshopCatalog.BankCents"/>: metal $2.00, plastic $1.10, glass $0.55,
-/// paper $0.45), an unfinished project is cancelled, and built pieces stay built. Idempotent with no version gate: once
+/// kilogram before contracts and combos (<see cref="WorkshopCatalog.BankCents"/>: metal $8.00, plastic $4.40, glass $2.20,
+/// paper $1.80, since the 2026-10-12 pace pass), an unfinished project is cancelled, and built pieces stay built. Idempotent with no version gate: once
 /// converted, the save has no bank.</item>
 /// <item>The cash is added to the balance the save loads with. It is not a Ledger posting: no payroll share, no day
 /// stats, no Rep, no cash floater.</item>

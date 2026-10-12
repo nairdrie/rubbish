@@ -544,10 +544,13 @@ public static partial class ItemCatalog
         return (p.p0 + p.p1 * Mathf.Clamp01(houseWealth)) * (p.valuableMult > 0f ? p.valuableMult : 1f);
     }
 
-    /// <summary>Rarity weights (Uncommon, Rare, Epic, Legendary) for a house wealth 0..1 in the starter suburb.</summary>
+    /// <summary>Rarity weights (Common + Uncommon, Rare, Epic, Legendary) for a house wealth 0..1 in the starter suburb.</summary>
     public static float[] RarityWeights(float houseWealth) => RarityWeights(houseWealth, StarterProfile);
 
-    /// <summary>Rarity weights (Uncommon, Rare, Epic, Legendary) under a loot profile.</summary>
+    /// <summary>
+    /// Rarity weights (Common + Uncommon, Rare, Epic, Legendary) under a loot profile. The first bucket is the ordinary-find
+    /// bucket; <see cref="CommonShare"/> says how much of it is Common. Rare+ odds are what they always were.
+    /// </summary>
     public static float[] RarityWeights(float houseWealth, LootProfile profile)
     {
         var p = profile ?? StarterProfile;
@@ -560,6 +563,16 @@ public static partial class ItemCatalog
             r[i] = Mathf.Lerp(a, b, w);
         }
         return r;
+    }
+
+    /// <summary>Fraction (0..1) of the Common + Uncommon bucket that is Common at this wealth; 0 for a profile with no Common data.</summary>
+    public static float CommonShare(float houseWealth, LootProfile profile)
+    {
+        var p = profile ?? StarterProfile;
+        float w = Mathf.Clamp01(houseWealth);
+        float bucket = RarityWeights(w, p)[0];
+        if (bucket <= 0f || p.common0 <= 0f && p.common1 <= 0f) return 0f;
+        return Mathf.Clamp01(Mathf.Lerp(p.common0, p.common1, w) / bucket);
     }
 
     /// <summary>
@@ -576,9 +589,9 @@ public static partial class ItemCatalog
     public static BagContents RollBag(string bagId, int seed, float houseWealth, string foundAt, LootProfile profile, float trust01 = 1f)
         => RollBagCore(bagId, seed, houseWealth, foundAt, profile, trust01, true);
 
-    // The audit compares the same completed core bag with/without the independent everyday-find pass.
+    // The audit compares the same completed core bag with/without the independent Keepsake bonus.
     // There is deliberately no mutable game-wide loot switch or save setting for this.
-    static BagContents RollBagCore(string bagId, int seed, float houseWealth, string foundAt, LootProfile profile, float trust01, bool everydayFinds)
+    static BagContents RollBagCore(string bagId, int seed, float houseWealth, string foundAt, LootProfile profile, float trust01, bool keepsakeBonus)
     {
         Ensure();
         var prof = profile ?? StarterProfile;
@@ -653,7 +666,7 @@ public static partial class ItemCatalog
         }
         // F3 (Docs/Multiplayer.md §14.3): heavy / over-stuffed / mystery bags get contents to match their tell.
         BagTells.ShapeContents(bag, rng, foundAt);
-        if (everydayFinds) ApplyEverydayFinds(bag, seed, theme, prof, foundAt);
+        if (keepsakeBonus) ApplyKeepsakeBonus(bag, seed, houseWealth, theme, prof, foundAt);
         return bag;
     }
 
@@ -729,6 +742,8 @@ public static partial class ItemCatalog
             var rw = RarityWeights(wealth, prof);
             int rIdx = WeightedIndex(rng, rw);
             var rarity = (Rarity)(rIdx + 1);
+            // The first bucket is Common + Uncommon: the profile says how much of it is Common (no extra draw without Common data).
+            if (rIdx == 0 && (prof.common0 > 0f || prof.common1 > 0f) && rng.NextDouble() < CommonShare(wealth, prof)) rarity = Rarity.Common;
             // Golden gnome: each Rare roll has a chance to become Epic (only draws when the profile asks for it).
             if (rarity == Rarity.Rare && prof.rareToEpic > 0f && rng.NextDouble() < prof.rareToEpic) rarity = Rarity.Epic;
             var d = WeightedPick(rng, def => def.category == ItemCategory.Valuable && def.rarity == rarity, tag, theme, prof);

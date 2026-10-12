@@ -115,7 +115,7 @@ public sealed class WorkshopGadget : MonoBehaviour, IInteractable
     {
         if (radio != null) return;
         radio = gameObject.AddComponent<AudioSource>(); radio.playOnAwake = false; radio.loop = true;
-        radio.volume = .25f * GameSettings.AmbienceVolume; // Do not play a loud first frame before Update applies mute.
+        radio.volume = .25f * GameSettings.MusicVolume; // Do not play a loud first frame before Update applies mute.
         radio.spatialBlend = 1f; radio.rolloffMode = AudioRolloffMode.Linear; radio.minDistance = 1f; radio.maxDistance = 6f;
         const int hz = 22050; const float beat = .375f;
         int[] notes = { 60, 64, 67, 71, 69, 67, 64, 62, 57, 60, 64, 67, 65, 64, 62, 59 };
@@ -133,7 +133,7 @@ public sealed class WorkshopGadget : MonoBehaviour, IInteractable
 
     void Update()
     {
-        if (radio != null) radio.volume = .25f * GameSettings.AmbienceVolume;
+        if (radio != null) radio.volume = .25f * GameSettings.MusicVolume;
         if (model == null) return;
         var hands = HandsNet.Instance;
         if (!Businesses.IsAuthority && !stateReceived && stateRequests < 10 && Time.unscaledTime >= nextStateRequest &&
@@ -235,7 +235,7 @@ public sealed class WorkshopGadget : MonoBehaviour, IInteractable
     void OnEnable()
     {
         stateReceived = false; stateRequests = 0; nextStateRequest = 0f;
-        if (RadioOn && radio != null) { radio.volume = .25f * GameSettings.AmbienceVolume; radio.Play(); }
+        if (RadioOn && radio != null) { radio.volume = .25f * GameSettings.MusicVolume; radio.Play(); }
     }
     void OnDestroy() { if (tune != null) Destroy(tune); }
 }

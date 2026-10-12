@@ -32,12 +32,16 @@ public static class TownLifeStreets
 
     sealed class Node { public Vector3 p; public List<TownLifeScene.RoadInfo> roads = new List<TownLifeScene.RoadInfo>(); public List<Vector3> arms = new List<Vector3>(); public List<TownLifeScene.RoadInfo> armRoads = new List<TownLifeScene.RoadInfo>(); }
 
+    struct ParcelBox { public Vector3[] outline; public float minX, maxX, minZ, maxZ; }
+
     sealed class State
     {
         public TownLifeContext ctx; public TownLifeScene scene; public TownLifeOccupancy occ; public Transform root, corners;
         public List<Node> nodes = new List<Node>();
         public Dictionary<string, Transform> groups = new Dictionary<string, Transform>();
         public Rect parkRect; public bool hasPark, parkSide;
+        /// <summary>Every parcel outline with its XZ bounds: the Yards module paints a lawn on each at LawnY, and the verge must not overlap it.</summary>
+        public readonly List<ParcelBox> parcels = new List<ParcelBox>();
         public float spacingScale;
         public int trees, treesB, nudged, hedges, beds, seats, signs, strips, gaps; public float hedgeMetres, longestGap;
         public List<string> gapList = new List<string>();
@@ -58,6 +62,14 @@ public static class TownLifeStreets
         s.spacingScale = Mathf.Clamp(ctx.options.Number("streets.spacing", 1f), 0.5f, 2f);
         s.parkSide = ctx.options.Flag("streets.parkSide", true);
         if (s.scene.park != null) { s.hasPark = true; s.parkRect = s.scene.park.block; }
+        if (ctx.plan != null && ctx.plan.parcels != null)
+            foreach (var par in ctx.plan.parcels)
+            {
+                if (par == null || par.outline == null || par.outline.Length < 3) continue;
+                var b = new ParcelBox { outline = par.outline, minX = float.MaxValue, minZ = float.MaxValue, maxX = float.MinValue, maxZ = float.MinValue };
+                foreach (var v in par.outline) { b.minX = Mathf.Min(b.minX, v.x); b.maxX = Mathf.Max(b.maxX, v.x); b.minZ = Mathf.Min(b.minZ, v.z); b.maxZ = Mathf.Max(b.maxZ, v.z); }
+                s.parcels.Add(b);
+            }
 
         DefineProps();
         FindNodes(s);
@@ -510,10 +522,11 @@ public static class TownLifeStreets
 
     // ================================================================================================= verge strip
 
-    static int EmitStrip(TownLifeKit.MeshData data, TownLifeScene.RoadInfo road, int side, List<int> pieces, int stride, float inner, float outer, float y)
+    static int EmitStrip(TownLifeKit.MeshData data, TownLifeScene.RoadInfo road, int side, List<int> pieces, List<float> outers, int stride, float inner, float y)
     {
-        foreach (int i in pieces)
+        for (int k = 0; k < pieces.Count; k++)
         {
+            int i = pieces[k]; float outer = outers[k];
             float st0 = i * Step, st1 = (i + stride) * Step;
             Vector3 a = LinePoint(road, side, st0, inner), b = LinePoint(road, side, st1, inner), c = LinePoint(road, side, st1, outer), d = LinePoint(road, side, st0, outer);
             a.y = b.y = c.y = d.y = y;
@@ -522,28 +535,50 @@ public static class TownLifeStreets
         return pieces.Count;
     }
 
+    static bool InParcel(State s, Vector3 p)
+    {
+        foreach (var b in s.parcels)
+            if (p.x >= b.minX && p.x <= b.maxX && p.z >= b.minZ && p.z <= b.maxZ && TownLifeGeo.PolygonContains(b.outline, p)) return true;
+        return false;
+    }
+
+    /// <summary>How far behind the sidewalk this verge piece may reach before it runs into a parcel (whose yard lawn is drawn by
+    /// Yards at LawnY): the last depth, sampled every 0.15 m at both ends and the middle, that is still outside every parcel.
+    /// Returns less than inner when the piece starts inside one.</summary>
+    static float ClipToParcels(State s, TownLifeScene.RoadInfo road, int side, float st0, float st1, float inner, float outer)
+    {
+        if (s.parcels.Count == 0) return outer;
+        float mid = (st0 + st1) * 0.5f;
+        for (float d = inner; d <= outer + 0.001f; d += 0.15f)
+            if (InParcel(s, LinePoint(road, side, st0, d)) || InParcel(s, LinePoint(road, side, mid, d)) || InParcel(s, LinePoint(road, side, st1, d))) return d - 0.15f;
+        return outer;
+    }
+
     /// <summary>A slightly deeper green mown strip under the tree line, one merged decal per road side, broken wherever a
     /// driveway, garden path or anything else flat-forbidden crosses it.</summary>
     static void VergeStrip(State s, TownLifeScene.RoadInfo road, int side, bool[] hard, Transform group)
     {
         if (road.service) return;
-        const float inner = 0.3f, outer = 2.1f, y = TownLifeContext.LawnY; const int stride = 2;    // 1 m pieces
+        const float inner = 0.3f, outer = 2.1f, y = TownLifeContext.VergeY; const int stride = 2;    // 1 m pieces
         var data = new TownLifeKit.MeshData(); int quads = 0;
-        var ok = new List<int>();
+        var ok = new List<int>(); var okOuter = new List<float>();
         for (int i = 0; i + stride < hard.Length; i += stride)
         {
             bool free = !hard[i] && !hard[i + stride];
+            float reach = outer;
             if (free)
             {
                 var mid = LinePoint(road, side, (i + stride * 0.5f) * Step, LineA);
                 free = s.occ.Free(mid, 1.0f, TownLifeOccupancy.What.Flat) && !InPark(s, mid, 0.2f) && s.scene.IsFlat(mid, 1f)
                     && !s.occ.Within(mid, 1.0f, "paving") && !s.occ.Within(mid, 2.4f, "bed") && !s.occ.Within(mid, 1.0f, "hedge") && !s.occ.Within(mid, 0.9f, "fence");
+                // Never overlap a yard lawn (same plane, different green = flicker): stop at the parcel edge, drop the piece if it starts inside one.
+                if (free) { reach = ClipToParcels(s, road, side, i * Step, (i + stride) * Step, inner, outer); free = reach >= inner + 0.25f; }
             }
-            if (free) { ok.Add(i); continue; }
-            if (ok.Count >= 5) quads += EmitStrip(data, road, side, ok, stride, inner, outer, y);     // nothing shorter than 5 m: stray squares read as glitches
-            ok.Clear();
+            if (free) { ok.Add(i); okOuter.Add(reach); continue; }
+            if (ok.Count >= 5) quads += EmitStrip(data, road, side, ok, okOuter, stride, inner, y);     // nothing shorter than 5 m: stray squares read as glitches
+            ok.Clear(); okOuter.Clear();
         }
-        if (ok.Count >= 5) quads += EmitStrip(data, road, side, ok, stride, inner, outer, y);
+        if (ok.Count >= 5) quads += EmitStrip(data, road, side, ok, okOuter, stride, inner, y);
         if (quads == 0) return;
         TownLifeKit.Custom(group, "streets_verge_" + TownLifeKit.Sanitize(road.id) + (side > 0 ? "_r" : "_l"), data, false, false);
         s.strips++;

@@ -20,6 +20,7 @@ public sealed class FeelAmbience
     /// <summary>True when the active scene is the Neighborhood (or any scene with a TrashRoute).</summary>
     public static bool InNeighborhood()
     {
+        if (CasinoWorld.LocalInside) return false; // the casino pocket: no crickets, owls or rooster at full volume
         if (DepotRowWorld.Active) return !DepotRowWorld.LocalIndoors; // one world: indoors = inside a Depot Row shop
         if (TrashRoute.Current != null) return true;
         var n = SceneManager.GetActiveScene().name;

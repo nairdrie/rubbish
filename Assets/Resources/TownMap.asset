@@ -1411,7 +1411,7 @@ MonoBehaviour:
       x: 603.6013
       y: 659.0136
       width: 69.55127
-      height: 47.09308
+      height: 47.09314
     kind: 0
     points: []
     halfWidth: 0
@@ -1474,7 +1474,7 @@ MonoBehaviour:
       x: 453.96155
       y: 846.2749
       width: 77.88794
-      height: 71.58948
+      height: 71.58954
     kind: 0
     points: []
     halfWidth: 0
@@ -1501,7 +1501,7 @@ MonoBehaviour:
       x: 225.61575
       y: 651.10394
       width: 38.713837
-      height: 36.21869
+      height: 36.218628
     kind: 0
     points: []
     halfWidth: 0
@@ -1607,18 +1607,18 @@ MonoBehaviour:
   - rect:
       serializedVersion: 2
       x: 678.1785
-      y: 28.237762
+      y: 28.237759
       width: 24.65448
-      height: 26.539696
+      height: 26.5397
     kind: 0
     points: []
     halfWidth: 0
   - rect:
       serializedVersion: 2
       x: 648.6157
-      y: 27.169283
+      y: 27.16928
       width: 17.94336
-      height: 28.288221
+      height: 28.288225
     kind: 0
     points: []
     halfWidth: 0
@@ -1634,18 +1634,18 @@ MonoBehaviour:
   - rect:
       serializedVersion: 2
       x: 585.46246
-      y: 31.234695
+      y: 31.234692
       width: 26.319885
-      height: 26.903275
+      height: 26.903282
     kind: 0
     points: []
     halfWidth: 0
   - rect:
       serializedVersion: 2
       x: 556.9961
-      y: 35.508312
+      y: 35.50831
       width: 22.532288
-      height: 23.768353
+      height: 23.768356
     kind: 0
     points: []
     halfWidth: 0
@@ -1654,7 +1654,7 @@ MonoBehaviour:
       x: 519.36774
       y: 35.758884
       width: 23.195251
-      height: 23.516872
+      height: 23.516876
     kind: 0
     points: []
     halfWidth: 0
@@ -1759,9 +1759,9 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 594.42804
+      x: 594.428
       y: 104.60365
-      width: 24.432251
+      width: 24.432312
       height: 26.461914
     kind: 0
     points: []
@@ -1804,9 +1804,9 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 428.21082
+      x: 428.21088
       y: 222.29556
-      width: 29.588745
+      width: 29.588684
       height: 17.908875
     kind: 0
     points: []
@@ -1840,9 +1840,9 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 428.25735
+      x: 428.2574
       y: 92.6214
-      width: 22.494507
+      width: 22.494537
       height: 13.77861
     kind: 0
     points: []
@@ -1852,7 +1852,7 @@ MonoBehaviour:
       x: 390.66446
       y: 231.41483
       width: 12.735504
-      height: 22.87642
+      height: 22.876389
     kind: 0
     points: []
     halfWidth: 0
@@ -1861,7 +1861,7 @@ MonoBehaviour:
       x: 358.79556
       y: 224.12546
       width: 17.908844
-      height: 30.120285
+      height: 30.12027
     kind: 0
     points: []
     halfWidth: 0
@@ -1924,7 +1924,7 @@ MonoBehaviour:
       x: 362.6
       y: 134.00893
       width: 15.420898
-      height: 26.029846
+      height: 26.029861
     kind: 0
     points: []
     halfWidth: 0
@@ -1933,7 +1933,7 @@ MonoBehaviour:
       x: 330.79556
       y: 129.53136
       width: 17.908844
-      height: 30.469666
+      height: 30.46965
     kind: 0
     points: []
     halfWidth: 0
@@ -1951,7 +1951,7 @@ MonoBehaviour:
       x: 255.24522
       y: 135.2735
       width: 16.909592
-      height: 24.761993
+      height: 24.762009
     kind: 0
     points: []
     halfWidth: 0
@@ -1960,7 +1960,7 @@ MonoBehaviour:
       x: 228.97911
       y: 133.07072
       width: 15.420883
-      height: 26.917435
+      height: 26.917465
     kind: 0
     points: []
     halfWidth: 0
@@ -1976,18 +1976,18 @@ MonoBehaviour:
   - rect:
       serializedVersion: 2
       x: 390.29553
-      y: 22.800705
+      y: 22.800701
       width: 17.908875
-      height: 29.949883
+      height: 29.949886
     kind: 0
     points: []
     halfWidth: 0
   - rect:
       serializedVersion: 2
       x: 371.9978
-      y: 29.652872
+      y: 29.652868
       width: 12.735504
-      height: 23.13051
+      height: 23.130518
     kind: 0
     points: []
     halfWidth: 0
@@ -2003,27 +2003,27 @@ MonoBehaviour:
   - rect:
       serializedVersion: 2
       x: 327.6645
-      y: 30.807997
+      y: 30.807993
       width: 12.735504
-      height: 21.961687
+      height: 21.961699
     kind: 0
     points: []
     halfWidth: 0
   - rect:
       serializedVersion: 2
       x: 282.29556
-      y: 22.294342
+      y: 22.294338
       width: 17.908875
-      height: 30.47707
+      height: 30.477074
     kind: 0
     points: []
     halfWidth: 0
   - rect:
       serializedVersion: 2
       x: 255.24522
-      y: 26.88929
+      y: 26.889286
       width: 16.909592
-      height: 25.865723
+      height: 25.865726
     kind: 0
     points: []
     halfWidth: 0
@@ -2130,7 +2130,7 @@ MonoBehaviour:
       serializedVersion: 2
       x: 148.74774
       y: 76.29556
-      width: 29.516174
+      width: 29.516144
       height: 17.908867
     kind: 0
     points: []
@@ -4697,10 +4697,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 164.26657
-      y: 84.675
-      width: 11.733429
-      height: 1.1500092
+      x: 164.27191
+      y: 84.67493
+      width: 11.722717
+      height: 1.1501465
     kind: 6
     points: []
     halfWidth: 0
@@ -4724,10 +4724,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 163.4408
-      y: 115.795
-      width: 12.559204
-      height: 1.1499939
+      x: 163.44528
+      y: 115.79495
+      width: 12.550232
+      height: 1.1501007
     kind: 6
     points: []
     halfWidth: 0
@@ -4751,10 +4751,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 164.13297
-      y: 134.48499
-      width: 11.867035
-      height: 1.1500244
+      x: 164.13718
+      y: 134.48492
+      width: 11.858582
+      height: 1.1501312
     kind: 6
     points: []
     halfWidth: 0
@@ -4778,10 +4778,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 163.96207
-      y: 188.67499
-      width: 12.037933
-      height: 1.1500244
+      x: 163.96585
+      y: 188.67426
+      width: 12.0303955
+      height: 1.1514893
     kind: 6
     points: []
     halfWidth: 0
@@ -4805,10 +4805,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 163.36633
-      y: 206.07498
-      width: 12.633667
-      height: 1.1500244
+      x: 163.36768
+      y: 206.07468
+      width: 12.630981
+      height: 1.1506348
     kind: 6
     points: []
     halfWidth: 0
@@ -4832,10 +4832,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 163.95892
-      y: 243.775
-      width: 12.041077
-      height: 1.1500244
+      x: 163.95871
+      y: 243.77475
+      width: 12.041504
+      height: 1.1505432
     kind: 6
     points: []
     halfWidth: 0
@@ -4859,10 +4859,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 247.055
-      y: 66.49999
-      width: 1.1500244
-      height: 11.516083
+      x: 247.05493
+      y: 66.500885
+      width: 1.1501312
+      height: 11.514282
     kind: 6
     points: []
     halfWidth: 0
@@ -4886,10 +4886,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 396.67496
-      y: 66.49999
-      width: 1.1500244
-      height: 11.545532
+      x: 396.67493
+      y: 66.50107
+      width: 1.1500854
+      height: 11.543381
     kind: 6
     points: []
     halfWidth: 0
@@ -4913,10 +4913,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 339.175
-      y: 173.75
-      width: 1.1500244
-      height: 12.890228
+      x: 339.17438
+      y: 173.75107
+      width: 1.1512451
+      height: 12.888123
     kind: 6
     points: []
     halfWidth: 0
@@ -4940,10 +4940,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 373.365
-      y: 173.75
-      width: 1.1500244
-      height: 11.514313
+      x: 373.36456
+      y: 173.7597
+      width: 1.1508484
+      height: 11.494904
     kind: 6
     points: []
     halfWidth: 0
@@ -4967,10 +4967,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 201.86499
-      y: 38.09548
-      width: 1.1500244
-      height: 12.404526
+      x: 201.86447
+      y: 38.09539
+      width: 1.151062
+      height: 12.404709
     kind: 6
     points: []
     halfWidth: 0
@@ -4994,17 +4994,17 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 234.67499
-      y: 38.335083
-      width: 1.1500244
-      height: 12.164917
+      x: 234.67474
+      y: 38.335114
+      width: 1.1505127
+      height: 12.164856
     kind: 6
     points: []
     halfWidth: 0
   - rect:
       serializedVersion: 2
       x: 255.24522
-      y: 26.88929
+      y: 26.889286
       width: 16.909578
       height: 13.703796
     kind: 9
@@ -5021,17 +5021,17 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 260.175
-      y: 37.091187
-      width: 1.1500244
-      height: 13.408813
+      x: 260.17487
+      y: 37.095757
+      width: 1.1502686
+      height: 13.399673
     kind: 6
     points: []
     halfWidth: 0
   - rect:
       serializedVersion: 2
       x: 282.29556
-      y: 22.294342
+      y: 22.294338
       width: 17.908863
       height: 18.837639
     kind: 9
@@ -5048,17 +5048,17 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 290.675
-      y: 37.813164
-      width: 1.1500244
-      height: 12.686832
+      x: 290.67462
+      y: 37.81617
+      width: 1.1507568
+      height: 12.680817
     kind: 6
     points: []
     halfWidth: 0
   - rect:
       serializedVersion: 2
       x: 327.6645
-      y: 30.807997
+      y: 30.807993
       width: 8.231003
       height: 11.444889
     kind: 9
@@ -5076,9 +5076,9 @@ MonoBehaviour:
   - rect:
       serializedVersion: 2
       x: 329.055
-      y: 39.03044
+      y: 39.03026
       width: 1.1500244
-      height: 11.469559
+      height: 11.469925
     kind: 6
     points: []
     halfWidth: 0
@@ -5102,7 +5102,7 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 360.53162
+      x: 360.53165
       y: 39.30623
       width: 1.1500244
       height: 11.193771
@@ -5112,7 +5112,7 @@ MonoBehaviour:
   - rect:
       serializedVersion: 2
       x: 371.9978
-      y: 29.652872
+      y: 29.652868
       width: 8.231003
       height: 11.444889
     kind: 9
@@ -5120,26 +5120,26 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 381.1333
+      x: 381.13333
       y: 34.231316
-      width: 3.600006
-      height: 16.26868
+      width: 3.5999756
+      height: 16.268677
     kind: 5
     points: []
     halfWidth: 0
   - rect:
       serializedVersion: 2
       x: 373.3883
-      y: 37.875317
+      y: 37.875313
       width: 1.1500244
-      height: 12.62468
+      height: 12.624683
     kind: 6
     points: []
     halfWidth: 0
   - rect:
       serializedVersion: 2
       x: 390.29553
-      y: 22.800705
+      y: 22.800701
       width: 17.90886
       height: 18.837639
     kind: 9
@@ -5147,16 +5147,16 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 403.3
-      y: 41.339523
-      width: 3.7999878
-      height: 9.160477
+      x: 403.29968
+      y: 41.338966
+      width: 3.8006592
+      height: 9.161591
     kind: 5
     points: []
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 393.57495
+      x: 393.57498
       y: 38.31952
       width: 1.1500244
       height: 12.180481
@@ -5183,10 +5183,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 218.36499
-      y: 146.51517
-      width: 1.1499939
-      height: 11.234833
+      x: 218.36267
+      y: 146.51523
+      width: 1.1546326
+      height: 11.234741
     kind: 6
     points: []
     halfWidth: 0
@@ -5210,10 +5210,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 233.86499
-      y: 145.05884
-      width: 1.1500244
-      height: 12.691162
+      x: 233.86453
+      y: 145.0593
+      width: 1.15094
+      height: 12.690247
     kind: 6
     points: []
     halfWidth: 0
@@ -5237,10 +5237,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 260.175
-      y: 145.4754
-      width: 1.1500244
-      height: 12.274597
+      x: 260.17474
+      y: 145.47537
+      width: 1.1505127
+      height: 12.274658
     kind: 6
     points: []
     halfWidth: 0
@@ -5265,9 +5265,9 @@ MonoBehaviour:
   - rect:
       serializedVersion: 2
       x: 396.67496
-      y: 173.75
+      y: 173.7623
       width: 1.1500244
-      height: 11.899841
+      height: 11.875244
     kind: 6
     points: []
     halfWidth: 0
@@ -5291,10 +5291,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 334.075
-      y: 145.05017
-      width: 1.1500244
-      height: 12.699829
+      x: 334.0744
+      y: 145.05011
+      width: 1.1511841
+      height: 12.699951
     kind: 6
     points: []
     halfWidth: 0
@@ -5318,10 +5318,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 371.985
-      y: 145.99704
-      width: 1.1500244
-      height: 11.75296
+      x: 371.9848
+      y: 145.99695
+      width: 1.1503906
+      height: 11.753143
     kind: 6
     points: []
     halfWidth: 0
@@ -5346,9 +5346,9 @@ MonoBehaviour:
   - rect:
       serializedVersion: 2
       x: 395.17496
-      y: 145.92297
+      y: 145.92346
       width: 1.1500244
-      height: 11.827026
+      height: 11.826065
     kind: 6
     points: []
     halfWidth: 0
@@ -5372,10 +5372,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 222.67499
-      y: 66.49999
-      width: 1.1500244
-      height: 12.273132
+      x: 222.67429
+      y: 66.50069
+      width: 1.1514282
+      height: 12.271759
     kind: 6
     points: []
     halfWidth: 0
@@ -5399,10 +5399,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 282.67502
-      y: 66.499985
-      width: 1.1500244
-      height: 12.954803
+      x: 282.6748
+      y: 66.502014
+      width: 1.1505432
+      height: 12.950745
     kind: 6
     points: []
     halfWidth: 0
@@ -5426,10 +5426,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 336.865
-      y: 66.5
-      width: 1.1500244
-      height: 12.144974
+      x: 336.86493
+      y: 66.49986
+      width: 1.1501465
+      height: 12.145248
     kind: 6
     points: []
     halfWidth: 0
@@ -5453,10 +5453,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 373.365
-      y: 66.5
-      width: 1.1500244
-      height: 12.335388
+      x: 373.36475
+      y: 66.50037
+      width: 1.1505127
+      height: 12.334656
     kind: 6
     points: []
     halfWidth: 0
@@ -5481,9 +5481,9 @@ MonoBehaviour:
   - rect:
       serializedVersion: 2
       x: 340.675
-      y: 239.93161
+      y: 239.93765
       width: 1.1500244
-      height: 12.06839
+      height: 12.056274
     kind: 6
     points: []
     halfWidth: 0
@@ -5507,10 +5507,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 362.075
-      y: 239.64429
-      width: 1.1500244
-      height: 12.355713
+      x: 362.07367
+      y: 239.65265
+      width: 1.15271
+      height: 12.338974
     kind: 6
     points: []
     halfWidth: 0
@@ -5534,16 +5534,16 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 392.05496
-      y: 239.63727
-      width: 1.1500244
-      height: 12.362732
+      x: 392.05457
+      y: 239.63913
+      width: 1.1508179
+      height: 12.358994
     kind: 6
     points: []
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 439.52142
+      x: 439.52148
       y: 92.6214
       width: 11.230438
       height: 9.277207
@@ -5561,10 +5561,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 430.49994
-      y: 94.485
-      width: 12.086731
-      height: 1.1500092
+      x: 430.5008
+      y: 94.48427
+      width: 12.085083
+      height: 1.151474
     kind: 6
     points: []
     halfWidth: 0
@@ -5588,10 +5588,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 430.49997
-      y: 123.07501
-      width: 11.490845
-      height: 1.1499939
+      x: 430.50513
+      y: 123.0746
+      width: 11.480469
+      height: 1.1507874
     kind: 6
     points: []
     halfWidth: 0
@@ -5615,10 +5615,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 286.675
-      y: 144.80026
-      width: 1.1500244
-      height: 12.949738
+      x: 286.67462
+      y: 144.80081
+      width: 1.1507568
+      height: 12.948608
     kind: 6
     points: []
     halfWidth: 0
@@ -5642,10 +5642,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 430.49994
-      y: 198.79498
-      width: 11.352051
-      height: 1.1500244
+      x: 430.50018
+      y: 198.79327
+      width: 11.3515625
+      height: 1.1534424
     kind: 6
     points: []
     halfWidth: 0
@@ -5669,10 +5669,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 430.49994
-      y: 230.67499
-      width: 11.780762
-      height: 1.1500244
+      x: 430.49982
+      y: 230.67407
+      width: 11.781128
+      height: 1.1518555
     kind: 6
     points: []
     halfWidth: 0
@@ -5723,10 +5723,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 530.80774
+      x: 530.8076
       y: 113.81995
-      width: 8.294556
-      height: 2.758072
+      width: 8.294678
+      height: 2.7580872
     kind: 6
     points: []
     halfWidth: 0
@@ -5993,10 +5993,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 749.6145
-      y: 77.78125
-      width: 8.345459
-      height: 6.182419
+      x: 749.6135
+      y: 77.78079
+      width: 8.347412
+      height: 6.1833344
     kind: 6
     points: []
     halfWidth: 0
@@ -6138,7 +6138,7 @@ MonoBehaviour:
   - rect:
       serializedVersion: 2
       x: 556.9961
-      y: 35.508312
+      y: 35.50831
       width: 17.131712
       height: 13.213027
     kind: 9
@@ -6165,7 +6165,7 @@ MonoBehaviour:
   - rect:
       serializedVersion: 2
       x: 585.46246
-      y: 31.234695
+      y: 31.234692
       width: 21.000814
       height: 17.436167
     kind: 9
@@ -6219,7 +6219,7 @@ MonoBehaviour:
   - rect:
       serializedVersion: 2
       x: 653.71375
-      y: 27.169283
+      y: 27.16928
       width: 12.845364
       height: 17.811543
     kind: 9
@@ -6246,7 +6246,7 @@ MonoBehaviour:
   - rect:
       serializedVersion: 2
       x: 683.64825
-      y: 28.237762
+      y: 28.237759
       width: 19.184725
       height: 15.603348
     kind: 9
@@ -6326,16 +6326,16 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 48.443604
+      x: 48.44362
       y: 678.5909
-      width: 8.961376
-      height: 8.961376
+      width: 8.961353
+      height: 8.9613495
     kind: 5
     points: []
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 37.939774
+      x: 37.939766
       y: 699.4846
       width: 3.2493172
       height: 3.2493172
@@ -6389,10 +6389,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 112.034546
+      x: 112.03457
       y: 751.7808
-      width: 9.473517
-      height: 9.473518
+      width: 9.473511
+      height: 9.473502
     kind: 5
     points: []
     halfWidth: 0
@@ -6515,10 +6515,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 262.55807
-      y: 774.47485
-      width: 8.428269
-      height: 8.42827
+      x: 262.5581
+      y: 774.4748
+      width: 8.428282
+      height: 8.428327
     kind: 5
     points: []
     halfWidth: 0
@@ -6587,10 +6587,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 344.50836
-      y: 769.131
-      width: 9.604397
-      height: 9.604397
+      x: 344.5084
+      y: 769.13104
+      width: 9.604386
+      height: 9.604377
     kind: 5
     points: []
     halfWidth: 0
@@ -6659,10 +6659,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 398.8954
+      x: 398.89542
       y: 722.37427
-      width: 9.868029
-      height: 9.868029
+      width: 9.868042
+      height: 9.868042
     kind: 5
     points: []
     halfWidth: 0
@@ -6722,10 +6722,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 386.50735
+      x: 386.50732
       y: 611.20435
-      width: 9.81341
-      height: 9.81341
+      width: 9.813442
+      height: 9.813452
     kind: 5
     points: []
     halfWidth: 0
@@ -6785,10 +6785,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 295.57053
+      x: 295.5705
       y: 583.56757
-      width: 7.379102
-      height: 7.3791027
+      width: 7.379135
+      height: 7.3791776
     kind: 5
     points: []
     halfWidth: 0
@@ -6803,7 +6803,7 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 232.24255
+      x: 232.24257
       y: 574.3181
       width: 29.122982
       height: 29.951399
@@ -6857,10 +6857,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 256.94516
+      x: 256.9452
       y: 585.2394
-      width: 8.656413
-      height: 8.656413
+      width: 8.656461
+      height: 8.656449
     kind: 5
     points: []
     halfWidth: 0
@@ -6929,10 +6929,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 128.61229
+      x: 128.61227
       y: 591.57385
-      width: 9.119085
-      height: 9.119085
+      width: 9.119118
+      height: 9.119112
     kind: 5
     points: []
     halfWidth: 0
@@ -6992,10 +6992,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 165.74731
-      y: 666.99146
-      width: 8.002696
-      height: 8.002695
+      x: 165.74733
+      y: 666.9915
+      width: 8.002699
+      height: 8.002642
     kind: 5
     points: []
     halfWidth: 0
@@ -7055,10 +7055,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 226.47906
-      y: 663.85406
-      width: 7.276726
-      height: 7.2767253
+      x: 226.47908
+      y: 663.8541
+      width: 7.2767205
+      height: 7.2766895
     kind: 5
     points: []
     halfWidth: 0
@@ -7119,9 +7119,9 @@ MonoBehaviour:
   - rect:
       serializedVersion: 2
       x: 298.41013
-      y: 686.19037
-      width: 9.782232
-      height: 9.782231
+      y: 686.1904
+      width: 9.782225
+      height: 9.782243
     kind: 5
     points: []
     halfWidth: 0
@@ -7181,10 +7181,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 189.17511
+      x: 189.1751
       y: 569.69727
-      width: 9.717934
-      height: 9.717934
+      width: 9.717931
+      height: 9.717939
     kind: 5
     points: []
     halfWidth: 0
@@ -7209,7 +7209,7 @@ MonoBehaviour:
   - rect:
       serializedVersion: 2
       x: 478.66638
-      y: 877.3696
+      y: 877.3697
       width: 39.96464
       height: 40.494728
     kind: 10
@@ -7334,10 +7334,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 652.357
+      x: 652.35693
       y: 903.849
-      width: 8.953775
-      height: 18.47912
+      width: 8.9538555
+      height: 18.479193
     kind: 10
     points: []
     halfWidth: 0
@@ -7370,10 +7370,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 654.23065
-      y: 935.5809
-      width: 14.904907
-      height: 14.904907
+      x: 654.2307
+      y: 935.581
+      width: 14.904785
+      height: 14.904785
     kind: 15
     points: []
     halfWidth: 0
@@ -7398,9 +7398,9 @@ MonoBehaviour:
   - rect:
       serializedVersion: 2
       x: 763.6862
-      y: 843.68
-      width: 18.435978
-      height: 9.404646
+      y: 843.6799
+      width: 18.436064
+      height: 9.404757
     kind: 10
     points: []
     halfWidth: 0
@@ -7434,7 +7434,7 @@ MonoBehaviour:
   - rect:
       serializedVersion: 2
       x: 790.9513
-      y: 855.1863
+      y: 855.18634
       width: 15.126343
       height: 15.126343
     kind: 15
@@ -7550,7 +7550,7 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 826.38477
+      x: 826.3848
       y: 696.32715
       width: 12.900024
       height: 12.900024
@@ -7569,7 +7569,7 @@ MonoBehaviour:
   - rect:
       serializedVersion: 2
       x: 558.9385
-      y: 568.7251
+      y: 568.72504
       width: 32.366447
       height: 33.644325
     kind: 10
@@ -7631,10 +7631,10 @@ MonoBehaviour:
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 635.0496
-      y: 667.29474
-      width: 4.507437
-      height: 18.191813
+      x: 635.04956
+      y: 667.2948
+      width: 4.5075245
+      height: 18.191833
     kind: 10
     points: []
     halfWidth: 0
@@ -7670,7 +7670,7 @@ MonoBehaviour:
       x: 125.260956
       y: 387.09998
       width: 25.700012
-      height: 25.450012
+      height: 25.449951
     kind: 10
     points: []
     halfWidth: 0
@@ -7679,7 +7679,7 @@ MonoBehaviour:
       x: 88.67168
       y: 376.875
       width: 25.699982
-      height: 25.450012
+      height: 25.450073
     kind: 10
     points: []
     halfWidth: 0
@@ -7758,16 +7758,16 @@ MonoBehaviour:
   - rect:
       serializedVersion: 2
       x: 517.07996
-      y: 527.65
+      y: 527.6498
       width: 21.699951
-      height: 30.449951
+      height: 30.450195
     kind: 10
     points: []
     halfWidth: 0
   - rect:
       serializedVersion: 2
       x: 599.24
-      y: 527.65
+      y: 527.6499
       width: 21.699951
       height: 30.449951
     kind: 10
@@ -7794,36 +7794,36 @@ MonoBehaviour:
   - rect:
       serializedVersion: 2
       x: 522.21497
-      y: 369.7
+      y: 369.69995
       width: 21.699951
-      height: 30.449951
+      height: 30.450073
     kind: 10
     points: []
     halfWidth: 0
   - rect:
       serializedVersion: 2
       x: 588.97
-      y: 369.7
+      y: 369.69995
       width: 21.699951
-      height: 30.449951
+      height: 30.450073
     kind: 10
     points: []
     halfWidth: 0
   - rect:
       serializedVersion: 2
       x: 642.88745
-      y: 369.7
+      y: 369.69995
       width: 21.699951
-      height: 30.449951
+      height: 30.450073
     kind: 10
     points: []
     halfWidth: 0
   - rect:
       serializedVersion: 2
-      x: 192
-      y: 173.46335
-      width: 112
-      height: 78.53665
+      x: 191.96613
+      y: 173.46368
+      width: 112.033875
+      height: 78.697815
     kind: 1
     points: []
     halfWidth: 0
@@ -8625,7 +8625,7 @@ MonoBehaviour:
     size: 24
     kind: 1
   - text: PICKLE PARK
-    pos: {x: 248, y: 212.73167}
+    pos: {x: 247.98306, y: 212.81259}
     angle: 0
     size: 20
     kind: 2
@@ -8732,10 +8732,10 @@ MonoBehaviour:
     curb: {x: 674.0214, y: 876.1225}
     footprint:
       serializedVersion: 2
-      x: 652.357
+      x: 652.35693
       y: 903.849
-      width: 8.953775
-      height: 18.47912
+      width: 8.9538555
+      height: 18.479193
     districtId: billionaire_bluffs
   - stopId: bb-offshore-21
     address: 21 Offshore Account Ave
@@ -8743,9 +8743,9 @@ MonoBehaviour:
     footprint:
       serializedVersion: 2
       x: 763.6862
-      y: 843.68
-      width: 18.435978
-      height: 9.404646
+      y: 843.6799
+      width: 18.436064
+      height: 9.404757
     districtId: billionaire_bluffs
   - stopId: bb-offshore-48
     address: 48 Offshore Account Ave
@@ -8782,10 +8782,10 @@ MonoBehaviour:
     curb: {x: 611.53625, y: 706.111}
     footprint:
       serializedVersion: 2
-      x: 635.0496
-      y: 667.29474
-      width: 4.507437
-      height: 18.191813
+      x: 635.04956
+      y: 667.2948
+      width: 4.5075245
+      height: 18.191833
     districtId: billionaire_bluffs
   - stopId: birch-18
     address: 18 Birch St
@@ -8915,7 +8915,7 @@ MonoBehaviour:
       x: 125.260956
       y: 387.09998
       width: 25.700012
-      height: 25.450012
+      height: 25.449951
     districtId: coupon_commons
   - stopId: cc-dining-2
     address: 2 Restaurant Lane
@@ -8925,7 +8925,7 @@ MonoBehaviour:
       x: 88.67168
       y: 376.875
       width: 25.699982
-      height: 25.450012
+      height: 25.450073
     districtId: coupon_commons
   - stopId: cc-high-1
     address: 1 High Street
@@ -9003,7 +9003,7 @@ MonoBehaviour:
     footprint:
       serializedVersion: 2
       x: 255.24522
-      y: 26.88929
+      y: 26.889286
       width: 16.909578
       height: 13.703796
     districtId: mildly_pleasant
@@ -9013,7 +9013,7 @@ MonoBehaviour:
     footprint:
       serializedVersion: 2
       x: 282.29556
-      y: 22.294342
+      y: 22.294338
       width: 17.908863
       height: 18.837639
     districtId: mildly_pleasant
@@ -9023,7 +9023,7 @@ MonoBehaviour:
     footprint:
       serializedVersion: 2
       x: 327.6645
-      y: 30.807997
+      y: 30.807993
       width: 8.231003
       height: 11.444889
     districtId: mildly_pleasant
@@ -9043,7 +9043,7 @@ MonoBehaviour:
     footprint:
       serializedVersion: 2
       x: 371.9978
-      y: 29.652872
+      y: 29.652868
       width: 8.231003
       height: 11.444889
     districtId: mildly_pleasant
@@ -9053,7 +9053,7 @@ MonoBehaviour:
     footprint:
       serializedVersion: 2
       x: 390.29553
-      y: 22.800705
+      y: 22.800701
       width: 17.90886
       height: 18.837639
     districtId: mildly_pleasant
@@ -9363,7 +9363,7 @@ MonoBehaviour:
     footprint:
       serializedVersion: 2
       x: 556.9961
-      y: 35.508312
+      y: 35.50831
       width: 17.131712
       height: 13.213027
     districtId: minivan_meadows
@@ -9373,7 +9373,7 @@ MonoBehaviour:
     footprint:
       serializedVersion: 2
       x: 585.46246
-      y: 31.234695
+      y: 31.234692
       width: 21.000814
       height: 17.436167
     districtId: minivan_meadows
@@ -9393,7 +9393,7 @@ MonoBehaviour:
     footprint:
       serializedVersion: 2
       x: 653.71375
-      y: 27.169283
+      y: 27.16928
       width: 12.845364
       height: 17.811543
     districtId: minivan_meadows
@@ -9403,7 +9403,7 @@ MonoBehaviour:
     footprint:
       serializedVersion: 2
       x: 683.64825
-      y: 28.237762
+      y: 28.237759
       width: 19.184725
       height: 15.603348
     districtId: minivan_meadows
@@ -9422,7 +9422,7 @@ MonoBehaviour:
     curb: {x: 428.29996, y: 100}
     footprint:
       serializedVersion: 2
-      x: 439.52142
+      x: 439.52148
       y: 92.6214
       width: 11.230438
       height: 9.277207
@@ -9552,7 +9552,7 @@ MonoBehaviour:
     curb: {x: 263.48746, y: 610.3789}
     footprint:
       serializedVersion: 2
-      x: 232.24255
+      x: 232.24257
       y: 574.3181
       width: 29.122982
       height: 29.951399
@@ -9623,9 +9623,9 @@ MonoBehaviour:
     footprint:
       serializedVersion: 2
       x: 517.07996
-      y: 527.65
+      y: 527.6498
       width: 21.699951
-      height: 30.449951
+      height: 30.450195
     districtId: stackington_heights
   - stopId: st-skyline-3
     address: 3 Skyline Street
@@ -9633,7 +9633,7 @@ MonoBehaviour:
     footprint:
       serializedVersion: 2
       x: 599.24
-      y: 527.65
+      y: 527.6499
       width: 21.699951
       height: 30.449951
     districtId: stackington_heights
@@ -9663,9 +9663,9 @@ MonoBehaviour:
     footprint:
       serializedVersion: 2
       x: 522.21497
-      y: 369.7
+      y: 369.69995
       width: 21.699951
-      height: 30.449951
+      height: 30.450073
     districtId: stackington_heights
   - stopId: st-tower-3
     address: 3 Tower Loop
@@ -9673,9 +9673,9 @@ MonoBehaviour:
     footprint:
       serializedVersion: 2
       x: 588.97
-      y: 369.7
+      y: 369.69995
       width: 21.699951
-      height: 30.449951
+      height: 30.450073
     districtId: stackington_heights
   - stopId: st-tower-4
     address: 4 Tower Loop
@@ -9683,7 +9683,7 @@ MonoBehaviour:
     footprint:
       serializedVersion: 2
       x: 642.88745
-      y: 369.7
+      y: 369.69995
       width: 21.699951
-      height: 30.449951
+      height: 30.450073
     districtId: stackington_heights

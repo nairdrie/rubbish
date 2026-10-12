@@ -49,6 +49,9 @@ public sealed class CritterMelee : MonoBehaviour
         free &= tells == null || !tells.IsCube && !tells.Helping;
         var hands = HandsNet.Instance;
         if (hands != null && hands.Active && hands.BodyOf(hands.LocalId).State != BodyState.Normal) free = false;
+        // Solo riders too (co-op's are Riding above): on a truck's back RB switches spot, and nobody punches from the step.
+        var rider = RideRider.LocalRider;
+        if (rider != null && rider.Player == player && (rider.IsRiding || rider.IsFlying)) free = false;
         if (!free) { ClearHint(); return; }
         bool swing = carrier != null && carrier.IsCarrying;
         var target = Target(player, swing ? HandsTuning.SwingRange : HandsTuning.ShoveRange);

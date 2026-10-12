@@ -129,7 +129,7 @@ public class MenuManager : MonoBehaviour
     bool CheckBusiness()
     {
         if (BusinessSlots.CanPlaySelected) return true;
-        NetErrorPanel.Show("Choose a business", BusinessSlots.SelectionError ?? "This save couldn't be read. Use Choose business to select a readable save; nothing will be overwritten.");
+        NetErrorPanel.Show("Choose a business", BusinessSlots.SelectionError ?? "This save couldn't be read. Click Play Solo and choose a readable save; nothing will be overwritten.");
         return false;
     }
 
@@ -155,6 +155,7 @@ public class MenuManager : MonoBehaviour
         joinCts = null;
         if (!ok)
         {
+            BusinessSlots.ForgetJoinPick();     // the save picked for this join does not answer for the next one
             SaveGuard.ReloadOwn("join failed"); // L0 (NetSession already did; a no-op then)
             if (this != null) SetBusy(false);
         }

@@ -63,7 +63,7 @@ After publishing, enter Play and drive past the changed area. Check a newly adde
 
 Unity's **Window → General → Test Runner → EditMode** includes `TownRoadAuthoringTests`, `TownGameplayAuthoringTests`, `TownPlacementToolsTests` and the town-asset tests. Run the full EditMode suite before sharing a build. The read-only `Tools/bots/eval/town_road_probe.cs` additionally exercises a connected branch on a copied blueprint and checks identity/pose preservation without writing the real town. These checks complement, but do not replace, visual/driving/multiplayer testing.
 
-This is an Edit Mode authoring tool, not an in-game editor, live multiplayer map synchronization, terrain sculptor, arbitrary gameplay-script importer, or traffic-spawn editor. Placement caps and collision checks are safety limits, not performance guarantees for a town filled with thousands of objects.
+This is an Edit Mode authoring tool, not an in-game editor, live multiplayer map synchronization, terrain sculptor (the land's shape is code, see "Terrain relief"), arbitrary gameplay-script importer, or traffic-spawn editor. Placement caps and collision checks are safety limits, not performance guarantees for a town filled with thousands of objects.
 
 ## Advanced: edit a road or junction in the blueprint
 
@@ -87,7 +87,7 @@ The generated layout starts with six houses facing Depot Row, distributes homes 
 
 ## Town Life layer (Acres and Meadows)
 
-Mildly Pleasant Acres and Minivan Meadows carry a generated dressing layer, built by the `TownLife*.cs` editor classes in `Assets/Scripts/Editor/TownLife/`. It adds no households, roads, graph nodes, knockables or runtime scripts.
+Mildly Pleasant Acres and Minivan Meadows carry a generated dressing layer, built by the `TownLife*.cs` editor classes in `Assets/Scripts/Editor/TownLife/`. It adds no households, roads, graph nodes, knockables or runtime scripts (the one exception is the data-only `TownReliefPad` marker, see "Terrain relief").
 
 - **Lots and fences.** `TownLifePlan` tiles every block into one lot per house. `TownLifeFences` turns the lot lines into a connected boundary network: one shared divider between neighbours, one shared rear line through each block, wing fences to the house with an open 1.8 m gate gap. `CoastalYardAuthoring.Rebuild` realises it as one `CoastalYardBoundary` marker per frontage chain (14 markers for the 59 starter households). The other districts, and any lot with no road context, keep the footprint-based yards described below.
 - **Dressing.** `NeighborhoodGen/TownLife` holds `TL_Streets` (street trees, hedges in front of street-facing fences, corner beds, name posts), `TL_Yards` (front and back yards), `TL_Meadows` (court islands, the common inside the Mile, beach path) and `TL_Edges` (woodland belts, hills, riverside, coast strip, Depot Row planting). Pickle Park is `NeighborhoodGen/Park/TL_Park`; of the old park only the playground KidPen and the lemonade stand remain. Acres houses are repainted through `TL_paint_*` material variants.
@@ -141,3 +141,131 @@ The validator is read-only. It checks blueprint references, road reachability fr
 Incremental publishing is transactional. A validation or later map/save error restores the affected scenes and generated files. This includes failures after some files were already written. Unrelated dirty materials/assets are not flushed to disk. Unity may leave a reverted open scene marked dirty; inspect it before saving. A successful edit still needs a quick visual/driving check—validation is a safety net, not proof of every multiplayer or gameplay behavior.
 
 Automated checks cover stable district/save indices, permit migration and replication, six-district schedules, rare-odds preservation, blueprint connectivity and a junction edit propagating to every incident road. These checks do not replace visual and driving QA: inspect houses for overlap, confirm each depot's exterior/interior transition, and try traffic, crossing guards, collection tools and return routes with a larger truck.
+
+## Town Life in Coupon Commons (2026-10-08)
+
+`Assets/Scripts/Editor/TownLife/TownLifeCommons.cs` is a seventh Town Life module, run last in every city publish; its
+objects are `NeighborhoodGen/TownLife/TL_Commons` (853 at the first publish; the layer's budget went from 4,000 to 5,600).
+It keeps **its own occupancy map** over the district, because the shared one (and `TownLifeScene`'s capture) stop at the
+river; it reads roads from `CoastalCityLayout`, the nine shop lots from their `PickupStop`s and the decorative rows from
+their `CoastalInfillSite`s. What it builds:
+
+- **Streets** (the six through streets): trees in grates with planters, benches and bins between them just behind the
+  pavement; on Coupon Street and High Street parking meters, news boxes, painted parking bays and a bus shelter; hydrants;
+  a zebra crossing before each end of every street; bunting across Coupon Street.
+- **The nine shop forecourts:** paving, planters, a bench, a bin, a bike rack, a pylon sign and a roof sign with the shop's
+  own name (`ShopNames`), cart corral / vending machine / ice box / news box (shops) or cafe tables under string lights
+  (restaurants), and the **dumpster pad** with its screen walls and a hatched approach that is kept clear of everything so
+  a truck can back up to it (`DumpsterRules.PadLocal`; the dumpster itself is a runtime object, `Docs/Progression.md` §6.11).
+- **Two car parks** behind the Coupon Street shops (bays, wheel stops, a dozen parked cars, lamps), a **food court** inside
+  the Restaurant Lane loop (chequered plaza, two food trucks, umbrella tables), a **freight yard** inside the Loading Lane
+  loop (containers, pallets, a forklift, a low wall), and shade trees on the leftover lawns.
+- **Decorative shop rows:** back-door clutter and a shopfront board or display per bay, renderers only (an infill
+  footprint rejects any collider inside it).
+
+The four big features sit in hand-measured rectangles and are skipped (and named in the `[commons]` report line) if a
+blueprint change puts something in their way. Stackington Heights has no Town Life yet.
+
+## Town Life in Snootington Hills and Billionaire Bluffs (2026-10-08)
+
+Nick: "lets fill out the last 2 neighborhoods with more houses and props." `TownLifeEstates.cs` is the eighth module
+(`NeighborhoodGen/TownLife/TL_Estates`, about 720 objects at its first bake; the layer's budget is now 9,000). Like the
+Commons module it keeps its own occupancy map, seeded from the roads, each real estate's whole grounds (an oriented box
+round everything in its lot), the decorative sites, the nature trees, authored objects and the gates.
+
+- **Scenery estates** (6 in the Hills, 12 in the Bluffs at the first bake): walking every road on both sides, wherever a
+  house with a garden round it and a front between it and the pavement is free, it stands a pack house (1.28x in the
+  Hills, 1.5x in the Bluffs; the Bluffs try a two-wing pair first), a front walk, a drive down one side with a car, a
+  tall hedge (Hills) or stone wall (Bluffs) along the pavement with lamp piers at the openings, topiary down the walk,
+  beds under the windows, shade trees and a fountain or birdbath. **They are scenery: no `PickupStop`, no household, not
+  on the map, nothing in the economy or the tests that count households.** Real extra households would be a blueprint
+  change (`lotStrips`) and a full structural rebuild; not done.
+- **Set pieces** on the open lawns (17 placed): tennis courts, pools with loungers, fountains, gazebos, topiary gardens,
+  putting greens, and in the Bluffs private helipads and a gold statue of the owner. Each takes the free spot nearest a
+  road that fits it.
+- **Avenue trees** along every road and **groves** on what is left.
+- The report line also says how many estate sites were tried and refused; the usual reason is that the real estates'
+  grounds and the road loops leave no free rectangle. To get more, shrink the margins in `Fits` or add smaller houses.
+
+
+## Terrain relief (2026-10-09)
+
+Nick: "can we get elevation changes in the landscape? eg. mild up and down in the first few neighborhoods, steep bluffs,
+sloping down to the river". The town is still **authored flat**: the blueprint, every road, lot, yard, infill and Town
+Life rule works in plan, exactly as before. Height is added by the bake, last.
+
+**One grid is the ground.** `TownReliefDesign` (runtime assembly, pure maths) shapes a 3 m height grid: Acres and
+Meadows roll gently and fall to the river, Commons and Heights are a shelf tilting up from it, the Hills' loop circles a
+dome, the Bluffs are a plateau that climbs to the north-east and ends in a craggy cliff over the beach, and the fringes
+rise into the woods. **Depot Row is level at 0**, so nothing about the depots, their roofs or their interiors moved.
+On top of that shape:
+
+- **Roads are level from kerb to kerb** and follow a smoothed profile along their own length. Where a street runs into
+  another it eases onto that street's level over its last 32 m. Bridges get a slight arch. The bake report lists the
+  steepest roads (about 16 % on Estate Spur, 14 % on the Cliff Road climb, 13 % and under elsewhere).
+- **Pads are level patches** at the height the land had: one per lot's buildings, per attached shop row / workyard /
+  courtyard, per kid pen, per estate feature group (hedge maze, launch pad), per Hoverhog ground pad, and wherever a
+  generator asks with `TownLifeKit.LevelPad(...)` (pools, courts, helipads, putting greens, the park pond, the Meadows
+  pitch). A `TownReliefPad` component on any object (hand-placed ones included) asks for the same thing.
+- The river channel and the shore are cut into the result; under a bridge the deck and the channel part company.
+
+The grid is stored as `Assets/Resources/City/TownRelief.bytes` (part of the published-town signature, so host and guest
+must agree) and read at runtime by `TownRelief.Height(x, z)`. The terrain mesh **is** that grid (cells split into two
+triangles, diagonals alternating), which is why nothing has to be matched to it by hand.
+
+**How the town gets onto it** (`TownReliefBaker`, Editor): every publish calls `PipelineBegin` first, which puts the
+scene back exactly flat from the `TownReliefRecord` on `NeighborhoodGen`; the whole flat pipeline and its validation
+run; then `PipelineApply`:
+
+- builds the terrain (`Ground/Relief terrain x_z`, grass / rock on steep faces / sand at the water) and switches the old
+  flat terrain off;
+- **lifts** small things and shared meshes (props, trees, lamps, cars, people's markers) to the ground under them;
+  buildings sit on their pad; a car or a short flat slab is **tilted** to the slope;
+- **drapes** anything long or one-of-a-kind, vertex by vertex: road and pavement meshes, driveways, walls, hedges and
+  paving (copies in `Assets/Materials/Generated/Relief/Relief_Meshes.asset`), and Town Life's own ground, verge, lawn,
+  fence and hedge meshes (in place, in their existing assets). A triangle that crosses terrain facets is first cut along
+  them, so a road or a lawn lies exactly on the ground, 10 cm above the terrain as it always was;
+- stretches long fence colliders over the slope they stand on, lifts the world points stored on house routes, kid pens
+  and yard stamps, and lifts the street graph (edge lengths grow with the climb) before it is saved.
+
+A second bake of an unchanged town writes nothing. `Rubbish → City → Terrain Relief Enabled` (per machine, default on)
+is the emergency switch: unticked, the next bake leaves the town flat and writes a flat grid.
+
+**Rules for code**
+
+- Layout code (builders, Town Life modules, validators inside the publish) sees a flat town: `TownRelief` answers 0
+  while a bake is laying the town out. To keep something off the cliff or a steep bank, ask the design
+  (`TownReliefDesign.Steepness`), as `TownLifeEstates` does.
+- Runtime code never assumes y = 0. Use `TownRelief.Height / OnGround / Lift` for a point, `TownRelief.Between(a, b, u)`
+  to move between two waypoints (the path samplers in `LifePaths` and `HouseRoutes` do), `TownRelief.Aligned` to rest a
+  vehicle on the slope (`CarAgent.Pose` does). Outside the grid (the depot interiors far south of the town, under the
+  map) every lookup is 0.
+- Clearance checks that skipped "anything no higher than the kerb" skip the ground surfaces by identity
+  (`TownRelief.IsGroundSurface`) and measure a collider's top from the ground under it (`TopAboveGround`).
+- `CityRoadAnchor.Resolve` stands a lot on the relief, so "placement differs from its road anchor" still means what it
+  says.
+
+**The truck on hills** (`Shop/Truck/TruckGradeAssist.cs`, on every truck, acting where its physics is simulated): two
+thirds of a hill's pull is cancelled while you drive (a hill slows the climb and quickens the descent, mildly); with
+the stick centred it is cancelled outright, so the truck coasts to a stop and stays put as on the flat; extra weight on
+the wheels for grip; a pull back to the road over a crest; and engine braking past top speed, which the old torque
+limiter never did. Measured in the QA copy with a stock tier-1 engine: 10 to 11 m/s up the Cliff Road climb, 12.6 m/s
+(limit 12.5) coming back down at full throttle, 0.0 m/s when let go on the slope.
+
+**Water** is `Rubbish/Water` (`Assets/Scripts/World/Shaders/RubbishWater.shader`): small waves on a fine grid, shaded
+one facet per triangle, darker away from the bank, foam lapping at the waterline, lighter streaks drifting downstream.
+No textures and no depth texture: the bake builds `Ground/Relief river` and `Ground/Relief sea` and stores each
+vertex's distance from the waterline in the mesh. The two materials (`Relief_Water_River.mat`, `Relief_Water_Sea.mat`
+next to the relief meshes) are created once and never overwritten: tune colours, wave height and foam there. The old
+`Bandit River` and `Eastern Sea` objects are kept, switched off.
+
+**Not done / known limits**
+
+- Town Builder still draws streets on a flat plane at y = 0, so on high ground the cursor is offset from where the
+  street lands. Stamped objects are fine (they are dropped onto the ground and re-seated by the next bake).
+- Shared tree clumps and woodland props are tilted as a whole (up to 10 degrees) rather than tree by tree.
+- Pools and ponds that are part of the original estate lots are levelled by their group; a new kind of flat feature
+  needs a `LevelPad`.
+- Pond and pool water still use the plain water colour, not the new shader.
+- Not tried with a second player or a gamepad. Residents, traffic, the district gates and the Hoverhog were checked in a
+  solo session in the QA copy.

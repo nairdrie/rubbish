@@ -66,6 +66,7 @@ public static class Sfx
     /// pickup, drop, throw, whoosh, thud, bag_land, bag_burst, rustle, toss_in, truck_full, ding, cash,
     /// buzz, sparkle, rare, legendary, crunch, compactor, boom, click, door, notify, squeak, pop, combo,
     /// horn, engine_start, beep (reverse beeper), slam, splat,
+    /// streak_note, streak_up, streak_max, streak_lost, streak_cool (the sort-streak HUD),
     /// hiss, chitter, snore, grumble, bite, ow, syringe, rooster, owl, cricket, goblin_angry, raccoon_scream,
     /// clang, sparks, geyser, car_horn, car_alarm, tire_screech, door_creak, oof, yelp, bark, mumble (+ mumble2, mumble3).
     /// (Night ambience — crickets/owls in the Neighborhood at night, a rooster at MorningCame — plays by itself.)

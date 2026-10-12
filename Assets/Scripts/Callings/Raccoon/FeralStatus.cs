@@ -7,7 +7,7 @@ using UnityEngine;
 /// boots read, night vision, the pounce) and the questions every machine may ask about any player.
 /// <list type="bullet">
 /// <item><b>L1 A Little Bit Feral</b>: no pass-out and no hospital bill, ever; a stored Rabies Shot is not used on its own
-/// (cure on purpose: buying a shot while infected, a friend's jab, or K twice for a stored shot);
+/// (cure on purpose: buying a shot while infected, or K twice for a stored shot);
 /// the trippy look is capped to a stylised hint and the stumbling drift and hiccup hops are gone.</item>
 /// <item><b>L2 Night Creature</b> (while infected): +15% on foot at night, night vision, and wild raccoons leave you alone
 /// (no bites, no latches, no revenge for taking their bag).</item>

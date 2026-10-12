@@ -24,20 +24,16 @@ public struct RideModsNet : INetworkSerializable, IEquatable<RideModsNet>
     public override int GetHashCode() => truck.GetHashCode();
 }
 
-/// <summary>One stress sample on the wire (~26 B): driver clock, sideways g, braking, drift, speed, where the truck was.</summary>
+/// <summary>One pose sample on the wire (~21 B): driver clock, speed, where the truck was. Lag matching only.</summary>
 public struct RideSampleNet : INetworkSerializable
 {
     public double t;
-    public short lat, brake;
-    public byte drift, speed;
+    public byte speed;
     public Vector3 pos;
 
     public void NetworkSerialize<T>(BufferSerializer<T> s) where T : IReaderWriter
     {
         s.SerializeValue(ref t);
-        s.SerializeValue(ref lat);
-        s.SerializeValue(ref brake);
-        s.SerializeValue(ref drift);
         s.SerializeValue(ref speed);
         s.SerializeValue(ref pos);
     }
@@ -45,23 +41,22 @@ public struct RideSampleNet : INetworkSerializable
     public static RideSampleNet Pack(in RideTruck.Sample s) => new RideSampleNet
     {
         t = s.t,
-        lat = (short)Mathf.Clamp(Mathf.RoundToInt(s.lat * 20f), short.MinValue, short.MaxValue),
-        brake = (short)Mathf.Clamp(Mathf.RoundToInt(s.brake * 20f), short.MinValue, short.MaxValue),
-        drift = (byte)Mathf.Clamp(Mathf.RoundToInt(s.drift * 10f), 0, 255),
         speed = (byte)Mathf.Clamp(Mathf.RoundToInt(s.speed * 8f), 0, 255),
         pos = s.pos,
     };
 
-    public RideTruck.Sample Unpack() => new RideTruck.Sample { t = t, lat = lat / 20f, brake = brake / 20f, drift = drift / 10f, speed = speed / 8f, pos = pos };
+    public RideTruck.Sample Unpack() => new RideTruck.Sample { t = t, speed = speed / 8f, pos = pos };
 }
 
 // Package F1 "Riding the truck" (Docs/Multiplayer.md §14.1, §4.4, red-team T4) on top of N2's hitching:
-//  - Stress stream: the machine simulating a truck sends 10 samples/s + jolts while anyone rides it; the host relays them.
+//  - Crashes + pose stream: the machine simulating a truck sends its crashes (tick + Δv) and 10 pose samples/s (lag
+//    matching only) while anyone rides it; the host relays them. Riders stay on solidly otherwise (no grip since 12 Oct 2026).
 //  - Fling: the rider's own machine decides it at the truck tick it shows and tells the host; the host marks the body
 //    Thrown and tells everyone the tick, the owner's world start and the velocity, so each machine starts the same flight
-//    at the same corner. Landing: knocked out 1 s (soft landings in hedges: not), then 5 s immunity (§4.1 #4).
-//  - Rider shove (RMB): attacker detects, host checks both ride the same truck within reach; the victim's machine gets
-//    a HOLD ON. Knock-off / grip hits for other packages (Riding.KnockOff): host decides, the rider's machine applies.
+//    at the same spot. Landing: knocked out 1 s (soft landings in hedges: not), then 5 s immunity (§4.1 #4).
+//  - Switch spot: the rider asks for another hold on the truck they ride; the host checks it's free and moves BodyNet.step,
+//    which every machine pins (and walks the rider round the back) the same way as boarding.
+//  - Knock-off for other packages (Riding.KnockOff): host decides, the rider's machine flies.
 //  - Pay (streak bonus, Crew Comfort tip): host computes the amount and credits the truck's business through the Ledger.
 //  - Truck mods: each business reports its trucks' Padded Step / Safety Bar levels; the host keeps the list.
 public partial class HandsNet
@@ -70,7 +65,7 @@ public partial class HandsNet
 
     NetworkList<RideModsNet> rideMods;
     bool rideGuards;
-    readonly Dictionary<ulong, float> lastRideShoveAt = new Dictionary<ulong, float>();
+    readonly Dictionary<ulong, float> lastRideSwitchAt = new Dictionary<ulong, float>();
     readonly Dictionary<ulong, float> lastRidePayAt = new Dictionary<ulong, float>();
     readonly Dictionary<ulong, float> lastRideBarAt = new Dictionary<ulong, float>();
     readonly Dictionary<ulong, double> lastRideFlingTick = new Dictionary<ulong, double>();
@@ -82,12 +77,11 @@ public partial class HandsNet
         if (rideGuards) return;
         rideGuards = true;
         SessionService.SetGuard("rb.ride.sample", new NetGuard(24f, 48, 64));
-        SessionService.SetGuard("rb.ride.jolt", new NetGuard(12f, 24, 64));
+        SessionService.SetGuard("rb.ride.crash", new NetGuard(12f, 24, 64));
         SessionService.SetGuard("rb.ride.fling", new NetGuard(4f, 8, 96));
         SessionService.SetGuard("rb.ride.mods", new NetGuard(2f, 6, 32));
         SessionService.SetGuard("rb.ride.bar", new NetGuard(2f, 6, 16));
-        SessionService.SetGuard("rb.ride.lean", new NetGuard(8f, 16, 16));
-        SessionService.SetGuard("rb.ride.grip", new NetGuard(8f, 16, 16));
+        SessionService.SetGuard("rb.ride.switch", new NetGuard(6f, 12, 16));
     }
 
     // ==================================================================================== queries
@@ -106,6 +100,16 @@ public partial class HandsNet
         for (int i = 0; i < bodies.Count; i++)
             if (bodies[i].State == BodyState.Riding && bodies[i].other == truckId) n++;
         return n;
+    }
+
+    /// <summary>The holds of truck <paramref name="truckId"/> somebody rides (a bit per hold).</summary>
+    public int TakenHoldsOn(ulong truckId)
+    {
+        int mask = 0;
+        for (int i = 0; i < bodies.Count; i++)
+            if (bodies[i].State == BodyState.Riding && bodies[i].other == truckId && bodies[i].step < RideHolds.Count)
+                mask |= 1 << bodies[i].step;
+        return mask;
     }
 
     public bool TryRideMods(ulong truckId, out byte padded, out byte bar, out bool barDown)
@@ -130,7 +134,7 @@ public partial class HandsNet
                no != null && no.OwnerClientId == client;
     }
 
-    // ==================================================================================== stress stream
+    // ==================================================================================== pose stream and crashes
 
     public void SendRideSample(RideTruck rt, in RideTruck.Sample s)
     {
@@ -145,7 +149,7 @@ public partial class HandsNet
     {
         ulong sender = rp.Receive.SenderClientId;
         EnsureRideGuards();
-        if (!Allowed("rb.ride.sample", sender, 40) || !TruckSimulatedBy(truckId, sender)) return;
+        if (!Allowed("rb.ride.sample", sender, 32) || !TruckSimulatedBy(truckId, sender)) return;
         var rt = RideTruck.Find(truckId);
         if (rt != null && !rt.Simulated) rt.ReceiveSample(s.Unpack());
         RideSampleAllRpc(truckId, s);
@@ -158,30 +162,31 @@ public partial class HandsNet
         if (rt != null && !rt.Simulated) rt.ReceiveSample(s.Unpack());
     }
 
-    public void SendRideJolt(RideTruck rt, in RideTruck.Jolt j)
+    public void SendRideCrash(RideTruck rt, in RideTruck.Crash c)
     {
         if (rt == null || rt.NetId == 0 || !IsSpawned) return;
-        byte cost = (byte)Mathf.Clamp(Mathf.RoundToInt(j.cost), 0, 255);
-        if (IsServer) RideJoltAllRpc(rt.NetId, j.t, cost, j.kind, j.flingAll);
-        else RideJoltRpc(rt.NetId, j.t, cost, j.kind, j.flingAll);
+        byte dv = RideTruck.Crash.PackDv(c.dv);
+        if (IsServer) RideCrashAllRpc(rt.NetId, c.t, dv);
+        else RideCrashRpc(rt.NetId, c.t, dv);
     }
 
     [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
-    void RideJoltRpc(ulong truckId, double t, byte cost, byte kind, bool all, RpcParams rp = default)
+    void RideCrashRpc(ulong truckId, double t, byte dv, RpcParams rp = default)
     {
         ulong sender = rp.Receive.SenderClientId;
         EnsureRideGuards();
-        if (!Allowed("rb.ride.jolt", sender, 24) || !TruckSimulatedBy(truckId, sender)) return;
+        if (!Allowed("rb.ride.crash", sender, 24) || !TruckSimulatedBy(truckId, sender)) return;
+        if (double.IsNaN(t) || double.IsInfinity(t)) return;
         var rt = RideTruck.Find(truckId);
-        if (rt != null && !rt.Simulated) rt.ReceiveJolt(new RideTruck.Jolt { t = t, cost = cost, kind = kind, flingAll = all });
-        RideJoltAllRpc(truckId, t, cost, kind, all);
+        if (rt != null && !rt.Simulated) rt.ReceiveCrash(new RideTruck.Crash { t = t, dv = RideTruck.Crash.UnpackDv(dv) });
+        RideCrashAllRpc(truckId, t, dv);
     }
 
     [Rpc(SendTo.NotServer)]
-    void RideJoltAllRpc(ulong truckId, double t, byte cost, byte kind, bool all)
+    void RideCrashAllRpc(ulong truckId, double t, byte dv)
     {
         var rt = RideTruck.Find(truckId);
-        if (rt != null && !rt.Simulated) rt.ReceiveJolt(new RideTruck.Jolt { t = t, cost = cost, kind = kind, flingAll = all });
+        if (rt != null && !rt.Simulated) rt.ReceiveCrash(new RideTruck.Crash { t = t, dv = RideTruck.Crash.UnpackDv(dv) });
     }
 
     // ==================================================================================== fling and landing
@@ -232,7 +237,8 @@ public partial class HandsNet
         {
             var b = bodies[i];
             if (b.State != BodyState.Riding || b.other != truckId) why = "not-riding";
-            else if (hold >= RideHolds.Count || hold != b.step) why = "hold";
+            // Any hold on this truck: a crash can land while a switch to another hold is still on its way here.
+            else if (hold >= RideHolds.Count) why = "hold";
             else if (double.IsNaN(tF) || double.IsInfinity(tF) || tF < ServerNow - 4.0 || tF > ServerNow + 0.5) why = "tick";
             else if (!RideFinite(vel)) why = "velocity";
             else
@@ -319,70 +325,71 @@ public partial class HandsNet
         bodies[i] = b;
     }
 
-    // ==================================================================================== riders shoving riders
+    // ==================================================================================== switching spots (Shift)
 
-    public void LocalRideShove(ulong target)
+    /// <summary>Ask to move to hold <paramref name="hold"/> of the truck this player rides. The host checks it's still
+    /// free, so two riders never share a hold; every machine then walks the rider round the back (RideRider.HoldPose).</summary>
+    public void LocalRideSwitch(ulong truckId, byte hold)
     {
         if (!IsSpawned) return;
-        if (IsServer) HostRideShove(LocalId, target);
-        else RideShoveRpc(target);
+        if (IsServer) HostRideSwitch(LocalId, truckId, hold);
+        else RideSwitchRpc(truckId, hold);
     }
 
     [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
-    void RideShoveRpc(ulong target, RpcParams rp = default)
+    void RideSwitchRpc(ulong truckId, byte hold, RpcParams rp = default)
     {
         ulong sender = rp.Receive.SenderClientId;
-        if (!Allowed("rb.hands.shove", sender, 16)) return;
-        HostRideShove(sender, target);
+        EnsureRideGuards();
+        if (!Allowed("rb.ride.switch", sender, 16)) return;
+        HostRideSwitch(sender, truckId, hold);
     }
 
-    void HostRideShove(ulong attacker, ulong target)
+    void HostRideSwitch(ulong client, ulong truckId, byte hold)
     {
+        int i = BodyIndex(client);
         string why = null;
-        var a = BodyOf(attacker);
-        var t = BodyOf(target);
         float now = Time.unscaledTime;
-        Vector3 dir = Vector3.zero;
-        if (attacker == target) why = "self";
-        else if (a.State != BodyState.Riding || t.State != BodyState.Riding || a.other != t.other) why = "not-riding-together";
-        else if (lastRideShoveAt.TryGetValue(attacker, out var last) && now - last < RideTuning.ShoveCooldown - 0.2f) why = "cooldown";
-        else if (!HostPlayerPos(attacker, out var ap) || !HostPlayerPos(target, out var tp)) why = "missing";
-        else if ((ap - tp).sqrMagnitude > Sq(RideTuning.ShoveRange + HandsTuning.LagSlack)) why = "far";
-        else dir = tp - ap;
-        if (why == null)
+        if (i < 0) why = "missing";
+        else
         {
-            lastRideShoveAt[attacker] = now;
-            dir.y = 0f;
-            RideShovedRpc(target, attacker, dir);
+            var b = bodies[i];
+            if (b.State != BodyState.Riding || b.other != truckId) why = "not-riding";
+            else if (hold >= RideHolds.Count || hold == b.step) why = "hold";
+            else if (RiderOn(truckId, hold) != None) why = "taken";
+            // A little under the rider's own cooldown, so jitter between two honest presses is never refused.
+            else if (lastRideSwitchAt.TryGetValue(client, out float last) && now - last < RideTuning.SwitchCooldown - 0.1f) why = "cooldown";
+            else
+            {
+                b.step = hold;
+                bodies[i] = b;
+                lastRideSwitchAt[client] = now;
+            }
         }
-        NetAudit.Event("ride", new Dictionary<string, object> { { "op", "hostshove" }, { "attacker", (long)attacker }, { "target", (long)target }, { "ok", why == null }, { "why", why } });
-    }
-
-    [Rpc(SendTo.ClientsAndHost)]
-    void RideShovedRpc(ulong target, ulong attacker, Vector3 dir)
-    {
-        var r = RideRider.For(target);
-        if (r != null) r.OnShoved(attacker, dir);
+        NetAudit.Event("ride", new Dictionary<string, object>
+        {
+            { "op", "hostswitch" }, { "rider", (long)client }, { "truck", (long)truckId }, { "hold", hold }, { "ok", why == null }, { "why", why },
+        });
     }
 
     // ==================================================================================== knock-offs (other packages)
 
-    /// <summary>Host: knock a rider off (<paramref name="forced"/>) or take grip (HOLD ON-able). See <see cref="Riding"/>.</summary>
-    public void HostRideKnock(ulong target, Vector3 push, float cost, bool forced, bool savable, string word)
+    /// <summary>Host: knock a rider off their truck (see <see cref="Riding.KnockOff"/>); the rider's own machine flies.</summary>
+    public void HostRideKnock(ulong target, Vector3 push, string word)
     {
         if (!IsServer || !IsSpawned) return;
         if (BodyOf(target).State != BodyState.Riding) return;
         var w = new FixedString32Bytes();
         w.CopyFromTruncated(word ?? "");
-        RideKnockRpc(target, push, cost, forced, savable, w);
+        RideKnockRpc(target, push, w);
     }
 
     [Rpc(SendTo.ClientsAndHost)]
-    void RideKnockRpc(ulong target, Vector3 push, float cost, bool forced, bool savable, FixedString32Bytes word)
+    void RideKnockRpc(ulong target, Vector3 push, FixedString32Bytes word)
     {
         var r = RideRider.For(target);
         if (r == null) return;
-        if (r.IsLocal) r.ApplyHit(push, cost, forced, savable, word.ToString(), None);
+        if (r.IsLocal) r.ApplyKnock(push, word.ToString(), None);
         else if (word.Length > 0) GameHUD.FloatingText(r.transform.position + Vector3.up * 2.3f, word.ToString(), new Color(1f, 0.6f, 0.3f), 1f);
     }
 
@@ -527,65 +534,5 @@ public partial class HandsNet
                 { "by", (long)client }, { "down", mods.barDown } });
             return;
         }
-    }
-
-    /// <summary>The rider's small A/D pose choice, for other players' puppets. Gameplay grip stays rider-local.</summary>
-    public void LocalRideLean(sbyte lean)
-    {
-        if (!IsSpawned) return;
-        if (IsServer) HostRideLean(LocalId, lean);
-        else RideLeanRpc(lean);
-    }
-
-    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
-    void RideLeanRpc(sbyte lean, RpcParams rp = default)
-    {
-        ulong sender = rp.Receive.SenderClientId;
-        EnsureRideGuards();
-        if (!Allowed("rb.ride.lean", sender, 8)) return;
-        HostRideLean(sender, lean);
-    }
-
-    void HostRideLean(ulong client, sbyte lean)
-    {
-        if (!IsServer || BodyOf(client).State != BodyState.Riding) return;
-        RideLeanAllRpc(client, (sbyte)Mathf.Clamp(lean, -1, 1));
-    }
-
-    [Rpc(SendTo.ClientsAndHost)]
-    void RideLeanAllRpc(ulong client, sbyte lean)
-    {
-        var rider = RideRider.For(client);
-        if (rider != null) rider.ReceiveRemoteLean(lean);
-    }
-
-    /// <summary>Five-Hz grip pips for the driver's crew HUD; rider-local grip remains authoritative for flings.</summary>
-    public void LocalRideGrip(byte grip)
-    {
-        if (!IsSpawned) return;
-        if (IsServer) HostRideGrip(LocalId, grip);
-        else RideGripRpc(grip);
-    }
-
-    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone, Delivery = RpcDelivery.Unreliable)]
-    void RideGripRpc(byte grip, RpcParams rp = default)
-    {
-        ulong sender = rp.Receive.SenderClientId;
-        EnsureRideGuards();
-        if (!Allowed("rb.ride.grip", sender, 8)) return;
-        HostRideGrip(sender, grip);
-    }
-
-    void HostRideGrip(ulong client, byte grip)
-    {
-        if (!IsServer || BodyOf(client).State != BodyState.Riding) return;
-        RideGripAllRpc(client, (byte)Mathf.Min(grip, 100));
-    }
-
-    [Rpc(SendTo.ClientsAndHost, Delivery = RpcDelivery.Unreliable)]
-    void RideGripAllRpc(ulong client, byte grip)
-    {
-        var rider = RideRider.For(client);
-        if (rider != null) rider.ReceiveRemoteGrip(grip);
     }
 }

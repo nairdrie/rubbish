@@ -184,8 +184,26 @@ public static partial class BusinessSlots
             ChooseByName(string.IsNullOrEmpty(pick) ? "main" : pick);
             return;
         }
+        // Chosen on the main menu before joining ("join with a save or a new one"): bring that, don't ask again.
+        if (joinPickSet)
+        {
+            var slot = joinPick; bool fresh = Time.realtimeSinceStartup <= joinPickUntil;
+            joinPickSet = false; joinPick = null;
+            if (fresh) { if (slot == null) ChooseNew(null); else Choose(slot); return; }
+        }
         BusinessPicker.Show(null);
     }
+
+    static Slot joinPick; static bool joinPickSet; static float joinPickUntil;
+    /// <summary>The business to bring into the Town this game is about to join: one of <see cref="List"/>, or null for
+    /// a brand-new one. Forgotten after five minutes, so a join that never happened cannot answer for a later one. If the
+    /// host refuses it (already open there) the in-Town picker comes up as before.</summary>
+    public static void BringOnJoin(Slot slot)
+    {
+        joinPick = slot; joinPickSet = true; joinPickUntil = Time.realtimeSinceStartup + 300f;
+    }
+    /// <summary>The join was called off before it connected.</summary>
+    public static void ForgetJoinPick() { joinPickSet = false; joinPick = null; }
 
     /// <summary>"main", "new", or a business id (bots, tools).</summary>
     public static void ChooseByName(string pick)

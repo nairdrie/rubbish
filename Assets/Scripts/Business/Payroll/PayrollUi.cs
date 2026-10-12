@@ -6,9 +6,10 @@ using UnityEngine.UI;
 using UnityEngine.UIElements;
 
 /// <summary>
-/// "Hire Bob" card (Docs/Multiplayer.md §13.6, N4): the hourly wage ($1–$200 per in-game hour) and Offer job. Opened face to
-/// face (<see cref="HireTarget"/>) or from the laptop's Payroll app. The other player gets an Accept/Decline card
-/// (<see cref="PayrollPresenter"/>). Runtime uGUI on the UI kit; never in batchmode.
+/// "Hire Bob" card (Docs/Multiplayer.md §13.6, N4): the hourly wage ($1–$200 per in-game hour) and Offer job. Opened from the
+/// laptop's Payroll app only: hiring and firing are never an E prompt on a person (it took E away from picking them up and
+/// from hitching their truck). The other player gets an Accept/Decline card (<see cref="PayrollPresenter"/>). Runtime uGUI on
+/// the UI kit; never in batchmode.
 /// </summary>
 public sealed class HireCard : UiScreen
 {
@@ -181,99 +182,137 @@ public sealed class HireCard : UiScreen
 }
 
 /// <summary>
-/// The laptop's Payroll app (N4): your crew (wage, paid so far, Fire) and everyone else in the Town (Hire…, or why not).
-/// A uGUI sheet over the laptop, opened from the "Payroll" tab <see cref="PayrollPresenter"/> adds to the laptop's app strip.
+/// The laptop's Payroll app (N4), the fourth tab (Assets/UI/payroll/payroll.uxml, instanced inside the laptop document as
+/// "payrollPage"): your crew (wage, paid so far, Fire) and everyone else in the Town (Hire…, or why not). Hosted by
+/// <see cref="EbaeUI"/>, which owns show / hide and the single UI lock and shows the tab whenever <see cref="Payroll.Available"/>.
+/// Presentation only: every number comes from <see cref="Payroll"/>; Hire… opens the uGUI <see cref="HireCard"/>.
 /// </summary>
-public sealed class PayrollApp : UiScreen
+public sealed class PayrollApp
 {
-    static PayrollApp current;
-    RectTransform card, list;
-    bool dirty = true;
+    const float RefreshSeconds = 1f; // "paid so far" ticks
+
+    /// <summary>One line of the list. Plain data, so the whole list can be compared with the last one built.</summary>
+    struct Entry
+    {
+        public string heading, note;          // a heading or a note line (everything else empty), or a row:
+        public int color;                     // business colour of the person (-1 = no dot)
+        public string name, pay, paid, owed, why, button;
+        public bool fire;
+        public System.Action click;
+    }
+
+    readonly EbaeUI host;
+    readonly VisualElement root;
+    readonly List<Entry> entries = new List<Entry>();
+    readonly System.Text.StringBuilder signature = new System.Text.StringBuilder();
+    ScrollView scroll;
+    VisualElement content;
+    bool active, dirty = true;
     float nextRefresh;
+    string builtSignature;
 
-    public static bool IsShowing => current != null && current.IsOpen;
+    public bool IsActive => active;
 
-    public static void Show()
+    /// <summary>Wire the Payroll page of the laptop document; null when the document has none.</summary>
+    public static PayrollApp Create(EbaeUI host, VisualElement documentRoot)
     {
-        if (Application.isBatchMode || !Application.isPlaying) return;
-        if (current != null) return;
-        var c = UiKit.Canvas("[PayrollApp]", UiLayers.Laptop + 10);
-        current = c.gameObject.AddComponent<PayrollApp>();
-        current.Build();
-        current.Open(false);
-        Payroll.Changed += current.MarkDirty;
-        Businesses.Changed += current.MarkDirty;
+        var page = documentRoot?.Q<VisualElement>("payrollPage");
+        if (page == null || page.Q<VisualElement>("prPage") == null) return null;
+        return new PayrollApp(host, page);
     }
 
-    public static void Hide()
+    PayrollApp(EbaeUI host, VisualElement root)
     {
-        if (current == null) return;
-        var c = current;
-        current = null;
-        c.Close();
-        if (c != null) Destroy(c.gameObject);
+        this.host = host;
+        this.root = root;
+        scroll = root.Q<ScrollView>("prScroll");
+        if (scroll != null)
+        {
+            scroll.mode = ScrollViewMode.Vertical;
+            scroll.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
+            scroll.mouseWheelScrollSize = 80f;
+            content = new VisualElement { name = "prContent" };
+            content.AddToClassList("pr-content");
+            scroll.Add(content);
+        }
     }
 
-    void MarkDirty() => dirty = true;
-
-    void Build()
+    /// <summary>Show (true) or hide (false) the page. The host calls this on every open / app switch / close.</summary>
+    public void SetActive(bool on)
     {
-        var root = (RectTransform)transform;
-        var dim = FeelUi.Img(root, "Dim", null, UiTheme.WithAlpha(UiTheme.Ink, 0.35f));
-        dim.raycastTarget = true;
-        card = UiKit.Paper(root, new Vector2(1180f, 720f));
-        card.localRotation = Quaternion.Euler(0f, 0f, 0.4f);
-        var title = UiKit.InkLabel(card, "Title", "PAYROLL", 54f, UiTheme.Ink, TextAlignmentOptions.Left, true);
-        UiKit.Place(title.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(48f, -26f), new Vector2(600f, 66f));
-        var sub = UiKit.InkLabel(card, "Sub", "Fixed wages: every 50 s. Earnings shares: paid as your business earns. Joining this Town does not automatically hire anybody.",
-                                 23f, UiTheme.InkSoft, TextAlignmentOptions.Left, false, FontStyles.Normal);
-        sub.textWrappingMode = TextWrappingModes.Normal;
-        UiKit.Place(sub.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(50f, -94f), new Vector2(1080f, 56f));
-        var scroll = UiKit.ScrollList(card, new Vector2(1122f, 446f));
-        UiKit.Place((RectTransform)scroll.transform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(28f, -160f), new Vector2(1122f, 446f));
-        list = scroll.content;
-        list.GetComponent<VerticalLayoutGroup>().enabled = false;
-        list.GetComponent<ContentSizeFitter>().enabled = false;
-        var close = UiKit.Button(card, "Close", () => { UiTheme.Play(UiTheme.SfxBack, 0.4f, 1f); Hide(); }, UiButtonStyle.Primary);
-        close.Size(260f, 72f);
-        UiKit.Place(close.Rect, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-40f, 30f), new Vector2(260f, 72f));
-        UiPop.On(card.gameObject).Play(true);
+        if (!on)
+        {
+            if (active) { Payroll.Changed -= MarkDirty; Businesses.Changed -= MarkDirty; }
+            active = false;
+            root.style.display = DisplayStyle.None;
+            return;
+        }
+        root.style.display = DisplayStyle.Flex;
+        host.SetAddress("www.rubbish-co.com/payroll");
+        if (active) return;
+        active = true;
+        Payroll.Changed += MarkDirty;
+        Businesses.Changed += MarkDirty;
+        builtSignature = null;
+        dirty = true;
+        nextRefresh = 0f;
+        Rebuild(true);
+        if (scroll != null) scroll.scrollOffset = Vector2.zero;
     }
 
-    void Update()
+    public void MarkDirty() => dirty = true;
+
+    /// <summary>Called by the host when the laptop document is rebuilt or closed for good.</summary>
+    public void Dispose() => SetActive(false);
+
+    /// <summary>Every frame while the tab is showing: rebuild when something changed (and once a second for the paid totals).</summary>
+    public void Tick()
     {
-        if (!EbaeUI.IsOpen) { Hide(); return; }
-        if (Time.unscaledTime >= nextRefresh) { nextRefresh = Time.unscaledTime + 1f; dirty = true; } // "paid so far" ticks
+        if (!active) return;
+        if (Time.unscaledTime >= nextRefresh) { nextRefresh = Time.unscaledTime + RefreshSeconds; dirty = true; }
         if (!dirty) return;
         dirty = false;
-        Rebuild();
+        Rebuild(false);
     }
 
-    void Rebuild()
+    // ------------------------------------------------------------------ the list
+
+    void Collect()
     {
-        for (int i = list.childCount - 1; i >= 0; i--) Destroy(list.GetChild(i).gameObject);
+        entries.Clear();
         ulong me = Payroll.LocalClientId;
-        float y = 0f;
         if (Payroll.TryGetLocalJob(out var mine))
         {
-            Heading("YOUR JOB", ref y);
-            Row($"Employer: <b>{Payroll.BusinessLabelOf(mine.employerClientId)}</b>\n<size=80%>{Payroll.PayText(mine)} · Paid to YOUR cash: {Economy.Money(mine.paidCents / 100f)}" +
-                (mine.unpaidCents > 0 ? $" · OWED {Economy.Money(mine.unpaidCents / 100f)}" : "") + "</size>",
-                "Quit Job", UiButtonStyle.Danger,
-                () => UiKit.Confirm("Quit your job?", "End this job and keep your own business. You will stay in this Town.", "Quit Job", "Keep working", yes => { if (yes) Payroll.Quit(); }), ref y);
+            entries.Add(new Entry { heading = "YOUR JOB" });
+            entries.Add(new Entry
+            {
+                color = Payroll.ColorOf(mine.employerClientId),
+                name = "Employer: " + Payroll.BusinessLabelOf(mine.employerClientId),
+                pay = Payroll.PayText(mine),
+                paid = "Paid to YOUR cash: " + Economy.Money(mine.paidCents / 100f),
+                owed = mine.unpaidCents > 0 ? "OWED " + Economy.Money(mine.unpaidCents / 100f) : null,
+                button = "Quit Job", fire = true,
+                click = () => UiKit.Confirm("Quit your job?", "End this job and keep your own business. You will stay in this Town.", "Quit Job", "Keep working", yes => { if (yes) Payroll.Quit(); }),
+            });
         }
-        Heading("YOUR CREW", ref y);
+        entries.Add(new Entry { heading = "YOUR CREW" });
         var crew = Payroll.EmployeesOf(me);
-        if (crew.Count == 0) Note("Nobody yet. Hire someone below, or walk up to them and press E.", ref y);
+        if (crew.Count == 0) entries.Add(new Entry { note = "Nobody yet. Hire someone from the list below." });
         foreach (var j in crew)
         {
             ulong who = j.employeeClientId;
-            string line = $"{Dot(who)} <b>{Payroll.NameOf(who)}</b>   {Payroll.PayText(j)}\n<size=80%>Paid {Economy.Money(j.paidCents / 100f)} to their own cash</size>" +
-                          (j.unpaidCents > 0 ? $"   <color=#DB1F29>OWED {Economy.Money(j.unpaidCents / 100f)}</color>" : "");
-            Row(line, "Fire", UiButtonStyle.Danger, () => AskFire(who), ref y);
+            entries.Add(new Entry
+            {
+                color = Payroll.ColorOf(who),
+                name = Payroll.NameOf(who),
+                pay = Payroll.PayText(j),
+                paid = "Paid " + Economy.Money(j.paidCents / 100f) + " to their own cash",
+                owed = j.unpaidCents > 0 ? "OWED " + Economy.Money(j.unpaidCents / 100f) : null,
+                button = "Fire", fire = true,
+                click = () => AskFire(who),
+            });
         }
-        y -= 16f;
-        Heading("IN TOWN", ref y);
+        entries.Add(new Entry { heading = "IN TOWN" });
         int others = 0;
         foreach (var b in Businesses.All)
         {
@@ -282,45 +321,88 @@ public sealed class PayrollApp : UiScreen
             ulong who = b.ownerClientId;
             if (Payroll.TryGetJobOf(who, out var j) && j.employerClientId == me) continue; // listed above
             string why = Payroll.WhyNotHire(me, who);
-            string line = $"{Dot(who)} <b>{Payroll.NameOf(who)}</b>   <size=80%>{Payroll.BusinessLabelOf(who)}</size>" +
-                          (why != null ? $"\n<size=75%><color=#5A5266>{why}</color></size>" : "");
-            Row(line, why == null ? "Hire…" : null, UiButtonStyle.Go, () => HireCard.Show(who), ref y);
+            entries.Add(new Entry
+            {
+                color = Payroll.ColorOf(who),
+                name = Payroll.NameOf(who),
+                pay = Payroll.BusinessLabelOf(who),
+                why = why,
+                button = why == null ? "Hire…" : null,
+                click = () => HireCard.Show(who),
+            });
         }
-        if (others == 0) Note("Nobody else is in your Town. Invite friends from the Esc menu!", ref y);
-        list.sizeDelta = new Vector2(0f, Mathf.Max(446f, -y + 12f));
+        if (others == 0) entries.Add(new Entry { note = "Nobody else is in your Town. Invite friends from the Esc menu!" });
     }
 
-    static string Dot(ulong clientId) => $"<color={BusinessColors.Hex(Payroll.ColorOf(clientId))}>●</color>";
-
-    void Heading(string text, ref float y)
+    void Rebuild(bool force)
     {
-        var t = UiKit.InkLabel(list, "H " + text, text, 26f, UiTheme.Ink, TextAlignmentOptions.BottomLeft, true);
-        t.characterSpacing = 6f;
-        UiKit.Place(t.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(10f, y), new Vector2(1080f, 40f));
-        y -= 46f;
-    }
+        if (content == null) return;
+        Collect();
+        signature.Clear();
+        foreach (var e in entries)
+            signature.Append(e.heading).Append('|').Append(e.note).Append('|').Append(e.color).Append('|').Append(e.name).Append('|')
+                     .Append(e.pay).Append('|').Append(e.paid).Append('|').Append(e.owed).Append('|').Append(e.why).Append('|').Append(e.button).Append('\n');
+        string sig = signature.ToString();
+        if (!force && sig == builtSignature) return;
+        bool same = builtSignature != null;
+        builtSignature = sig;
 
-    void Note(string text, ref float y)
-    {
-        var t = UiKit.InkLabel(list, "Note", text, 23f, UiTheme.InkSoft, TextAlignmentOptions.Left, false, FontStyles.Italic);
-        UiKit.Place(t.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(24f, y), new Vector2(1060f, 40f));
-        y -= 50f;
-    }
-
-    void Row(string text, string button, UiButtonStyle style, System.Action click, ref float y)
-    {
-        var bg = FeelUi.Img(list, "Row", FeelUi.Rounded, UiTheme.WithAlpha(UiTheme.PaperDark, 0.8f), 0.4f);
-        UiKit.Place(bg.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, y), new Vector2(1100f, 84f));
-        var t = UiKit.InkLabel(bg.rectTransform, "Text", text, 27f, UiTheme.Ink, TextAlignmentOptions.Left, false);
-        t.richText = true;
-        UiKit.Inset(t.rectTransform, 24f, 4f, 300f, 4f);
-        if (!string.IsNullOrEmpty(button))
+        Vector2 offset = scroll != null ? scroll.scrollOffset : Vector2.zero;
+        content.Clear();
+        foreach (var e in entries)
         {
-            var b = UiKit.Button(bg.rectTransform, button, click, style);
-            b.Size(240f, 64f);
-            UiKit.Place(b.Rect, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-14f, 0f), new Vector2(240f, 64f));
+            if (e.heading != null) content.Add(L(e.heading, "pr-heading"));
+            else if (e.note != null) content.Add(L(e.note, "pr-note"));
+            else content.Add(BuildRow(e));
         }
-        y -= 94f;
+        if (same && scroll != null) scroll.schedule.Execute(() => scroll.scrollOffset = offset).ExecuteLater(1);
+    }
+
+    static VisualElement BuildRow(Entry e)
+    {
+        var row = V("pr-row");
+        if (e.color >= 0)
+        {
+            var dot = V("pr-dot");
+            dot.style.backgroundColor = (Color)BusinessColors.For(e.color);
+            row.Add(dot);
+        }
+        var body = V("pr-row-body");
+        var top = V("pr-name-row");
+        top.style.flexDirection = FlexDirection.Row;
+        top.style.alignItems = Align.FlexEnd;
+        top.Add(L(e.name, "pr-name"));
+        if (!string.IsNullOrEmpty(e.pay))
+        {
+            var pay = L(e.pay, "pr-name pr-name-pay");
+            pay.style.marginLeft = 12;
+            top.Add(pay);
+        }
+        body.Add(top);
+        if (!string.IsNullOrEmpty(e.paid) || !string.IsNullOrEmpty(e.owed))
+        {
+            var meta = V("pr-meta-row");
+            meta.style.flexDirection = FlexDirection.Row;
+            meta.style.flexWrap = Wrap.Wrap;
+            if (!string.IsNullOrEmpty(e.paid)) meta.Add(L(e.paid, "pr-meta"));
+            if (!string.IsNullOrEmpty(e.owed))
+            {
+                var owed = L(e.owed, "pr-meta pr-owed");
+                owed.style.marginLeft = 12;
+                meta.Add(owed);
+            }
+            body.Add(meta);
+        }
+        if (!string.IsNullOrEmpty(e.why)) body.Add(L(e.why, "pr-why"));
+        row.Add(body);
+        if (!string.IsNullOrEmpty(e.button))
+        {
+            var click = e.click;
+            var b = L(e.button, "btn pr-row-button " + (e.fire ? "pr-btn-fire" : "pr-btn-hire"));
+            OnClick(b, () => { Sfx.Play("click", null, 0.6f); click?.Invoke(); });
+            row.Add(b);
+        }
+        return row;
     }
 
     static void AskFire(ulong who)
@@ -330,57 +412,43 @@ public sealed class PayrollApp : UiScreen
                       yes => { if (yes) Payroll.Fire(who); });
     }
 
-    public override void OnShow() => UiTheme.Play(UiTheme.SfxOpen, 0.5f, 1f);
+    // ------------------------------------------------------------------ element helpers
 
-    protected override void OnDestroy()
+    static void OnClick(VisualElement e, System.Action action)
     {
-        Payroll.Changed -= MarkDirty;
-        Businesses.Changed -= MarkDirty;
-        if (current == this) current = null;
-        base.OnDestroy();
+        e.focusable = true;
+        e.RegisterCallback<FocusInEvent>(_ => e.AddToClassList("controller-focus"));
+        e.RegisterCallback<FocusOutEvent>(_ => e.RemoveFromClassList("controller-focus"));
+        e.RegisterCallback<NavigationSubmitEvent>(ev => { ev.StopPropagation(); action(); });
+        e.AddManipulator(new Clickable(action));
     }
 
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetStatics() => current = null;
+    static Label L(string text, string classes)
+    {
+        var l = new Label(text);
+        AddClasses(l, classes);
+        return l;
+    }
+
+    static VisualElement V(string classes)
+    {
+        var v = new VisualElement();
+        AddClasses(v, classes);
+        return v;
+    }
+
+    static void AddClasses(VisualElement e, string classes)
+    {
+        foreach (var c in classes.Split(' '))
+            if (c.Length > 0) e.AddToClassList(c);
+    }
 }
 
 /// <summary>
-/// E on another player (N4): "Hire Bob" (opens <see cref="HireCard"/>) or, if Bob works for you, "Fire Bob". Lives on a child of
-/// every other player's object (added by <see cref="PayrollPresenter"/>) with an <see cref="InteractionZone"/>, so it shows up
-/// when you stand next to them.
-/// </summary>
-public sealed class HireTarget : MonoBehaviour, IInteractable
-{
-    public ulong clientId;
-
-    bool MineToFire => Payroll.TryGetJobOf(clientId, out var j) && j.employerClientId == Payroll.LocalClientId;
-
-    public bool CanInteract() =>
-        Payroll.Available && clientId != Payroll.LocalClientId && !SortingKit.LocalPlayerDriving &&
-        (MineToFire || Payroll.WhyNotHire(Payroll.LocalClientId, clientId) == null);
-
-    public string GetInteractionPrompt() => MineToFire ? $"Fire {Payroll.NameOf(clientId)}" : $"Hire {Payroll.NameOf(clientId)}";
-
-    public void OnInteract(GameObject interactor)
-    {
-        if (MineToFire)
-        {
-            string name = Payroll.NameOf(clientId);
-            ulong who = clientId;
-            UiKit.Confirm($"Fire {name}?", "Ends their job, not their visit to this Town. Fixed wages settle the part hour; earnings shares already paid stay theirs.", "Let them go", "Keep them",
-                          yes => { if (yes) Payroll.Fire(who); });
-            return;
-        }
-        HireCard.Show(clientId);
-    }
-
-    public void Highlight(bool highlight) { }
-}
-
-/// <summary>
-/// Payroll's presentation on every machine with a screen (N4): hire zones on the other players, the employer's colour on
-/// employees (<see cref="ChuckPuppet.SetVestColor"/>), the HUD line ("Working for Nick's RUBBISH CO., $12/hr"), the job-offer
-/// card, and the Payroll tab on the laptop's app strip. Built at boot; does nothing outside a Town with the one world on.
+/// Payroll's presentation on every machine with a screen (N4): the employer's colour on employees
+/// (<see cref="ChuckPuppet.SetVestColor"/>), the HUD line ("Working for Nick's RUBBISH CO., $12/hr"), the job-offer card.
+/// (The laptop's Payroll tab is <see cref="PayrollApp"/>, hosted by <see cref="EbaeUI"/>; hiring and firing live only there,
+/// so nothing here puts an interaction on another player.) Built at boot; does nothing outside a Town with the one world on.
 /// </summary>
 public sealed class PayrollPresenter : MonoBehaviour
 {
@@ -392,7 +460,7 @@ public sealed class PayrollPresenter : MonoBehaviour
     TextMeshProUGUI label, termsLabel, announcementTitle, announcementDetail;
     UnityEngine.UI.Image announcementBody;
     float announcementUntil, announcementPunch;
-    float nextScan, nextTab;
+    float nextScan;
     readonly List<PlayerController> players = new List<PlayerController>(8);
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -548,22 +616,13 @@ public sealed class PayrollPresenter : MonoBehaviour
         announcementCard.localScale = Vector3.one * (1f + 0.11f * announcementPunch);
     }
 
-    // ------------------------------------------------------------------ zones, vests, laptop tab
+    // ------------------------------------------------------------------ vests
 
     void Update()
     {
-        bool on = Payroll.Available;
-        if (Time.unscaledTime >= nextScan)
-        {
-            nextScan = Time.unscaledTime + 0.5f;
-            if (on) ScanPlayers();
-        }
-        if (Time.unscaledTime >= nextTab)
-        {
-            nextTab = Time.unscaledTime + 0.25f;
-            if (on && EbaeUI.IsOpen) EnsureLaptopTab();
-            else if (PayrollApp.IsShowing && !EbaeUI.IsOpen) PayrollApp.Hide();
-        }
+        if (Time.unscaledTime < nextScan) return;
+        nextScan = Time.unscaledTime + 0.5f;
+        if (Payroll.Available) ScanPlayers();
     }
 
     void ScanPlayers()
@@ -575,7 +634,6 @@ public sealed class PayrollPresenter : MonoBehaviour
         {
             if (p == null || !p.IsSpawned) continue;
             ulong id = p.OwnerClientId;
-            if (!p.IsOwner) EnsureZone(p, id);
             var puppet = p.GetComponent<ChuckPuppet>();
             if (puppet == null) continue;
             Color? vest = null;
@@ -585,53 +643,6 @@ public sealed class PayrollPresenter : MonoBehaviour
                 if (lot >= 0 && net.TryGetLot(lot, out var s)) vest = DepotColors.Get(s.color);
             }
             puppet.SetVestColor(vest);
-        }
-    }
-
-    static void EnsureZone(PlayerController p, ulong id)
-    {
-        var t = p.transform.Find("PayrollHireZone");
-        if (t == null)
-        {
-            var go = new GameObject("PayrollHireZone");
-            go.transform.SetParent(p.transform, false);
-            var ht = go.AddComponent<HireTarget>();
-            var z = go.AddComponent<InteractionZone>();
-            z.center = new Vector3(0f, 1f, 0f);
-            z.size = new Vector3(2.8f, 2.6f, 2.8f);
-            z.mode = ZoneMode.OnFoot;
-            z.score = 0.6f;
-            z.targetOverride = ht;
-            t = go.transform;
-        }
-        var h = t.GetComponent<HireTarget>();
-        if (h != null) h.clientId = id;
-    }
-
-    void EnsureLaptopTab()
-    {
-        var ui = EbaeUI.Instance;
-        if (ui == null) return;
-        // The payroll is the owner's: the laptop only opens for them (Permissions.CanUseLaptop).
-        foreach (var doc in ui.GetComponentsInChildren<UIDocument>(true))
-        {
-            var root = doc != null ? doc.rootVisualElement : null;
-            var shop = root?.Q<VisualElement>("appTabShop");
-            if (shop == null || shop.parent == null) continue;
-            if (shop.parent.Q<VisualElement>("appTabPayroll") != null) return;
-            var tab = new VisualElement { name = "appTabPayroll" };
-            tab.AddToClassList("app-tab");
-            var icon = new UnityEngine.UIElements.Label("$") { pickingMode = PickingMode.Ignore };
-            icon.AddToClassList("app-tab-icon");
-            icon.style.backgroundColor = new Color(0.18f, 0.66f, 0.4f);
-            var text = new UnityEngine.UIElements.Label("Payroll - hire your friends") { pickingMode = PickingMode.Ignore };
-            text.AddToClassList("app-tab-label");
-            tab.Add(icon);
-            tab.Add(text);
-            tab.RegisterCallback<ClickEvent>(_ => { Sfx.Play("click", null, 0.6f); PayrollApp.Show(); });
-            int at = shop.parent.IndexOf(shop) + 1;
-            shop.parent.Insert(at, tab);
-            return;
         }
     }
 }

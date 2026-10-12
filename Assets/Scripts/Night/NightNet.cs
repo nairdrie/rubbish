@@ -340,7 +340,7 @@ public partial class NightNet : NetworkBehaviour
         {
             var pc = NightPlayers.ForClient(reference);
             r.PuppetLatch(reference);
-            if (pc != null && r.AnchorTransform != pc.transform) r.SetAnchor(pc.transform, Raccoon.LatchLocal, Quaternion.identity);
+            if (pc != null && (r.AnchorTransform == null || !r.AnchorTransform.IsChildOf(pc.transform))) Raccoon.AttachToFace(r, pc);
         }
         else if (r.HasAnchor) r.ClearAnchor();
     }
@@ -422,6 +422,23 @@ public partial class NightNet : NetworkBehaviour
         if (IsServer) return;
         ToastIfNear(pos, radius, text.ToString(), (ToastStyle)style);
     }
+
+    /// <summary>
+    /// A toast for exactly one remote player (host events that are about them alone: "You woke the Pile Goblin!"). The host's
+    /// own player and solo play toast directly, so this only does something for a guest <paramref name="client"/>.
+    /// </summary>
+    public static void HostToastTo(ulong client, string text, ToastStyle style = ToastStyle.Info)
+    {
+        var n = Instance;
+        if (!Streaming || !n.IsServer || client == n.LocalId) return;
+        var f = new FixedString128Bytes();
+        f.CopyFromTruncated(text ?? "");
+        n.ToastToRpc(f, (byte)style, n.RpcTarget.Single(client, RpcTargetUse.Temp));
+    }
+
+    [Rpc(SendTo.SpecifiedInParams)]
+    void ToastToRpc(FixedString128Bytes text, byte style, RpcParams rp = default) =>
+        GameHUD.Toast(text.ToString(), (ToastStyle)style, 3f);
 
     // ==================================================================================== hits on guests
 
@@ -675,7 +692,7 @@ public partial class NightNet : NetworkBehaviour
             {
                 // Rejoined while rabid: the host remembered (§8.2 M6 gate: the timer survives a reconnect).
                 GameSession.RestoreRabies(mine.infectedAt);
-                GameHUD.Toast("Welcome back. You're still rabid. Any shop's Rabies Shot fixes that.", ToastStyle.Bad, 3.5f);
+                GameHUD.Toast($"Welcome back. You're still rabid. {Scrapazon.Name} sells Rabies Shots.", ToastStyle.Bad, 3.5f);
                 NightAudit.Event("rabies.restore", new Dictionary<string, object> { { "at", Math.Round(mine.infectedAt, 3) }, { "ok", GameSession.HasRabies } });
                 return;
             }
@@ -724,16 +741,19 @@ public partial class NightNet : NetworkBehaviour
         NightAudit.Event("rabiestag.toggle", new Dictionary<string, object> { { "on", on } });
     }
 
-    // ==================================================================================== a friend's Rabies Shot
+    // ==================================================================================== a host-charged Rabies Shot (your own)
 
-    /// <summary>Host/solo: cure an already paid-for patient. Guest: request a host-verified, host-charged shot (RabiesJab).</summary>
+    /// <summary>
+    /// Host/solo: cure yourself (the caller has paid). Guest: ask the host to charge this player's business and cure them. Only
+    /// ever yourself: a friend can't be jabbed on the street any more (removed 2026-10-12), everybody buys their own shot on
+    /// their laptop's Scrapazon (<see cref="ShopEffects"/>), so the host refuses any other <paramref name="target"/>.
+    /// </summary>
     public static void ShotFor(ulong target)
     {
         var n = Instance;
         if (!Streaming) { RabiesStatus.CureWithShot(); return; }
         if (!n.IsServer) { n.ShotForRpc(target); return; }
         if (target == n.LocalId) RabiesStatus.CureWithShot();
-        else n.CureRpc(true, n.RpcTarget.Single(target, RpcTargetUse.Temp));
     }
 
     readonly Dictionary<ulong, float> shotPendingUntil = new Dictionary<ulong, float>();
@@ -743,52 +763,40 @@ public partial class NightNet : NetworkBehaviour
     {
         ulong sender = rp.Receive.SenderClientId;
         if (!SessionService.GuardFor(MsgShot).Allow(sender, 8, Time.realtimeSinceStartupAsDouble)) return;
-        var payer = NightPlayers.ForClient(sender);
-        if (payer == null || payer.IsDriving || payer.IsPlayingChess) return;
-        // No first-aid shelf any more: a jab happens where the patient lies (carried, or down within reach of the payer).
-        if (InfectedAt(target) < 0 || (shotPendingUntil.TryGetValue(target, out float until) && Time.unscaledTime < until)) return;
         if (target != sender)
         {
-            var hands = HandsNet.Instance;
-            var patient = PlayerBody.For(target);
-            if (hands == null || !hands.Active || patient == null) return;
-            bool carrying = hands.BodyOf(sender).carrying == target;
-            bool downNearby = (patient.transform.position - payer.transform.position).sqrMagnitude <= 9f &&
-                              (patient.State == BodyState.Flopped || patient.State == BodyState.Carried || patient.State == BodyState.KnockedOut);
-            if (!carrying && !downNearby) return;
+            // A modded client can still ask for somebody else's shot: no charge, no cure.
+            NightAudit.Event("shot.refused", new Dictionary<string, object> { { "by", (long)sender }, { "for", (long)target } });
+            return;
         }
+        var payer = NightPlayers.ForClient(sender);
+        if (payer == null || payer.IsDriving || payer.IsPlayingChess) return;
+        if (InfectedAt(sender) < 0 || (shotPendingUntil.TryGetValue(sender, out float until) && Time.unscaledTime < until)) return;
         if (!Businesses.TryGetForClient(sender, out var business)) return;
         bool paid;
         using (Ledger.ToBusiness(business.Id))
-            paid = Ledger.Spend(NightShift.RabiesShotPrice, target == sender ? "Rabies Shot" : $"Rabies Shot for {HandsNet.NameOf(target)}", NightShift.LedgerShot);
+            paid = Ledger.Spend(NightShift.RabiesShotPrice, "Rabies Shot", NightShift.LedgerShot);
         if (!paid)
         {
-            ShotResultRpc(false, target, RpcTarget.Single(sender, RpcTargetUse.Temp));
+            ShotDeniedRpc(RpcTarget.Single(sender, RpcTargetUse.Temp));
             return;
         }
-        shotPendingUntil[target] = Time.unscaledTime + 2f;
-        NightAudit.Event("jab", new Dictionary<string, object> { { "for", (long)target }, { "self", target == sender } });
-        NightAudit.Event("shot", new Dictionary<string, object> { { "by", (long)sender }, { "for", (long)target } });
-        if (target == LocalId) RabiesStatus.CureWithShot();
-        else CureRpc(target != sender, RpcTarget.Single(target, RpcTargetUse.Temp));
-        if (target != sender) ShotResultRpc(true, target, RpcTarget.Single(sender, RpcTargetUse.Temp));
+        shotPendingUntil[sender] = Time.unscaledTime + 2f;
+        NightAudit.Event("shot", new Dictionary<string, object> { { "by", (long)sender }, { "for", (long)sender } });
+        if (sender == LocalId) RabiesStatus.CureWithShot();
+        else CureRpc(RpcTarget.Single(sender, RpcTargetUse.Temp));
     }
 
     [Rpc(SendTo.SpecifiedInParams)]
-    void CureRpc(bool byFriend, RpcParams rp = default)
+    void CureRpc(RpcParams rp = default)
     {
-        if (RabiesStatus.CureWithShot() && byFriend) GameHUD.Toast("A friend jabbed you with a Rabies Shot. Cured!", ToastStyle.Good, 3f);
+        RabiesStatus.CureWithShot();
     }
 
     [Rpc(SendTo.SpecifiedInParams)]
-    void ShotResultRpc(bool paid, ulong target, RpcParams rp = default)
+    void ShotDeniedRpc(RpcParams rp = default)
     {
-        if (!paid) GameHUD.Toast($"Not enough cash for a Rabies Shot ({Economy.Money(NightShift.RabiesShotPrice)}).", ToastStyle.Bad, 2.5f);
-        else
-        {
-            GameHUD.Toast($"You jabbed {HandsNet.NameOf(target)} with a Rabies Shot. What a friend.", ToastStyle.Good, 2.5f);
-            Sfx.Play("squeak", null, 0.8f, 0.6f);
-        }
+        GameHUD.Toast($"Not enough cash for a Rabies Shot ({Economy.Money(NightShift.RabiesShotPrice)}).", ToastStyle.Bad, 2.5f);
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]

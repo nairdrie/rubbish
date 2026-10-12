@@ -84,11 +84,11 @@ public class CollectibleLootTests
     }
 
     [Test]
-    public void EverydayPassPreservesEveryOriginalValuableAndExactBagMassForMatchedSeeds()
+    public void KeepsakeBonusOnlyAddsOneCommonOrUncommonAndKeepsEveryOriginalItem()
     {
         var core = Runtime("ItemCatalog").GetMethod("RollBagCore", Static);
         var districts = Districts;
-        int replacements = 0, rarePlus = 0;
+        int additions = 0, commons = 0, uncommons = 0;
         for (int tier = 0; tier < districts.Length; tier++) for (int seed = 0; seed < 750; seed++)
         {
             var profile = Field(districts[tier], "loot");
@@ -97,34 +97,55 @@ public class CollectibleLootTests
             var before = core.Invoke(null, args);
             args[6] = true;
             var after = core.Invoke(null, args);
-            Assert.AreEqual(Kg(before), Kg(after), "The same source bags must fit in a full truck.");
             var original = Items(before); var changed = Items(after);
-            Assert.AreEqual(original.Count, changed.Count);
-            for (int i = 0; i < original.Count; i++)
+            Assert.That(changed.Count - original.Count, Is.InRange(0, 1), "The bonus adds at most one item and never swaps.");
+            // Heavy-tell bags are filled past the cap on purpose; the bonus must skip those and never push a bag over the cap itself.
+            Assert.LessOrEqual(Kg(after), Math.Max((float)Runtime("ItemCatalog").GetField("MaxBagKg").GetValue(null), Kg(before)));
+            var remaining = changed.Cast<object>().ToList();
+            foreach (var item in original.Cast<object>())
             {
-                var def = Property(original[i], "Def");
-                Assert.AreEqual(Field(original[i], "massKg"), Field(changed[i], "massKg"));
-                if (Valuable(def))
-                {
-                    Assert.AreEqual(Field(original[i], "defId"), Field(changed[i], "defId"));
-                    Assert.AreEqual(Field(original[i], "value"), Field(changed[i], "value"));
-                    if (Rarity(def) >= 2) rarePlus++;
-                }
-                else if (Valuable(Property(changed[i], "Def")))
-                {
-                    replacements++;
-                    var added = Property(changed[i], "Def");
-                    Assert.LessOrEqual(Rarity(added), 1);
-                    Assert.That((float)Field(changed[i], "massKg"), Is.InRange((float)Field(added, "minMass"), (float)Field(added, "maxMass")));
-                }
+                int at = remaining.FindIndex(c => Field(c, "defId").Equals(Field(item, "defId")) && Field(c, "massKg").Equals(Field(item, "massKg")) && Field(c, "value").Equals(Field(item, "value")));
+                Assert.GreaterOrEqual(at, 0, "Every original item must survive untouched.");
+                remaining.RemoveAt(at);
+            }
+            if (remaining.Count == 1)
+            {
+                additions++;
+                var added = Property(remaining[0], "Def");
+                Assert.IsTrue(Valuable(added));
+                Assert.LessOrEqual(Rarity(added), 1, "The bonus never adds Rare or better.");
+                if (Rarity(added) == 0) commons++; else uncommons++;
+                Assert.That((float)Field(remaining[0], "massKg"), Is.InRange((float)Field(added, "minMass"), (float)Field(added, "maxMass")));
             }
         }
-        Assert.Greater(replacements, 50);
-        Assert.Greater(rarePlus, 100, "Exercise actual rare outcomes and rich-theme guarantees, not only empty bags.");
+        Assert.Greater(additions, 50);
+        Assert.Greater(commons, uncommons, "The bonus is mostly Common.");
+        Assert.Greater(uncommons, 0);
     }
 
-    [TestCase(120f, 2.1f, 3.5f, .65f)]
-    [TestCase(160f, 2.8f, 4.5f, .75f)]
+    [Test]
+    public void CommonIsCarvedOutOfTheOrdinaryBucketAndRareOddsStayPut()
+    {
+        var catalog = Runtime("ItemCatalog");
+        var weightMethod = catalog.GetMethod("RarityWeights", new[] { typeof(float), Runtime("LootProfile") });
+        var shareMethod = catalog.GetMethod("CommonShare", new[] { typeof(float), Runtime("LootProfile") });
+        // Common's absolute weight (in the 100-weight table) at wealth 0 / 1, and the Uncommon that is left of the old bucket.
+        float[][] common = { new[]{62f,50f}, new[]{48f,38f}, new[]{34f,26f}, new[]{34f,28f} };
+        float[][] uncommon = { new[]{22f,24f}, new[]{20f,20f}, new[]{18f,16f}, new[]{21f,19f} };
+        for (int p = 0; p < 4; p++) foreach (float wealth in new[] { 0f, 1f })
+        {
+            var profile = Field(Districts[p], "loot");
+            var weights = (float[])weightMethod.Invoke(null, new[] { (object)wealth, profile });
+            float share = (float)shareMethod.Invoke(null, new[] { (object)wealth, profile });
+            int end = wealth < .5f ? 0 : 1;
+            Assert.That(weights[0] * share, Is.EqualTo(common[p][end]).Within(1e-4), "Common weight, district " + p);
+            Assert.That(weights[0] * (1f - share), Is.EqualTo(uncommon[p][end]).Within(1e-4), "Uncommon weight, district " + p);
+            Assert.Greater(common[p][end], uncommon[p][end] * (p < 2 ? 1.8f : 1.4f), "Common clearly outweighs Uncommon.");
+        }
+    }
+
+    [TestCase(120f, 1.9f, 3.3f, .62f)]
+    [TestCase(160f, 2.5f, 4.3f, .75f)]
     public void FullStarterTruckUsuallyContainsSeveralLowTierFindsWithoutGuaranteedRares(float capacity, float minFinds, float maxFinds, float minTwoFraction)
     {
         var catalog = Runtime("ItemCatalog");

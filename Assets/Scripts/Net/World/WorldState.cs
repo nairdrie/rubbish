@@ -72,6 +72,8 @@ public class WorldState : NetworkBehaviour
     NetworkList<CurbBagNet> curbs;
     readonly NetworkVariable<double> clockOffset = new NetworkVariable<double>();
     readonly NetworkVariable<int> baseDay = new NetworkVariable<int>(1);
+    /// <summary>The campaign contract being worked (Campaign.cs): the host writes it, every machine's HUD reads it.</summary>
+    readonly NetworkVariable<CampaignDisplay> campaign = new NetworkVariable<CampaignDisplay>(CampaignDisplay.None);
 
     bool hostHooked, guestDirty;
     uint version;
@@ -106,7 +108,9 @@ public class WorldState : NetworkBehaviour
             curbs.OnListChanged += OnGuestCurbsChanged;
             clockOffset.OnValueChanged += OnClockChanged;
             baseDay.OnValueChanged += OnBaseDayChanged;
+            campaign.OnValueChanged += OnCampaignChanged;
             GameClock.ApplyNetClock(clockOffset.Value, baseDay.Value);
+            Campaign.ApplyRemote(campaign.Value);
             RebuildMirror();
         }
     }
@@ -119,6 +123,8 @@ public class WorldState : NetworkBehaviour
             curbs.OnListChanged -= OnGuestCurbsChanged;
             clockOffset.OnValueChanged -= OnClockChanged;
             baseDay.OnValueChanged -= OnBaseDayChanged;
+            campaign.OnValueChanged -= OnCampaignChanged;
+            Campaign.ApplyRemote(CampaignDisplay.None);
             GameClock.ClearNetClock();
         }
         if (PickupStop.HiddenHere == (Func<string, bool>)IsHiddenHere) PickupStop.HiddenHere = null;
@@ -143,9 +149,19 @@ public class WorldState : NetworkBehaviour
     void Update()
     {
         if (!IsSpawned) return;
-        if (IsServer) PublishClock();
+        if (IsServer) { PublishClock(); PublishCampaign(); }
         else if (guestDirty) RebuildMirror();
     }
+
+    // ------------------------------------------------------------------ campaign
+
+    void PublishCampaign()
+    {
+        var now = Campaign.Display;
+        if (!campaign.Value.Equals(now)) campaign.Value = now;
+    }
+
+    void OnCampaignChanged(CampaignDisplay before, CampaignDisplay now) => Campaign.ApplyRemote(now);
 
     // ------------------------------------------------------------------ clock
 
@@ -234,6 +250,20 @@ public class WorldState : NetworkBehaviour
         if (!IsServer || !IsSpawned) return;
         int i = IndexOf(bagId);
         if (i >= 0) SetClaim(i, CurbBagNet.Published);
+    }
+
+    /// <summary>
+    /// Host: a published bag lost its object (a dog dropped it somewhere it vanished, it was destroyed): clear the Published
+    /// mark so every PickupStop shows the record at the curb again instead of hiding it for good. True when the record is
+    /// unclaimed afterwards (or unknown here); false while a connected client still holds a claim on it.
+    /// </summary>
+    public bool HostUnpublish(string bagId)
+    {
+        if (!IsServer || !IsSpawned) return true;
+        int i = IndexOf(bagId);
+        if (i < 0) return true;
+        if (curbs[i].claimedBy == CurbBagNet.Published) SetClaim(i, CurbBagNet.NoClaim);
+        return !curbs[i].IsClaimed;
     }
 
     /// <summary>True when this curb bag is now a networked object (N2).</summary>

@@ -254,7 +254,10 @@ public sealed class SettingsScreen : UiScreen
             .Row.Describe(UiText.SfxVolDesc);
         Add(UiKit.Slider(content, UiText.AmbienceVol, 0, 100, s.audio.ambience, Num, v => Edit(GameSettings.Audio, d => d.audio.ambience = Mathf.RoundToInt(v))))
             .Row.Describe(UiText.AmbienceVolDesc);
-        // Music (no track yet, §13 Q5) and Voice chat (M3) stay hidden; their values survive in the file.
+        // Music applies live as it is dragged: BackgroundMusic, CasinoMusic and the workshop radio read GameSettings.MusicVolume
+        // every frame. Voice chat (M3) stays hidden; its value survives in the file.
+        Add(UiKit.Slider(content, UiText.MusicVol, 0, 100, s.audio.music, Num, v => Edit(GameSettings.Audio, d => d.audio.music = Mathf.RoundToInt(v))))
+            .Row.Describe(UiText.MusicVolDesc);
         Add(UiKit.Toggle(content, UiText.MuteUnfocused, s.audio.muteUnfocused, v => Edit(GameSettings.Audio, d => d.audio.muteUnfocused = v)))
             .Row.Describe(UiText.MuteUnfocusedDesc);
     }

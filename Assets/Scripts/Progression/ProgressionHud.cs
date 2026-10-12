@@ -8,7 +8,7 @@ using UnityEngine.UI;
 /// FeelHUD, built in code with the public <see cref="FeelUi"/> helpers.
 ///   - the rank chip (top row, right of the clock; HudLayout's rank slot): "RANK 5 · Senior Sack Specialist" + a springy
 ///     Rep bar with the Rep numbers under it; badge-only (the number in a circular Rep ring) when the top bar is Compact/Tight;
-///   - "+25 REP" floaters (events of 10 Rep or more) rising up out of the chip (never into the toast lane, UIPass H8);
+///   - "+25 REP" floaters (events of 8 Rep or more: a late bag, 8, is the smallest thing worth a floater since the 2026-10-12 pace pass) rising up out of the chip (never into the toast lane, UIPass H8);
 ///   - the stamp card: PROMOTED! (rubber stamp slams in, confetti, legendary sfx, shake), Key to the City, permits,
 ///     Work Order done;
 ///   - Head Office memos sliding in under the route panel (HudLayout.MemoSlot; they wait while there's no room, H9).
@@ -322,13 +322,13 @@ public sealed class ProgressionHud
 
     // ------------------------------------------------------------------ events in
 
-    /// <summary>A Rep change: "+25 REP" floater for 10+, bar flash for anything positive.</summary>
+    /// <summary>A Rep change: "+25 REP" floater for 8+, bar flash for anything positive.</summary>
     public void OnRep(float delta, Vector3? worldPos)
     {
         if (!built) return;
         if (delta > 0f) { barFlash = Mathf.Min(1f, barFlash + 0.35f); chipScaleVel += Mathf.Min(3f, 0.6f + delta * 0.04f); }
         else if (delta < 0f) { wait = 0.5f; }
-        if (Mathf.Abs(delta) < 10f) return;
+        if (Mathf.Abs(delta) < 8f) return;
         string s = (delta > 0 ? "+" : "") + Mathf.RoundToInt(delta).ToString("N0") + " REP";
         SpawnFloater(s, delta > 0 ? RepPurple : FeelUi.BadRed);
         if (worldPos.HasValue) GameHUD.FloatingText(worldPos.Value + Vector3.up * 0.8f, s, delta > 0 ? RepPurple : FeelUi.BadRed, 0.9f);

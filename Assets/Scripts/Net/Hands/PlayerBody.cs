@@ -9,8 +9,9 @@ using UnityEngine;
 /// machine:
 /// <list type="bullet">
 /// <item><b>Look</b>: lying flat when flopped, knocked out, carried or flung; dizzy stars when knocked out.</item>
-/// <item><b>Pinning</b>: a carried player is held in the carrier's arms, a rider stands on the truck's rear step, on each
-/// machine's own copy of the carrier or truck (no parenting through NGO, §4.4).</item>
+/// <item><b>Pinning</b>: a carried player is held in the carrier's arms, a rider stands on their hold of the truck (and
+/// shuffles round the back after a seat switch, <see cref="RideRider.HoldPose"/>), on each machine's own copy of the carrier
+/// or truck (no parenting through NGO, §4.4).</item>
 /// <item><b>The owner</b> plays knockbacks (CharacterController moves, so walls still block), loses control while stunned,
 /// out, flopped, carried, flung or riding (mouse-look keeps working), and has the keys: RMB punch / swing, Z flop, Space
 /// get up / wriggle / hop off; while carrying a friend LMB throws them and G puts them down.</item>
@@ -97,6 +98,7 @@ public class PlayerBody : MonoBehaviour, IInteractable
     BodyState lastState;
     bool riding, carried;
     Vector3 pinVel;
+    RideRider rideRider;
 
     void Awake()
     {
@@ -114,6 +116,34 @@ public class PlayerBody : MonoBehaviour, IInteractable
             yawField = t.GetField("_cinemachineTargetYaw", BindingFlags.NonPublic | BindingFlags.Instance);
             pitchField = t.GetField("_cinemachineTargetPitch", BindingFlags.NonPublic | BindingFlags.Instance);
         }
+        EnsurePickUpZone();
+    }
+
+    /// <summary>How close (m, either way) you must be to scoop up a friend who is down.</summary>
+    public const float PickUpReach = 2.5f;
+
+    /// <summary>
+    /// "Pick up Dot" is a zone on the body as well as something the line-of-sight and proximity scans may find. Those scans
+    /// resolve a hit with <c>GetComponentInParent&lt;IInteractable&gt;()</c>, which hands back ONE component of the player's
+    /// root: the Grabby Hand and the Compactor Pack (on every player copy, added before this component, never interactable on
+    /// a remote copy) come first, so the prompt could be hidden behind them and a downed friend got no E at all. A zone names
+    /// its target directly. It needs no line of sight (stand by them, don't aim) and PlayerController still gives a downed
+    /// player the +3 that puts them ahead of loose trash. <see cref="CanInteract"/> decides when it shows, so on the local body
+    /// it never does.
+    /// </summary>
+    void EnsurePickUpZone()
+    {
+        if (transform.Find("PickUpZone") != null) return;
+        var go = new GameObject("PickUpZone");
+        go.transform.SetParent(transform, false);
+        Vector3 ls = transform.lossyScale; // the zone in metres whatever the body's scale
+        go.transform.localScale = new Vector3(1f / Mathf.Max(0.01f, ls.x), 1f / Mathf.Max(0.01f, ls.y), 1f / Mathf.Max(0.01f, ls.z));
+        var z = go.AddComponent<InteractionZone>();
+        z.center = new Vector3(0f, 1f, 0f);
+        z.size = new Vector3(PickUpReach * 2f, 4f, PickUpReach * 2f);
+        z.mode = ZoneMode.OnFoot;
+        z.score = 0.9f; // a downed friend gets PlayerController's +3 on top
+        z.targetOverride = this;
     }
 
     void OnEnable() { if (!all.Contains(this)) all.Add(this); }
@@ -251,7 +281,7 @@ public class PlayerBody : MonoBehaviour, IInteractable
         {
             var hs = HitchStep.Find(Body.other);
             Sfx.Play("clang", transform.position, 0.6f, 1.2f);
-            if (hs != null && IsLocal) GameHUD.FloatingText(transform.position + Vector3.up * 2.1f, "Hold on!", new Color(1f, 0.85f, 0.4f), 1f);
+            if (hs != null && IsLocal) GameHUD.FloatingText(transform.position + Vector3.up * 2.1f, "All aboard!", new Color(1f, 0.85f, 0.4f), 1f);
         }
         if (from == BodyState.Riding && IsLocal && !RideRider.IsFlingFlying(this)) HopOff(); // F1: a fling flies itself
         if (from == BodyState.Carried && IsLocal && to != BodyState.Thrown)
@@ -295,9 +325,9 @@ public class PlayerBody : MonoBehaviour, IInteractable
                 if (GameControls.Down(GetUpKey, GameControls.Action.Jump)) { net.LocalWriggle(); Juice.Shake(0.05f, 0.08f); }
                 return;
             case BodyState.Riding:
-                SetHint(RideRider.HintFor(this) ?? (GameControls.UsingGamepad ? "Riding the back.  [A] Hop off" : "Riding the back.  [Space] Hop off"));
-                // F1: during a HOLD ON! window Space is the save, not the exit.
-                if (GameControls.Down(GetUpKey, GameControls.Action.Jump) && !RideRider.ConsumesSpace(this)) net.LocalUnhitch();
+                SetHint(RideRider.HintFor(this) ?? (GameControls.UsingGamepad ? "Riding the back.  [X/A] Hop off" : "Riding the back.  [E/Space] Hop off"));
+                // F1: a fling the rider's machine already started flies itself (the host's word is on its way).
+                if (GameControls.Down(GetUpKey, GameControls.Action.Jump) && !RideRider.IsFlingFlying(this)) net.LocalUnhitch();
                 break;
             case BodyState.Normal:
                 break;
@@ -333,7 +363,7 @@ public class PlayerBody : MonoBehaviour, IInteractable
             else SetHint(null);
             if (GameControls.Down(FlopKey, GameControls.Action.Flop) && (Carrier == null || !Carrier.IsCarrying)) { net.LocalFlop(true); return; }
         }
-        if (GameControls.Down(ShoveKey, GameControls.Action.Shove) && !tug && st != BodyState.Riding) TryShove(net); // riders shove riders: RideRider
+        if (GameControls.Down(ShoveKey, GameControls.Action.Shove) && !tug && st != BodyState.Riding) TryShove(net); // riders don't punch
     }
 
     // ---- shove / swing
@@ -468,6 +498,12 @@ public class PlayerBody : MonoBehaviour, IInteractable
         }
     }
 
+    /// <summary>Turn the locked camera by <paramref name="degrees"/> (a rider's seat switch swings it out beside the truck).</summary>
+    internal void AddLockYaw(float degrees)
+    {
+        if (locked) lockYaw += degrees;
+    }
+
     void LockedLook()
     {
         if (tpc == null || input == null || tpc.CinemachineCameraTarget == null) return;
@@ -547,7 +583,9 @@ public class PlayerBody : MonoBehaviour, IInteractable
             var hs = HitchStep.Find(b.other);
             if (hs != null)
             {
-                var pose = hs.StepPose(b.step);
+                // F1: after a seat switch the rider shuffles round the back to the new hold on this machine's truck.
+                if (rideRider == null) rideRider = GetComponent<RideRider>();
+                var pose = rideRider != null && hs.Truck != null ? rideRider.HoldPose(hs.Truck.transform, b.step) : hs.StepPose(b.step);
                 if (IsLocal && cc != null && cc.enabled) cc.enabled = false;
                 SetPose(pose.position, pose.rotation);
                 pinVel = hs.Velocity;

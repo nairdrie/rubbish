@@ -10,26 +10,30 @@ GameObject:
   m_Component:
   - component: {fileID: 3717970590176199181}
   - component: {fileID: 7780007956321830455}
-  - component: {fileID: 8880355056105303099}
-  - component: {fileID: 611101317295345489}
-  - component: {fileID: 1935367275895707868}
-  - component: {fileID: 6705121358178234286}
-  - component: {fileID: 6806094811548631809}
-  - component: {fileID: 812322829922126294}
-  - component: {fileID: 2747526386286237502}
-  - component: {fileID: 6728902074443203274}
-  - component: {fileID: 4357347695505324914}
-  - component: {fileID: 4765435135122761053}
-  - component: {fileID: 3632726033396341120}
-  - component: {fileID: 4703671089531345943}
-  - component: {fileID: 3245650929664129387}
-  - component: {fileID: 8098971618745942841}
-  - component: {fileID: 1608102303159141254}
-  - component: {fileID: 1470516447294406677}
-  - component: {fileID: 8255124678973435919}
-  - component: {fileID: 2660575970096440799}
-  - component: {fileID: 7578150652861251388}
-  - component: {fileID: 8072478023711233852}
+  - component: {fileID: 1113140037521849498}
+  - component: {fileID: 7667200374622535308}
+  - component: {fileID: 2675435640667292504}
+  - component: {fileID: 1523327474380264498}
+  - component: {fileID: 8538636353378854674}
+  - component: {fileID: 2258913829987432245}
+  - component: {fileID: 8271308236067927288}
+  - component: {fileID: 2569888545527474395}
+  - component: {fileID: 1354857779548974573}
+  - component: {fileID: 3191301969208961305}
+  - component: {fileID: 7809033932008621343}
+  - component: {fileID: 6247209287189847249}
+  - component: {fileID: 8513556467123894566}
+  - component: {fileID: 4903194237957535530}
+  - component: {fileID: 2704046358295105865}
+  - component: {fileID: 857272695360198792}
+  - component: {fileID: 7106131622305123340}
+  - component: {fileID: 2652183454931647621}
+  - component: {fileID: 8375256272213412627}
+  - component: {fileID: 8587192177577436669}
+  - component: {fileID: 4684968308531543802}
+  - component: {fileID: 7840835196935493051}
+  - component: {fileID: 5481165657061916553}
+  - component: {fileID: 428814110726810785}
   m_Layer: 0
   m_Name: NetSession
   m_TagString: Untagged
@@ -79,7 +83,7 @@ MonoBehaviour:
   AutoObjectParentSync: 0
   SyncOwnerTransformWhenParented: 1
   AllowOwnerToParent: 0
---- !u!114 &8880355056105303099
+--- !u!114 &1113140037521849498
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -92,7 +96,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NetRoster
   ShowTopMostFoldoutHeaderGroup: 1
---- !u!114 &611101317295345489
+--- !u!114 &7667200374622535308
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -105,7 +109,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BusinessRegistry
   ShowTopMostFoldoutHeaderGroup: 1
---- !u!114 &1935367275895707868
+--- !u!114 &2675435640667292504
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -118,7 +122,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WorldState
   ShowTopMostFoldoutHeaderGroup: 1
---- !u!114 &6705121358178234286
+--- !u!114 &1523327474380264498
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -131,7 +135,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DepotRowNet
   ShowTopMostFoldoutHeaderGroup: 1
---- !u!114 &6806094811548631809
+--- !u!114 &8538636353378854674
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -144,7 +148,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DepotTruckCargoNet
   ShowTopMostFoldoutHeaderGroup: 1
---- !u!114 &812322829922126294
+--- !u!114 &2258913829987432245
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -157,7 +161,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BusinessUpgradeNet
   ShowTopMostFoldoutHeaderGroup: 1
---- !u!114 &2747526386286237502
+--- !u!114 &8271308236067927288
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -170,7 +174,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MagnusPoseNet
   ShowTopMostFoldoutHeaderGroup: 1
---- !u!114 &6728902074443203274
+--- !u!114 &2569888545527474395
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -183,7 +187,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SortingTableCapacityNet
   ShowTopMostFoldoutHeaderGroup: 1
---- !u!114 &4357347695505324914
+--- !u!114 &1354857779548974573
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -196,7 +200,33 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CompactorNet
   ShowTopMostFoldoutHeaderGroup: 1
---- !u!114 &4765435135122761053
+--- !u!114 &3191301969208961305
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 729349096695533756}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f9a9c7ed5f1c64254855d92be6c8afb9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HogNet
+  ShowTopMostFoldoutHeaderGroup: 1
+--- !u!114 &7809033932008621343
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 729349096695533756}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ac6bd54ab932340dfa09739c46212624, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DumpsterNet
+  ShowTopMostFoldoutHeaderGroup: 1
+--- !u!114 &6247209287189847249
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -209,7 +239,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EbaeNeighbours
   ShowTopMostFoldoutHeaderGroup: 1
---- !u!114 &3632726033396341120
+--- !u!114 &8513556467123894566
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -222,7 +252,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HandsNet
   ShowTopMostFoldoutHeaderGroup: 1
---- !u!114 &4703671089531345943
+--- !u!114 &4903194237957535530
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -235,7 +265,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PayrollNet
   ShowTopMostFoldoutHeaderGroup: 1
---- !u!114 &3245650929664129387
+--- !u!114 &2704046358295105865
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -248,7 +278,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DepotChessNet
   ShowTopMostFoldoutHeaderGroup: 1
---- !u!114 &8098971618745942841
+--- !u!114 &857272695360198792
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -261,7 +291,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BagTellsNet
   ShowTopMostFoldoutHeaderGroup: 1
---- !u!114 &1608102303159141254
+--- !u!114 &7106131622305123340
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -274,7 +304,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NightNet
   ShowTopMostFoldoutHeaderGroup: 1
---- !u!114 &1470516447294406677
+--- !u!114 &2652183454931647621
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -287,7 +317,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WeatherNet
   ShowTopMostFoldoutHeaderGroup: 1
---- !u!114 &8255124678973435919
+--- !u!114 &8375256272213412627
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -300,7 +330,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BigCleanupNet
   ShowTopMostFoldoutHeaderGroup: 1
---- !u!114 &2660575970096440799
+--- !u!114 &8587192177577436669
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -313,7 +343,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PoachingNet
   ShowTopMostFoldoutHeaderGroup: 1
---- !u!114 &7578150652861251388
+--- !u!114 &4684968308531543802
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -326,7 +356,33 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::YardDogsNet
   ShowTopMostFoldoutHeaderGroup: 1
---- !u!114 &8072478023711233852
+--- !u!114 &7840835196935493051
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 729349096695533756}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9f8a300daa2ac46dd88a0c343d911e23, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DrunkNet
+  ShowTopMostFoldoutHeaderGroup: 1
+--- !u!114 &5481165657061916553
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 729349096695533756}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66b087dc6bf214e07a89a98f02caca5a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CasinoNet
+  ShowTopMostFoldoutHeaderGroup: 1
+--- !u!114 &428814110726810785
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

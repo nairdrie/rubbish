@@ -598,17 +598,21 @@ public partial class HandsNet
         int i = BodyIndex(client);
         string why = null;
         var hs = HitchStep.Find(truckId);
-        if (i < 0 || hs == null || step < 0 || step >= RideHolds.Count) why = "missing";
+        if (i < 0 || hs == null || hs.Truck == null || step < 0 || step >= RideHolds.Count) why = "missing";
         else
         {
             var b = bodies[i];
             if (b.State != BodyState.Normal || b.carrying != None) why = "busy";
-            else if (RiderOn(truckId, step) != None) why = "taken";
             else if (hs.Speed > HandsTuning.HitchMaxSpeed + 1f) why = "too-fast";
-            // The local prompt uses tight per-mount pockets and view facing. Authority allows only the usual
-            // replication slack around that same pocket, not the old 5.5m teleport onto any free truck hold.
-            else if (!HostPlayerPos(client, out var p) || !RideHolds.WithinBoardingBounds(step,
-                ShopModKit.ToTruckMetres(hs.Truck.transform, p), HandsTuning.LagSlack)) why = "far";
+            // The prompt offers the ride anywhere in the boarding area round the back (RideHolds.BoardingArea); authority
+            // allows the usual replication slack around that same area, never a climb on from the cab or the far side.
+            else if (!HostPlayerPos(client, out var p) || !RideHolds.InBoardingArea(hs.Truck, p, HandsTuning.LagSlack)) why = "far";
+            else if (RiderOn(truckId, step) != None)
+            {
+                // Someone took that hold while the request was on its way: the nearest one still free, as the prompt picks.
+                step = RideHolds.NearestFreeHold(hs.Truck.transform, p, TakenHoldsOn(truckId));
+                if (step < 0) why = "full";
+            }
             if (why == null)
             {
                 b.state = (byte)BodyState.Riding;

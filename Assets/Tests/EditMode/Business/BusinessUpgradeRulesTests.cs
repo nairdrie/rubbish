@@ -39,13 +39,13 @@ public class BusinessUpgradeRulesTests
     {
         Assert.AreEqual(1f, Number("RecycleMultAtLevel", -1));
         Assert.AreEqual(4f, Number("RecycleMultAtLevel", 99));
-        Assert.AreEqual(0.75f, Number("HazardPayAtLevel", 0));
-        Assert.AreEqual(4f, Number("HazardPayAtLevel", 2));
+        Assert.AreEqual(3f, Number("HazardPayAtLevel", 0));
+        Assert.AreEqual(16f, Number("HazardPayAtLevel", 2));
         Assert.AreEqual(1f, Number("ScrapMultAtLevel", 0));
         Assert.AreEqual(1.25f, Number("ScrapMultAtLevel", 1));
         Assert.AreEqual(0f, Number("GrateKeepAtLevel", 2));
         Assert.AreEqual(0.3f, Number("GrateKeepAtLevel", 3));
-        Assert.AreEqual(0.20f, Number("LazyPerKgAtLevel", 0));
-        Assert.AreEqual(0.35f, Number("LazyPerKgAtLevel", 3));
+        Assert.AreEqual(0.80f, Number("LazyPerKgAtLevel", 0));
+        Assert.AreEqual(1.40f, Number("LazyPerKgAtLevel", 3));
     }
 }

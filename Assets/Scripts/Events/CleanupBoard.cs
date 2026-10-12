@@ -39,9 +39,18 @@ public sealed class CleanupBoard : MonoBehaviour
             lastWinner = $"<color={BusinessColors.Hex(s.winnerColor)}>●</color> {ShortName(s.winnerName.ToString(), 22)}";
     }
 
+    /// <summary>With the event switched off (<see cref="CleanupTuning.Enabled"/>) the noticeboard has nothing true to say: it only
+    /// stands while a forced event (bots, the debug menu) is running.</summary>
+    static bool Wanted()
+    {
+        if (CleanupTuning.Enabled) return true;
+        var n = BigCleanupNet.Instance;
+        return n != null && n.IsSpawned && n.Phase != CleanupPhase.Idle;
+    }
+
     void Update()
     {
-        if (!WorldLifeRunner.IsAwake)
+        if (!WorldLifeRunner.IsAwake || !Wanted())
         {
             if (board != null) { Destroy(board); board = null; }
             return;

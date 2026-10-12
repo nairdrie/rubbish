@@ -86,6 +86,13 @@ public struct CleanupScore : INetworkSerializable, IEquatable<CleanupScore>
 /// <summary>The numbers of the Big Cleanup in one place (rule 12).</summary>
 public static class CleanupTuning
 {
+    /// <summary>
+    /// The daily double-trash rush is OFF for now (Nick, 2026-10-09: "remove that for now"). The contract campaign wants the trash flow to
+    /// mean one thing at a time. Nothing else changes: the code, the board, the HUD and the prizes stay, and it comes back by
+    /// flipping this to true. Bots and the debug menu can still force one (<see cref="BigCleanupNet.DebugStart"/>).
+    /// </summary>
+    public static readonly bool Enabled = false;
+
     public const float AnnounceSeconds = 12f, RunSeconds = 600f, ResultsSeconds = 16f;
     /// <summary>Put-out rate (and caps) while it runs.</summary>
     public const float RateMul = 2f;
@@ -285,6 +292,7 @@ public class BigCleanupNet : NetworkBehaviour
     /// <summary>Today's event: once per in-game day, at an hour hashed from the day (08–11), never in the first minutes.</summary>
     bool ScheduledNow(double now)
     {
+        if (!CleanupTuning.Enabled) return false;
         if (now - spawnedAt < CleanupTuning.FirstEventDelay) return false;
         if (lastEndedAt > 0 && now - lastEndedAt < CleanupTuning.Cooldown) return false;
         int day = GameClock.DayIndex;

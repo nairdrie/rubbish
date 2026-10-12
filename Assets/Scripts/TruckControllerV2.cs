@@ -1,6 +1,7 @@
 // using System.Numerics;
 using StarterAssets;
 using Unity.Netcode;
+using Unity.Netcode.Components;
 using UnityEngine;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
@@ -12,7 +13,8 @@ using UnityEngine.InputSystem;
 ///
 /// Flow hooks: <see cref="ForceEnter"/> seats a player (auto-seat on arrival), <see cref="ForceExit"/> /
 /// <see cref="PrepareForSceneTransition"/> cleanly unseat them (nothing NGO-owned may stay parented under
-/// the truck when it's destroyed with its scene). With no driver the server holds a parking brake.
+/// the truck when it's destroyed with its scene). With no driver whoever simulates the truck holds a parking brake:
+/// the host, or a guest who has just got out, who keeps the truck until it stands still (<see cref="TruckHandbackWatch"/>).
 /// </summary>
 public class TruckControllerV2 : NetworkBehaviour, IInteractable
 {
@@ -98,8 +100,13 @@ public class TruckControllerV2 : NetworkBehaviour, IInteractable
     /// </summary>
     public System.Func<Vector2> InputOverride;
 
-    // Offline (not network-spawned, e.g. a preview scene): the seated local player drives.
-    bool AnyDriver => InputOverride != null || (IsSpawned ? HasDriver : seated);
+    /// <summary>
+    /// Someone drives this truck, as this machine's physics should see it (else it's parked). A guest who has just got out
+    /// still shows in <see cref="DriverClientId"/> until the server's answer lands, a round trip later; on their machine,
+    /// which keeps simulating the truck until it stands still, it is parked at once, as the host's is when the host gets out.
+    /// Offline (not network-spawned, e.g. a preview scene): the seated local player drives.
+    /// </summary>
+    public bool AnyDriver => InputOverride != null || (IsSpawned ? HasDriver && (seated || !IsLocalDriver) : seated);
     bool LocalDrives => InputOverride != null ? (!IsSpawned || IsOwner) : (IsSpawned ? IsLocalDriver : seated);
 
     // ---------------------------------------------------------------- registry + horn event (WorldLife W0, additive;
@@ -318,10 +325,22 @@ public class TruckControllerV2 : NetworkBehaviour, IInteractable
         Vector3 ejectPos = FindSafeEjectPosition();   // world
         Quaternion ejectRot = FlowUtil.Upright(transform.rotation);
         player.transform.SetPositionAndRotation(ejectPos, ejectRot);
+        // Other machines must see a teleport, not a move: their copy of this player (CharacterController on) would otherwise
+        // slide from the truck's root out through its body, a capsule shoving whichever copy of the truck is dynamic there.
+        var playerNt = player.GetComponent<NetworkTransform>();
+        if (playerNt != null && playerNt.IsSpawned && playerNt.CanCommitToTransform)
+        {
+            try { playerNt.Teleport(ejectPos, ejectRot, player.transform.localScale); }
+            catch (System.Exception e) { Debug.LogWarning("[TruckControllerV2] exit teleport: " + e.Message); }
+        }
 
         // unhide player body
         foreach (var rend in player.GetComponentsInChildren<Renderer>())
             rend.enabled = true;
+
+        // Space while seated (the drift key) latches StarterAssets' jump, which only clears once airborne: drop it, or the
+        // player hops the moment their legs come back.
+        if (driverLookInput != null) driverLookInput.jump = false;
 
         // restore player components
         if (thirdPersonController != null) thirdPersonController.enabled = true;
@@ -558,6 +577,7 @@ public class TruckControllerV2 : NetworkBehaviour, IInteractable
     {
         // The truck is going away (scene unload / despawn) with someone still inside: put them back on their feet.
         despawning = true;
+        handback.Cancel();
         if (IsLocalPlayerSeated)
         {
             Debug.LogWarning("[TruckControllerV2] Despawned with the local player seated; unseating.");
@@ -573,6 +593,7 @@ public class TruckControllerV2 : NetworkBehaviour, IInteractable
 
     void Update()
     {
+        if (handback.Active) ServerHandbackTick();
         if (seated && player == null)
         {
             CleanupDanglingSeat();
@@ -650,10 +671,11 @@ public class TruckControllerV2 : NetworkBehaviour, IInteractable
     {
         if (wheels == null || rigidBody == null) return;
 
-        // Parked: hold a handbrake on the authority side so it never rolls away.
+        // Parked: hold a handbrake on the authority side so it never rolls away. That includes a guest who has just got
+        // out: they keep simulating the truck until it stands still, then the host takes it back (ServerHandbackTick).
         if (!AnyDriver)
         {
-            if (!IsSpawned || IsServer) ApplyAllBrakes(parkingBrakeTorque * TruckImpact.ParkingBrakeScale(this));
+            if (!IsSpawned || IsServer || IsOwner) ApplyAllBrakes(parkingBrakeTorque * TruckImpact.ParkingBrakeScale(this));
             return;
         }
 
@@ -795,6 +817,8 @@ public class TruckControllerV2 : NetworkBehaviour, IInteractable
         if (!Permissions.CanDrive(clientId, this)) return;
 
         driverClientId.Value = clientId;
+        // A guest who gets back in before the host took the truck back still owns it: then nothing changes hands at all.
+        handback.Cancel();
 
         if (networkObject != null && networkObject.OwnerClientId != clientId)
             networkObject.ChangeOwnership(clientId);
@@ -808,21 +832,51 @@ public class TruckControllerV2 : NetworkBehaviour, IInteractable
         // brake on eject
         ApplyAllBrakes(parkingBrakeTorque);
 
+        // A guest who got out keeps simulating the truck (their machine parks it) until it stands still; only then does the
+        // host take it back (ServerHandbackTick, Docs/Multiplayer.md §4.4). Taking it here restarted the physics on the
+        // host's trailing copy, from a standstill and with the guest's player capsule still inside it: the truck jumped and
+        // bounced, and the guest's copy snapped to wherever the host's ended up.
+        if (networkObject != null && networkObject.OwnerClientId != NetworkManager.ServerClientId)
+            handback.Begin(Time.unscaledTime, transform.position, transform.rotation);
+    }
+
+    readonly TruckHandbackWatch handback = new TruckHandbackWatch();
+
+    /// <summary>Host: take the truck back from the guest who got out, once this copy of it has held still (or after a while).</summary>
+    void ServerHandbackTick()
+    {
+        if (!IsSpawned || !IsServer || HasDriver || networkObject == null || networkObject.OwnerClientId == NetworkManager.ServerClientId)
+        {
+            handback.Cancel();   // someone got in, or the guest left the game (NGO already gave the truck to the host)
+            return;
+        }
+        if (!handback.Tick(Time.unscaledTime, transform.position, transform.rotation)) return;
+        ServerTakeBack();
+        // It stands still on the guest's machine: start the host's physics at rest too.
+        if (rigidBody != null && !rigidBody.isKinematic)
+        {
+            rigidBody.linearVelocity = Vector3.zero;
+            rigidBody.angularVelocity = Vector3.zero;
+        }
+    }
+
+    void ServerTakeBack()
+    {
+        handback.Cancel();
         if (networkObject != null && networkObject.OwnerClientId != NetworkManager.ServerClientId)
             networkObject.ChangeOwnership(NetworkManager.ServerClientId);
     }
 
     /// <summary>
     /// Host: free the seat no matter who holds it (the driver left the game, or Depot Row parks the truck). The truck goes
-    /// back to the host, braked.
+    /// back to the host, braked, straight away (the callers move or despawn it next).
     /// </summary>
     public void ServerForceReleaseDriver()
     {
         if (!IsSpawned || !IsServer) return;
         if (IsLocalPlayerSeated) { ForceExit(); }
         if (driverClientId.Value != ulong.MaxValue) ServerClearDriver();
-        else if (networkObject != null && networkObject.OwnerClientId != NetworkManager.ServerClientId)
-            networkObject.ChangeOwnership(NetworkManager.ServerClientId);
+        ServerTakeBack();
     }
 
     public Vector3 GetDriverEjectPosition()

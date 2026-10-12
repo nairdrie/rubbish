@@ -27,7 +27,7 @@ public struct WeatherNetState : INetworkSerializable, IEquatable<WeatherNetState
 /// <summary>
 /// Package F5 weather, on <c>NetSession.prefab</c> (Docs/Multiplayer.md §14.5). The host (and solo, which hosts too) picks
 /// the weather a few times per in-game day (temporarily held Clear in normal play) and writes one <see cref="WeatherNetState"/>;
-/// every machine applies it to <see cref="Weather"/>, which derives wetness, gusts, grip and slip from it and the server
+/// every machine applies it to <see cref="Weather"/>, which derives wetness, gusts and slip from it and the server
 /// clock, so nothing streams per frame. Late joiners get the variable with the spawn. NetAudit domain <c>weather</c>
 /// (versionless): every machine must agree on (kind, serial, seed).
 /// <para>Bots / tests: <c>-f5weather SEC</c> cycles Clear → Windy → Rain → Storm every SEC seconds;

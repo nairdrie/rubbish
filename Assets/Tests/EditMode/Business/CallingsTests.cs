@@ -298,7 +298,8 @@ public class CallingsTests
     public void ScrapazonNoLongerSellsPersonalGearButKeepsEverythingElse()
     {
         foreach (string gear in GearIds) Assert.IsNull(Static("ScrapazonCatalog", "Get", gear), gear + " is built on the Callings tree, not bought");
-        foreach (string kept in new[] { "grip_gloves", "repellent", "rabies_shot", "raccoon_trap", "bag_cannon", "lucky_gnome", "golden_gnome", "garbage_juice" })
+        // (grip_gloves left with the riding grip meter, 12 Oct 2026: RideBoardingTests covers it.)
+        foreach (string kept in new[] { "repellent", "rabies_shot", "raccoon_trap", "bag_cannon", "lucky_gnome", "golden_gnome", "garbage_juice" })
             Assert.NotNull(Static("ScrapazonCatalog", "Get", kept), kept);
         // the Gear aisle is not an empty hole: it still lists products, and nothing in the shop needs a removed id to unlock
         var all = ((IEnumerable)Val(T("ScrapazonCatalog"), "All")).Cast<object>().ToArray();

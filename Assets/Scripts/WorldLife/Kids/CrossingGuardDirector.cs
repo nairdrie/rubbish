@@ -43,7 +43,7 @@ public sealed class CrossingGuardDirector : WorldLifeDirector
         root = PuppetKit.Node(c.Root, "[Guarded crossings]");
         // Both the generated zebras and navigation use these blueprint-derived park entrances.
         if (c.Graph != null && c.Graph.layoutId == CoastalCityLayout.LayoutId)
-            foreach (var crossing in CoastalParkRoutes.Crossings()) AddSite(c.Graph, crossing.position + Vector3.up * .15f);
+            foreach (var crossing in CoastalParkRoutes.Crossings()) AddSite(c.Graph, TownRelief.Lift(crossing.position) + Vector3.up * .15f);
         else
         {
             AddSite(c.Graph, new Vector3(80f, .15f, 60f));

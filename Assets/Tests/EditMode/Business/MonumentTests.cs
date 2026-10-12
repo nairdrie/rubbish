@@ -509,7 +509,7 @@ public class MonumentTests
         foreach (byte anywhere in new byte[] { 2, 5, 6 }) Assert.IsTrue((bool)away.Invoke(null, new object[] { anywhere, null }), "action " + anywhere);
         Assert.IsTrue((bool)away.Invoke(null, new object[] { (byte)3, null }), "clearing a display"); Assert.IsFalse((bool)away.Invoke(null, new object[] { (byte)3, pin }), "choosing a find for a display");
         foreach (byte inShop in new byte[] { 4, 8 }) Assert.IsFalse((bool)away.Invoke(null, new object[] { inShop, null }), "a print is made at the laptop: action " + inShop);
-        Assert.AreEqual(17, NetVersion.Protocol, "the wire changed shape with SolidWaste 3D (build action 8, the shop-event and disk-drop RPCs, five new state fields)");
+        Assert.GreaterOrEqual(NetVersion.Protocol, 17, "the wire changed shape with SolidWaste 3D (build action 8, the shop-event and disk-drop RPCs, five new state fields); later bumps: 18-19 the Hoverhog (HogNet)");
     }
 
     [Test]

@@ -11,7 +11,6 @@ public enum WeatherKind : byte { Clear = 0, Windy = 1, Rain = 2, Storm = 3 }
 /// <list type="bullet">
 /// <item><see cref="Wetness"/> 0..1: eases in over ~40 s of rain and dries over ~90 s.</item>
 /// <item><see cref="Wind"/>: horizontal wind (m/s) with gusts, a pure function of the server clock and the state's seed.</item>
-/// <item><see cref="GripDrainMul"/>: F1 multiplies the rider's grip drain by this (1 dry, 1.35 rain, 1.7 storm).</item>
 /// <item><see cref="Slip"/>: F3's slipperiness scale for players and trucks (0 dry, ~0.5 rain, ~0.8 storm).</item>
 /// </list>
 /// Nothing here touches gameplay state; it's all derived (the host's choice is the only input).
@@ -104,9 +103,6 @@ public static class Weather
         }
     }
 
-    /// <summary>F1: multiply rider grip drain by this.</summary>
-    public static float GripDrainMul => 1f + Wetness * (kind == WeatherKind.Storm ? 0.7f : 0.35f) + (kind == WeatherKind.Clear ? 0f : GustStrength01 * 0.25f);
-
     /// <summary>F3: slipperiness scale 0..1 for players and trucks.</summary>
     public static float Slip => Wetness * (kind == WeatherKind.Storm ? 0.8f : 0.5f);
 
@@ -115,9 +111,6 @@ public static class Weather
 
     /// <summary><see cref="Slip"/> at a point (0 indoors).</summary>
     public static float SlipAt(Vector3 p) => IsOutdoors(p) ? Slip : 0f;
-
-    /// <summary><see cref="GripDrainMul"/> at a point (1 indoors).</summary>
-    public static float GripDrainMulAt(Vector3 p) => IsOutdoors(p) ? GripDrainMul : 1f;
 
     /// <summary>Wind direction (unit, horizontal): slowly veers, same on every machine.</summary>
     public static Vector3 WindDir
@@ -184,5 +177,5 @@ public static class Weather
 
     /// <summary>A one-line HUD/bot summary.</summary>
     public static string Describe() =>
-        $"{Label(kind)} #{serial} wet {Wetness:0.00} wind {WindSpeed:0.0} m/s gust {GustStrength01:0.00} grip×{GripDrainMul:0.00} slip {Slip:0.00}";
+        $"{Label(kind)} #{serial} wet {Wetness:0.00} wind {WindSpeed:0.0} m/s gust {GustStrength01:0.00} slip {Slip:0.00}";
 }

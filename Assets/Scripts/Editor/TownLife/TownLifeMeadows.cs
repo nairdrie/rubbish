@@ -722,6 +722,7 @@ public static class TownLifeMeadows
                 float a0 = -hl + i * L / bands - (i == 0 ? apron : 0f), a1 = -hl + (i + 1) * L / bands + (i == bands - 1 ? apron : 0f);
                 RectUV(grass, i % 2 == 0 ? "meadows.lawn.light" : "meadows.lawn.dark", c, u, v, a0, a1, -hw - apron, hw + apron, LawnY);
             }
+            TownLifeKit.LevelPad(g, "meadows_pitch", c, Vector2.one * (Mathf.Max(L, W) + 4f), 0f, 6f);     // a pitch is level (terrain relief)
             TownLifeKit.Custom(g, "meadows_pitch_grass", grass);
             var ln = new TownLifeKit.MeshData(); const float t = 0.1f; const string wh = "paint.white";
             RectUV(ln, wh, c, u, v, -hl - t, hl + t, -hw - t, -hw + t, SoilY); RectUV(ln, wh, c, u, v, -hl - t, hl + t, hw - t, hw + t, SoilY);

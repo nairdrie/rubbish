@@ -121,6 +121,10 @@
     color: #FF9900;
 }
 
+.app-tab-icon--payroll {
+    background-color: #2EA866;
+}
+
 .app-tab-label {
     flex-shrink: 1;
     padding: 0;

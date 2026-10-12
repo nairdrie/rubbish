@@ -50,8 +50,28 @@ public class Raccoon : Critter
     /// <summary>Where a stowaway sits, in metres from the truck's root (unscaled, like F1's <see cref="RideHolds"/>): in the hopper
     /// mouth just inside the rear lip, head poking out the back.</summary>
     public static readonly Vector3 StowLocal = new Vector3(0f, 1.45f, -2.2f);
-    /// <summary>Player-local spot a latched raccoon clings to (on the head, hugging it).</summary>
+    /// <summary>Fallback (no ChuckPuppet head bone found): player-root-local spot a latched raccoon clings to.</summary>
     public static readonly Vector3 LatchLocal = new Vector3(0f, 1.42f, -0.05f);
+    /// <summary>
+    /// Face-hug offset in WORLD metres from the player's head bone (= eye level), in the player ROOT's axes (+Z = the way he faces).
+    /// The raccoon's pivot is at its feet and in the latched pose (rear -70 deg, head counter-pitched) its eyes sit about
+    /// (0, 0.57, -0.16) m from that pivot at scale 0.8, so after the 180 deg turn the pivot goes ~0.59 below and 0.14 in front of
+    /// the head bone to put the raccoon's face at about (0, -0.02, 0.30): over his face, snout against his nose. Unverified in play.
+    /// </summary>
+    public static readonly Vector3 LatchHeadLocal = new Vector3(0f, -0.59f, 0.14f);
+    /// <summary>Faces the player's face.</summary>
+    public static readonly Quaternion LatchHeadRot = Quaternion.Euler(0f, 180f, 0f);
+    public const float LatchScale = 0.8f;
+
+    /// <summary>Host (TryLatch) and guests (NightNet) both use this, so the attach pose is defined in one place.</summary>
+    public static void AttachToFace(Critter c, PlayerController pc)
+    {
+        if (c == null || pc == null) return;
+        var puppet = pc.GetComponentInChildren<ChuckPuppet>(true);
+        Transform head = puppet != null ? puppet.head : null;
+        if (head != null) c.SetAnchor(head, pc.transform, LatchHeadLocal, LatchHeadRot, LatchScale);
+        else c.SetAnchor(pc.transform, LatchLocal, Quaternion.identity);
+    }
 
     /// <summary>What it stole (host only; guests know just <see cref="LootDefId"/>).</summary>
     public ItemInstance Loot { get; private set; }
@@ -999,7 +1019,7 @@ public class Raccoon : Critter
         if (!forceLatch && !NightDice.Host.Chance(RaccoonTemper.LatchChance(Rabid))) return false;
         LatchVictim = target.client;
         latchPc = target.pc;
-        SetAnchor(latchPc.transform, LatchLocal, Quaternion.identity);
+        AttachToFace(this, latchPc);
         Enter(State.Latched);
         NightNet.HostCritterChanged(this);
         NightNet.HostLatch(LatchVictim, this, true, false);

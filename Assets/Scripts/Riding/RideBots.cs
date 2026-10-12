@@ -10,10 +10,13 @@ using UnityEngine;
 /// <item><see cref="RideRoute"/>: the "conductor" drives one truck around a fixed loop on Minivan Mile → Depot Rd
 /// (teleport to the start, stop for boarding, creep past curb bags at 2 m/s, run at ~9.5 m/s, hard right at the corner,
 /// brake) through <see cref="TruckControllerV2.InputOverride"/>. Phases follow NGO server time, so every machine knows
-/// what's coming. Solo tests use it as a ghost driver.</item>
+/// what's coming. Laps cycle rough (full-speed corner, hard stop: nobody may come off), gentle (Crew Comfort) and crash
+/// (a 7 m/s hit on the straight: riders fly unless a Safety Bar holds). Solo tests use it as a ghost driver.</item>
 /// <item><c>-botbrain ride</c>: every bot rides (the host also conducts its lot-1 truck with a ghost driver, so four
-/// players can ride at once); bots board at their hold, snag bags while creeping, one shoves its neighbour, they lean
-/// (one into the turn, one the wrong way) and answer HOLD ON half the time.</item>
+/// players can ride at once); bots board from a loose spot near their hold, one switches spot while parked, they snag bags
+/// while creeping, and each logs whether it was still aboard at the end of the lap.</item>
+/// <item><c>-botbrain rideverify</c>: the same with the Padded Step and Safety Bar bought; one rider flips the shared bar
+/// each lap, so crash laps alternate "the bar held" and a fling.</item>
 /// <item><c>-botbrain ridedrive</c>: this bot drives its own truck for real (the Crew Comfort tip) and conducts.</item>
 /// </list>
 /// Every machine logs <c>ride</c> audit lines (fling / flingseen with the truck pose at the fling's tick) for the checker.
@@ -49,15 +52,14 @@ public static class RideBots
     {
         readonly bool driver, verify;
         RideRoute route;
-        long boardedCycle = -1, hopCycle = -1, shoveCycle = -1;
+        long boardedCycle = -1, hopCycle = -1, switchCycle = -1, switchViewCycle = -1;
         long barCycle = -1, barViewCycle = -1, poseViewCycle = -1;
         bool grantsDone;
         float teleportedAt = -1f;
         float nextSnagTry;
-        bool holdOnDecided, holdOnPress;
-        float lastHoldOnStart = -1f;
         bool enteredTruck;
-        float minGrip = 100f;
+        int switchFrom = -1;
+        bool switchAsked;
 
         public RideBrain(bool driver, bool verify = false) { this.driver = driver; this.verify = verify; }
 
@@ -70,8 +72,6 @@ public static class RideBots
         public void End(BotContext c)
         {
             if (route != null) route.Stop();
-            var me = RideRider.LocalRider;
-            if (me != null) me.BotLean = null;
         }
 
         public void Tick(BotContext c, float dt)
@@ -84,12 +84,10 @@ public static class RideBots
                 // Bot save roots are sandboxed; use the same upgrade store as real purchases and let the normal
                 // truck-owner report share them. No test-only bypass of the Safety Bar network validation.
                 grantsDone = true;
-                GameSession.SetUpgradeLevel(RideShop.GripGloves, 1);
                 GameSession.SetUpgradeLevel(RideShop.PaddedStep, 1);
                 GameSession.SetUpgradeLevel(RideShop.SafetyBar, 1);
                 NetAudit.Event("ridebot", new Dictionary<string, object> { { "phase", "upgrades" },
-                    { "gloves", RideShop.Local(RideShop.GripGloves) }, { "pad", RideShop.Local(RideShop.PaddedStep) },
-                    { "bar", RideShop.Local(RideShop.SafetyBar) } });
+                    { "pad", RideShop.Local(RideShop.PaddedStep) }, { "bar", RideShop.Local(RideShop.SafetyBar) } });
             }
             var truck = RideBots.RideTruck();
             if (truck == null) return;
@@ -98,7 +96,6 @@ public static class RideBots
             // ---- the conductor: the host's ghost driver (no ridedrive bot), or the ridedrive bot in its own truck
             if (driver)
             {
-                var pc = c.Player.GetComponent<PlayerController>();
                 var mine = OwnTruck();
                 if (mine != null && !enteredTruck)
                 {
@@ -133,29 +130,49 @@ public static class RideBots
             double ph = RideRoute.Phase(now);
             int idx = RiderIndex(net, truck), hold = idx % RideHolds.Count;
 
-            if (ph >= 1.5 && ph < 5.5 && boardedCycle != cycle && !me.IsRiding && !me.IsFlying && me.CanBoard)
+            if (ph >= 1.5 && ph < 5.0 && boardedCycle != cycle && !me.IsRiding && !me.IsFlying && me.CanBoard)
             {
                 if (teleportedAt < 0f)
                 {
+                    // A loose spot near the hold (not on it), facing away from the truck: E must work from anywhere
+                    // round the back without aiming, and pick the nearest free hold from there.
                     var pose = RideHolds.PoseOn(truck.transform, hold);
-                    Vector3 out_ = RideHolds.IsRung(hold) ? pose.rotation * Vector3.right * RideHolds.Side(hold) : -(pose.rotation * Vector3.forward);
-                    HandsBots.Teleport(c.Player.gameObject, HandsBots.Ground(pose.position + out_ * 0.9f), pose.rotation * Vector3.forward);
+                    Vector3 fwd = pose.rotation * Vector3.forward, right = pose.rotation * Vector3.right;
+                    Vector3 out_ = RideHolds.IsRung(hold) ? right * RideHolds.Side(hold) : -fwd;
+                    Vector3 loose = pose.position + out_ * 1f - fwd * 0.6f + (RideHolds.IsRung(hold) ? Vector3.zero : right * (RideHolds.Side(hold) * 0.3f));
+                    HandsBots.Teleport(c.Player.gameObject, HandsBots.Ground(loose), out_);
                     teleportedAt = Time.time;
                 }
                 else if (Time.time - teleportedAt > 0.7f)
                 {
-                    me.Hitch(hs, hold);
+                    int pick = hs.BestFreeHold(c.Player.transform.position);
+                    bool offered = hs.CanInteract();
+                    if (offered) hs.OnInteract(c.Player.gameObject);
                     boardedCycle = cycle;
                     teleportedAt = -1f;
-                    NetAudit.Event("ridebot", new Dictionary<string, object> { { "phase", "board" }, { "cycle", cycle }, { "hold", hold }, { "idx", idx } });
+                    NetAudit.Event("ridebot", new Dictionary<string, object> { { "phase", "board" }, { "cycle", cycle },
+                        { "hold", hold }, { "pick", pick }, { "offered", offered }, { "idx", idx } });
                 }
             }
-            if (ph >= 5.5) teleportedAt = -1f;
+            if (ph >= 5.0) teleportedAt = -1f;
 
-            if (!me.IsRiding)
+            if (!me.IsRiding) return;
+            me.TryGetRide(out _, out int myHold);
+
+            // Parked, the first rider shuffles round the back to the next free spot (if there is one) and checks it moved.
+            if (idx == 0 && ph >= 4.2 && ph < 5.0 && switchCycle != cycle)
             {
-                me.BotLean = null;
-                return;
+                switchCycle = cycle;
+                switchFrom = myHold;
+                switchAsked = me.SwitchSpot();
+                NetAudit.Event("ridebot", new Dictionary<string, object> { { "phase", "switch" }, { "cycle", cycle },
+                    { "from", myHold }, { "asked", switchAsked }, { "free", (global::RideRider.TakenHolds(rt, myHold) | (1 << myHold)) != 0xF } });
+            }
+            if (idx == 0 && ph >= 5.6 && switchViewCycle != cycle && switchCycle == cycle)
+            {
+                switchViewCycle = cycle;
+                NetAudit.Event("ridebot", new Dictionary<string, object> { { "phase", "switch-view" }, { "cycle", cycle },
+                    { "from", switchFrom }, { "hold", myHold }, { "moved", myHold != switchFrom }, { "asked", switchAsked } });
             }
 
             if (verify && idx == 1 && ph >= 7.0 && ph < 9.0 && barCycle != cycle && rt.BarLevel > 0)
@@ -170,21 +187,16 @@ public static class RideBots
                 barViewCycle = cycle;
                 NetAudit.Event("ridebot", new Dictionary<string, object> { { "phase", "bar-view" },
                     { "cycle", cycle }, { "rider", (long)me.ClientId }, { "bar", rt.BarLevel },
-                    { "down", rt.BarDown }, { "gloves", RideShop.Local(RideShop.GripGloves) },
-                    { "pad", rt.PaddedLevel }, { "remoteLean", me.RemoteLean } });
+                    { "down", rt.BarDown }, { "pad", rt.PaddedLevel },
+                    { "flingDv", RideTuning.CrashFlingDv(rt.PaddedLevel, rt.BarLevel, rt.BarDown) } });
             }
 
-            // Creep: snag bags in reach; one rider shoves the neighbour.
+            // Creep: snag bags in reach.
             if (ph >= RideRoute.CreepStart && ph < RideRoute.RunStart && Time.time >= nextSnagTry && me.SnagCandidate != null)
             {
                 nextSnagTry = Time.time + 0.4f;
                 me.BotSnag();
             }
-            if (idx == 1 && ph >= 11.0 && shoveCycle != cycle) { shoveCycle = cycle; me.BotShove(); }
-
-            // Run and corner (a right turn: the truck accelerates toward its right, so "into the turn" is D).
-            if (ph >= RideRoute.RunStart) { me.BotLean = idx == 0 ? 1 : idx == 2 ? -1 : 0; minGrip = Mathf.Min(minGrip, me.Grip); }
-            else me.BotLean = 0;
             if (verify && ph >= 22.0 && ph < 25.0 && poseViewCycle != cycle)
             {
                 poseViewCycle = cycle;
@@ -193,24 +205,17 @@ public static class RideBots
                     if (other == null || other == me || !other.TryGetRide(out var ort, out int otherHold) || ort != rt) continue;
                     NetAudit.Event("ridebot", new Dictionary<string, object> { { "phase", "remote-view" },
                         { "cycle", cycle }, { "observer", (long)me.ClientId }, { "subject", (long)other.ClientId },
-                        { "hold", otherHold }, { "lean", other.RemoteLean }, { "grip", Mathf.RoundToInt(other.GripForHud) } });
+                        { "hold", otherHold } });
                 }
             }
 
-            // HOLD ON: answer about half the windows, a beat after they open.
-            if (me.HoldOnActive)
-            {
-                if (lastHoldOnStart != me.HoldOnStart) { lastHoldOnStart = me.HoldOnStart; holdOnDecided = false; }
-                if (!holdOnDecided) { holdOnDecided = true; holdOnPress = c.Value() < 0.5f; }
-                if (holdOnPress && Time.time - me.HoldOnStart > 0.15f) { me.BotPressSpace(); holdOnPress = false; }
-            }
-
-            // Late in the cycle anyone still aboard hops off so the next lap starts clean.
+            // Late in the cycle anyone still aboard says so (rough and gentle laps: everyone; a crash lap: nobody, unless a
+            // Safety Bar held) and hops off so the next lap starts clean.
             if (ph >= RideRoute.CycleSec - 1.5 && hopCycle != cycle)
             {
                 hopCycle = cycle;
-                NetAudit.Event("ridebot", new Dictionary<string, object> { { "phase", "survived" }, { "cycle", cycle }, { "idx", idx }, { "minGrip", Mathf.RoundToInt(minGrip) }, { "lean", me.BotLean ?? 0 } });
-                minGrip = 100f;
+                NetAudit.Event("ridebot", new Dictionary<string, object> { { "phase", "lap-end" }, { "cycle", cycle }, { "idx", idx },
+                    { "kind", RideRoute.KindName(cycle) }, { "aboard", true }, { "hold", myHold } });
                 me.Unhitch();
             }
         }
@@ -245,11 +250,20 @@ public static class RideBots
 /// the old depot pad onto Depot Rd. Pure pursuit on waypoints + a speed loop, through <see cref="TruckControllerV2.InputOverride"/>.
 /// Phases (seconds into a <see cref="CycleSec"/> cycle of NGO server time): 0 teleport to the start, 0–6 parked
 /// (boarding, bags put out), 6–16 creep at 2 m/s past the bags, 16+ run at full throttle through the corner, then brake.
+/// Lap kinds (<see cref="KindOf"/>): rough (full speed through the corner, hard stop; nobody may come off), gentle (5 m/s,
+/// soft stop; the Crew Comfort tip) and crash (a <see cref="CrashDv"/> m/s hit on the straight, as if into a wall: the
+/// truck's crash sensor reads the Δv like any other and every rider flies, unless a Safety Bar holds).
 /// </summary>
 public sealed class RideRoute
 {
     public const double CycleSec = 56.0, CreepStart = 6.0, RunStart = 16.0;
     public const float CreepSpeed = 2f, RunSpeed = 9.6f, GentleSpeed = 5f;
+    /// <summary>The crash lap's hit: between a bare truck's 5 m/s and a Padded Step + Safety Bar's 9.5 m/s.</summary>
+    public const float CrashDv = 7f;
+    public const int LapRough = 0, LapGentle = 1, LapCrash = 2;
+
+    public static int KindOf(long cycle) => (int)(((cycle % 3) + 3) % 3);
+    public static string KindName(long cycle) => KindOf(cycle) == LapRough ? "rough" : KindOf(cycle) == LapGentle ? "gentle" : "crash";
 
     // Westbound on Minivan Mile (north lane) past the Depot Row lots, then a hard right across the old depot pad onto
     // Depot Rd / Elm Ave northbound. (Eastbound runs into the Minivan Meadows gate at x 206 without a permit.)
@@ -265,7 +279,7 @@ public sealed class RideRoute
 
     public TruckControllerV2 Truck { get; }
     readonly bool spawnBags;
-    long teleported = -1, bagsCycle = -1;
+    long teleported = -1, bagsCycle = -1, crashCycle = -1;
     Vector2 cmd;
     bool driving;
     readonly List<TrashBag> bags = new List<TrashBag>();
@@ -302,8 +316,9 @@ public sealed class RideRoute
         if (teleported != cycle && ph < 1.0)
         {
             if (teleported >= 0)
-                NetAudit.Event("ride", new Dictionary<string, object> { { "op", "lapstats" }, { "cycle", teleported }, { "maxV", System.Math.Round(lapMaxV, 2) }, { "maxLat", System.Math.Round(lapMaxLat, 2) }, { "maxBrake", System.Math.Round(lapMaxBrake, 2) } });
+                NetAudit.Event("ride", new Dictionary<string, object> { { "op", "lapstats" }, { "cycle", teleported }, { "kind", KindName(teleported) }, { "maxV", System.Math.Round(lapMaxV, 2) }, { "maxLat", System.Math.Round(lapMaxLat, 2) }, { "maxBrake", System.Math.Round(lapMaxBrake, 2) }, { "maxWindowDv", rtruck != null ? System.Math.Round(rtruck.MaxWindowDv, 2) : -1.0 } });
             lapMaxV = lapMaxLat = lapMaxBrake = 0f;
+            if (rtruck != null) rtruck.ResetSensorPeaks();
             teleported = cycle;
             Teleport();
             if (DepotTruckCargo.IsLocal(Truck) && GameSession.TruckFill01 > 0.5f) GameSession.TakeAllTruckBags();
@@ -314,8 +329,7 @@ public sealed class RideRoute
             PutOutBags(cycle);
         }
 
-        // Even laps are hard (flings at the corner), odd laps gentle (riders hang on; the Crew Comfort tip).
-        bool gentle = (cycle & 1) == 1;
+        bool gentle = KindOf(cycle) == LapGentle;
         float run = gentle ? GentleSpeed : RunSpeed;
         float target;
         if (ph < CreepStart) target = 0f;
@@ -329,6 +343,15 @@ public sealed class RideRoute
             return;
         }
         if (ph >= RunStart && rtruck != null) { lapMaxV = Mathf.Max(lapMaxV, v); lapMaxLat = Mathf.Max(lapMaxLat, Mathf.Abs(rtruck.LatNow)); lapMaxBrake = Mathf.Max(lapMaxBrake, rtruck.BrakeNow); }
+        if (KindOf(cycle) == LapCrash && crashCycle != cycle && ph >= RunStart && v >= RunSpeed - 0.6f && body != null && !body.isKinematic)
+        {
+            // The hit: CrashDv gone in one step, on the machine that simulates the truck (the conductor drives it).
+            crashCycle = cycle;
+            body.linearVelocity -= Truck.transform.forward * Mathf.Min(CrashDv, v);
+            NetAudit.Event("ride", new Dictionary<string, object> { { "op", "botcrash" }, { "cycle", cycle },
+                { "v", System.Math.Round(v, 2) }, { "dv", System.Math.Round(Mathf.Min(CrashDv, v), 2) },
+                { "truck", (long)(Truck.IsSpawned ? Truck.NetworkObjectId : 0) } });
+        }
         float steer = Steer(v);
         float throttle = Mathf.Clamp((target - v) * 0.7f, -1f, 1f);
         if (target >= RunSpeed - 0.01f && v < target) throttle = 1f;

@@ -9,8 +9,9 @@ using UnityEngine.UI;
 /// top bar = cash, the day/night clock, the rank chip (ProgressionHud) and the truck gauge; left column = City Cleanliness,
 /// finds and the rabies widget; right column = the route panel (and Head Office memos under it); the centre lane = toasts;
 /// the bottom dock = the interaction prompt (<see cref="FeelHudPrompt"/>, TooltipUI forwards to it) over the hint chips
-/// (<see cref="FeelHudHints"/>); bottom-left = the minimap (a nested canvas). Plus floating world text and the big treasure
-/// reveal card. Modes (§8.3): Station (the first-person sort station) collapses the top bar to a slim pill and keeps the
+/// (<see cref="FeelHudHints"/>); bottom-left = the minimap (a nested canvas); bottom-right = the pocket / gear bar
+/// (<see cref="FeelHudHotbar"/>: hidden while seated at chess and in Station mode, where its keys do nothing). Plus floating
+/// world text and the big treasure reveal card. Modes (§8.3): Station (the first-person sort station) collapses the top bar to a slim pill and keeps the
 /// bin signs clear; Laptop keeps cash and rabies; Paused (solo) and Map keep only toasts. Hidden while there is no local
 /// player (menus). Never takes raycasts, so it can't block input. Built entirely in code: no prefab, no assets.
 /// </summary>
@@ -56,6 +57,9 @@ public class FeelHud : MonoBehaviour
         public bool solo;
         /// <summary>The town map anchor is active (the Neighborhood): the minimap may show.</summary>
         public bool hasMap;
+        /// <summary>The local player is seated at a chess board (<see cref="PlayerController.IsPlayingChess"/>): the pocket / gear
+        /// bar hides, since none of its keys work there.</summary>
+        public bool chess;
     }
 
     Canvas canvas;
@@ -124,6 +128,7 @@ public class FeelHud : MonoBehaviour
     FeelHudCity city;
     FeelHudRoute route;
     FeelHudRabies rabies;
+    DrunkHud drunk;
     Minimap minimap;
 
     // layout memory (last frame's content, for this frame's layout)
@@ -221,6 +226,8 @@ public class FeelHud : MonoBehaviour
         rabiesGroup = Group(rabiesHolder);
         rabies = new FeelHudRabies();
         rabies.Build(rabiesHolder);
+        drunk = new DrunkHud(); // same holder: under the rabies widget, and up over the laptop too
+        drunk.Build(rabiesHolder);
 
         toasts = new FeelHudToasts();
         toasts.Build(FeelUi.Stretch("Toasts", root));
@@ -497,8 +504,47 @@ public class FeelHud : MonoBehaviour
 
     // ------------------------------------------------------------------ events
 
+    // ---- cash hold (Docs/Casino.md §4): a casino screen keeps the HUD's cash still until its own reveal has played, so
+    // the ticker (and its counting clicks) cannot give a win away before the reels, the wheel or the dealer have shown it.
+    static object cashHolder;
+    static float cashHeldAt, cashHeldValue;
+    /// <summary>Cash changes that arrived during the hold, replayed as one change when it ends.</summary>
+    float heldDelta;
+    /// <summary>A hold nobody released (a screen that died mid-spin) lets go by itself after this long.</summary>
+    public const float CashHoldMaxSeconds = 15f;
+
+    /// <summary>Freeze the HUD's cash readout at what it shows now until <see cref="ReleaseCash"/> with the same holder.
+    /// Call it BEFORE the request that moves the money. Every cash change meanwhile is shown, as one, on release.</summary>
+    public static void HoldCash(object holder)
+    {
+        if (holder == null) return;
+        if (!CashHeld) cashHeldValue = GameSession.Cash;
+        cashHolder = holder;
+        cashHeldAt = Time.unscaledTime;
+    }
+
+    public static void ReleaseCash(object holder)
+    {
+        if (ReferenceEquals(cashHolder, holder)) cashHolder = null;
+    }
+
+    static bool CashHeld
+    {
+        get
+        {
+            if (cashHolder == null) return false;
+            bool gone = cashHolder is UnityEngine.Object o && o == null; // the holder was destroyed without letting go
+            if (gone || Time.unscaledTime - cashHeldAt > CashHoldMaxSeconds) { cashHolder = null; return false; }
+            return true;
+        }
+    }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetCashHold() => cashHolder = null;
+
     void OnCashChanged(float delta, string reason, Vector3? worldPos)
     {
+        if (CashHeld) { heldDelta += delta; return; }
         bool up = delta > 0f;
         bool calm = GameSettings.ReduceFlashing;
         cashFlashColor = up ? FeelUi.GoodGreen : FeelUi.BadRed;
@@ -587,9 +633,16 @@ public class FeelHud : MonoBehaviour
         if (d.finds > 0) AddLeft(FindsHeight);
         if (activityLines.Count > 0) AddLeft(12f + activityLines.Count * 24f);
         if (rabiesUp) AddLeft(FeelHudRabies.Height);
+        if (drunk.Presence > 0.01f) AddLeft(DrunkHud.Height);
 
-        // the dock's contents decide its height (its width depends only on the screen and the minimap setting)
-        float dockW = DockWidth(size.x, minimapCfg);
+        // The pocket / gear bar has a corner of its own (HudLayout's Pocket zone), not a row in the dock. It stays off while seated
+        // at chess (the board takes your hands) and in Station mode (the sort station, casino seats and the tug own those keys:
+        // `full` leaves Station out), and then reserves nothing.
+        bool business = !solo && (full || mode == HudMode.Laptop);
+        var pocket = hotbar.Sync(HudLayout.PocketFor(size, business), mode, preview, full && !d.blocked && !d.chess);
+
+        // the dock's contents decide its height (its width depends only on the screen, the minimap setting and the pocket bar)
+        float dockW = HudLayout.DockWidth(size.x, minimapCfg, pocket.x);
         bool dockOn = full || station;
         hints.SetHintsEnabled(preview || GameSettings.ControlHints);
         hints.SetText(dockOn ? hintWanted : null);
@@ -597,16 +650,14 @@ public class FeelHud : MonoBehaviour
         hints.SetPrompt(prompt.HasPrompt ? prompt.ShownKey : null, prompt.HasPrompt ? FeelHudPrompt.WantedText : null);
         var hs = hints.Sync(dockW);
         float promptH = prompt.HasPrompt && dockOn ? prompt.Size.y : 0f;
-        float hotbarH = dockOn ? hotbar.Sync(dockW, mode, preview) : 0f;
-        float dockWanted = (promptH > 0f ? promptH : 0f) + (promptH > 0f && hs.y > 0f ? 10f : 0f) + hs.y +
-                           (hotbarH > 0f ? hotbarH + 8f : 0f);
+        float dockWanted = (promptH > 0f ? promptH : 0f) + (promptH > 0f && hs.y > 0f ? 10f : 0f) + hs.y;
         lastDockWanted = dockWanted;
 
         var inputs = new HudLayout.Inputs
         {
             size = size, mode = mode, minimapWanted = minimapWanted, minimapDiameter = minimapCfg, minimapLabel = mapLabel,
-            rabiesUp = rabiesUp, leftWanted = leftWanted, dockWanted = dockWanted,
-            businessContext = !solo && (full || mode == HudMode.Laptop),
+            rabiesUp = rabiesUp, leftWanted = leftWanted, dockWanted = dockWanted, pocketWanted = pocket,
+            businessContext = business,
         };
         if (CenterCard(size, out var card)) { inputs.hasCenterCard = true; inputs.centerCard = card; }
         layout = HudLayout.Compute(inputs);
@@ -654,9 +705,10 @@ public class FeelHud : MonoBehaviour
         hints.Tick(new Vector2(cx - hs.x * 0.5f, hy), dockOn, dt);
         float py = (hs.y > 0f ? hy - 10f : size.y - HudLayout.DockBottom) - prompt.Size.y;
         prompt.Tick(new Vector2(cx - prompt.Size.x * 0.5f, py), dockOn, dt);
-        float hotbarBottom = (hs.y > 0f ? hy - 10f : size.y - HudLayout.DockBottom) - promptH - 8f;
-        hotbar.Tick(new Vector2(cx - hotbar.Size.x * 0.5f, hotbarBottom - hotbarH), dockOn && !d.blocked, dt);
         TickHeldItem(mode, dockR, size, dt, preview);
+
+        // ---- pocket / gear bar: the bottom-right corner HudLayout reserved for it
+        hotbar.Tick(layout.pocket, dt);
 
         // ---- minimap (bottom-left)
         minimap.Tick(layout, layout.minimapVisible && minimapWanted && !d.blocked, mapLabel, dt, preview);
@@ -666,14 +718,6 @@ public class FeelHud : MonoBehaviour
         toasts.Tick(dt, time);
         floaters.Tick(dt, cameraOverride != null ? cameraOverride : Camera.main, canvas);
         reveal.Tick(dt, time);
-    }
-
-    /// <summary>The dock width for a screen <paramref name="refW"/> wide (HudLayout's formula).</summary>
-    static float DockWidth(float refW, float minimapCfg)
-    {
-        float dCfg = Mathf.Max(HudLayout.MinimapSmallest, minimapCfg);
-        return Mathf.Clamp(Mathf.Min(HudLayout.DockMaxWidth, refW - 2f * (HudLayout.Margin + dCfg + HudLayout.Gap)),
-                           Mathf.Min(HudLayout.DockMinWidth, refW - 2f * HudLayout.Margin), HudLayout.DockMaxWidth);
     }
 
     /// <summary>A centre card is up (the treasure reveal, or ProgressionHud's stamp cards): its top-down rect.</summary>
@@ -752,6 +796,12 @@ public class FeelHud : MonoBehaviour
         float ry = station ? col.yMax - FeelHudRabies.Height : y;
         rabiesY = rabiesY < 0f || station ? ry : Mathf.Lerp(rabiesY, ry, 1f - Mathf.Exp(-12f * dt));
         rabies.SetTopLeft(new Vector2(col.xMin, rabiesY));
+
+        // drunk meter: under the rabies widget (Station mode: stacked above it at the bottom of the column)
+        drunk.SetWidth(w);
+        drunk.Tick(dt, time);
+        float rabiesTaken = (FeelHudRabies.Height + ColumnGap) * rabies.Presence;
+        drunk.SetTopLeft(new Vector2(col.xMin, station ? col.yMax - DrunkHud.Height - rabiesTaken : rabiesY + rabiesTaken));
     }
 
     HudData GatherLive()
@@ -761,7 +811,8 @@ public class FeelHud : MonoBehaviour
         d.visible = pc != null;
         if (!d.visible) return d;
         d.blocked = PlayerController.IsUIBlocking;
-        d.cash = GameSession.Cash;
+        d.chess = pc.IsPlayingChess;
+        d.cash = CashHeld ? cashHeldValue : GameSession.Cash;
         d.day = GameSession.Day;
         d.finds = GameSession.FindCount; // valuables only: kept parts are bench stock, not finds
         var truck = TruckHudContext.Resolve(pc);
@@ -824,6 +875,13 @@ public class FeelHud : MonoBehaviour
     void TickCash(HudData d, float dt)
     {
         if (!cashInit) { shownCash = d.cash; cashInit = true; }
+        if (heldDelta != 0f && !CashHeld)
+        {
+            // the hold is over: what happened meanwhile shows now, as one change
+            float held = heldDelta;
+            heldDelta = 0f;
+            if (Mathf.Abs(held) >= 0.005f) OnCashChanged(held, null, null);
+        }
         float diff = d.cash - shownCash;
         if (Mathf.Abs(diff) > 0.0001f)
         {
@@ -968,6 +1026,7 @@ public class FeelHud : MonoBehaviour
         Add("Route", route.Panel, route.Presence * gameplayGroup.alpha);
         if (prompt.Alpha > 0.01f && dockGroup.alpha > 0.01f) into.Add(("Prompt", Aabb(prompt.Panel)));
         if (hints.Alpha > 0.01f && dockGroup.alpha > 0.01f && hints.Size.x > 0f) into.Add(("Hints", Aabb(hints.Root)));
+        if (hotbar.Alpha > 0.01f && dockGroup.alpha > 0.01f && hotbar.Size.x > 0f) into.Add(("Pocket", Aabb(hotbar.Root)));
         if (minimap.Visible)
         {
             // the lid and the pill as drawn (each must also stay inside the minimap zone)

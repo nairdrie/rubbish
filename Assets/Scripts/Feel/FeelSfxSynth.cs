@@ -16,6 +16,8 @@ public static class FeelSfxSynth
         "pickup", "drop", "throw", "whoosh", "thud", "bag_land", "bag_burst", "rustle", "toss_in", "truck_full",
         "ding", "cash", "buzz", "sparkle", "rare", "legendary", "crunch", "compactor", "boom", "click", "door",
         "notify", "squeak", "pop", "combo", "horn", "engine_start", "beep", "slam", "splat",
+        // sort streak (SortStreakHud): a climbing pluck per sort, a stinger per tier, a fanfare at x10, a deflating "womp" when it is lost
+        "streak_note", "streak_up", "streak_max", "streak_lost", "streak_cool",
         // living world: critters, rabies, day/night ambience
         "hiss", "chitter", "snore", "grumble", "bite", "ow", "syringe", "rooster", "owl", "cricket",
         "goblin_angry", "raccoon_scream", "sniff",
@@ -270,6 +272,61 @@ public static class FeelSfxSynth
                 s.Tone(0.065f, 0.22f, 1318.5f, 1318.5f, W.Soft, 0.45f, 0.002f, 1.5f);
                 s.Ring(0.065f, 0.22f, 2637f, 0.12f, 0.08f);
                 return s.Finish(0.65f);
+
+            // ---------------------------------------------------------------- sort streak (SortStreakHud)
+            case "streak_note": // one bright pluck; the HUD pitches it up a pentatonic ladder as the streak grows
+                s = new Synth(0.42f, seed);
+                s.Bell(0f, 0.4f, 659.25f, 2f, 1.6f, 0.7f, 0.14f, 0.07f);
+                s.Ring(0f, 0.3f, 1318.5f, 0.2f, 0.07f);
+                s.Ring(0f, 0.2f, 3136f, 0.06f, 0.03f);
+                s.Noise(0f, 0.02f, 0.25f, F.HP, 5000f, 5000f, 0.0005f, 2f);
+                return s.Finish(0.6f);
+
+            case "streak_up": // tier up: a fast rising run into a shimmering top note, with an air whoosh underneath
+            {
+                s = new Synth(0.85f, seed);
+                float[] run = { 784f, 987.8f, 1174.7f, 1568f };
+                for (int i = 0; i < run.Length; i++)
+                {
+                    bool top = i == run.Length - 1;
+                    s.Bell(i * 0.055f, top ? 0.7f : 0.22f, run[i], 2f, 2f, 0.5f, top ? 0.3f : 0.1f, 0.1f);
+                    s.Tone(i * 0.055f, top ? 0.5f : 0.14f, run[i] * 0.5f, run[i] * 0.5f, W.Tri, 0.18f, 0.003f, 1.6f);
+                }
+                s.Noise(0f, 0.3f, 0.3f, F.BP, 500f, 5200f, 0.2f, 1.5f, 0.7f);
+                for (int i = 0; i < 7; i++)
+                    s.Ring(0.2f + i * 0.045f + s.Rand01() * 0.02f, 0.22f, 2637f + 523f * (i % 4), 0.1f, 0.06f);
+                return s.Finish(0.85f);
+            }
+
+            case "streak_max": // x10: a brass run, a held major chord, a cymbal wash and a sparkle shower
+            {
+                s = new Synth(2.1f, seed);
+                float[] run = { 523.25f, 659.25f, 783.99f, 1046.5f };
+                for (int i = 0; i < run.Length; i++) s.Brass(i * 0.085f, 0.12f, run[i], 0.5f, 0f, 0f, 700f, 2800f);
+                float[] chord = { 523.25f, 659.25f, 783.99f, 1046.5f, 1318.5f };
+                for (int i = 0; i < chord.Length; i++) s.Brass(0.36f, 1.5f, chord[i], i == 0 ? 0.5f : 0.34f, 5.5f, 0.012f, 600f, 2600f);
+                s.Tone(0.36f, 0.7f, 110f, 48f, W.Sine, 0.7f, 0.003f, 2f);
+                s.Noise(0.36f, 1.6f, 0.3f, F.HP, 7000f, 5500f, 0.004f, 2.2f);
+                s.Noise(0.34f, 0.35f, 0.4f, F.BP, 1200f, 6000f, 0.25f, 1.2f, 0.7f);
+                float[] stars = { 2093f, 2637f, 3136f, 4186f, 3520f };
+                for (int i = 0; i < 18; i++)
+                    s.Ring(0.5f + i * 0.07f + s.Rand01() * 0.03f, 0.3f, stars[i % stars.Length], 0.14f, 0.07f);
+                return s.Finish(0.9f, 1.3f);
+            }
+
+            case "streak_lost": // a deflating "womp" with a soft thud: sad, but not a scold
+                s = new Synth(0.7f, seed);
+                s.Tone(0f, 0.55f, 420f, 130f, W.Saw, 0.5f, 0.01f, 1.4f, 7f, 0.03f);
+                s.FilterRegion(0f, 0.55f, F.LP, 1100f);
+                s.Tone(0.02f, 0.3f, 150f, 55f, W.Sine, 0.7f, 0.003f, 2f);
+                s.Noise(0.04f, 0.4f, 0.18f, F.LP, 2400f, 300f, 0.01f, 1.6f);
+                return s.Finish(0.7f);
+
+            case "streak_cool": // a heat tier slips away: one small falling bloop
+                s = new Synth(0.22f, seed);
+                s.Tone(0f, 0.2f, 780f, 440f, W.Sine, 0.6f, 0.004f, 1.6f);
+                s.Ring(0f, 0.15f, 1170f, 0.12f, 0.05f);
+                return s.Finish(0.5f);
 
             case "horn": // HONK
                 s = new Synth(0.6f, seed);

@@ -252,7 +252,7 @@ That has a few effects:
 
 ### 6.2 Hosting and joining
 
-The host clicks **Host with Friends** on the main menu. That opens the shop over Unity Relay, opens a friends-only Steam
+The host clicks **Host with Friends** on the main menu, then picks a save or **Start a new save**. That opens the shop over Unity Relay, opens a friends-only Steam
 lobby, and makes an **invite code**. The code is on the **Esc** menu's **Invite friends** page, hidden until **Show** while
 Streamer mode is on (the default); **Copy** works without showing it. Friends, with Rubbish already running, can get in these
 ways (their main menu's **Join a friend** page also lists Steam friends who are hosting, with a **JOIN** button, and the
@@ -265,8 +265,11 @@ invites they got):
 3. **Invite code:** this is the fallback if Steam is being difficult. The friend clicks **Join a friend** on the main menu, opens
    the **Code** tab, types the host's code and clicks **Join**.
 
+Joining from the main menu (a code, the friends list, an invite card) asks which save to bring, or a new one, before it
+connects. Joining from Steam itself asks the same question once you are in the host's Town.
+
 A crew holds up to 4 people; a fifth gets *"Crew is full (4/4)"*. **Esc** opens the in-game menu, a timesheet: **Resume**,
-**Invite friends** (guests see the code they joined with), **Settings**, **Unstuck**, **Messages**, the **Crew** list (the host
+**Invite friends** (guests see the code they joined with), **Settings**, **Unstuck** (on foot it calls your own truck to you, −$25 unless Tony's Unflip Button is installed; it only moves *you* if you're really stuck), **Messages**, the **Crew** list (the host
 can kick) and the **Town rules**, then **Close the shop** for the host (everyone goes home) or **Leave the Boss's shift** for a
 guest, and **Quit to desktop**. Solo play pauses while it's open; co-op never pauses (the stamp says ON BREAK). Esc at the
 laptop, the sorting table, the map or the chess board backs out of those first. The session lasts as

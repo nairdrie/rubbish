@@ -177,7 +177,7 @@ public static class ScrapazonCatalog
     {
         get
         {
-            if (all == null) { all = Build(); RideShop.AddTo(all); WorkshopDecorShop.AddTo(all); } // F1 riding upgrades (Riding/RideShop.cs)
+            if (all == null) { all = Build(); RideShop.AddTo(all); WorkshopDecorShop.AddTo(all); HogShop.AddTo(all); DumpsterShop.AddTo(all); } // F1 riding upgrades (Riding/RideShop.cs)
             return all;
         }
     }
@@ -194,6 +194,7 @@ public static class ScrapazonCatalog
     {
         ("all", "All"),
         ("truck", "Truck"),
+        (HogShop.Dept, "Air"),              // the Hoverhog and its helipad (Hoverhog/HogShop.cs)
         ("garage", "Garage"),
         ("magnus", "Magnus"),
         ("gear", "Gear"),
@@ -485,9 +486,9 @@ public static class ScrapazonCatalog
             new[] { 900f, 2500f, 8000f }, new[] { 3, 5, 9 },
             new[] { "Compactor Mk II: Auto-Bale", "Hazard Sniffer Nose", "Treasure Rescue Grate" },
             new[] { "It's hungry on its own schedule now.", "Achoo means no.", "RIP 'RIP Wedding Ring' toasts." },
-            new[] { "Auto-compacts at 80% full. COMPACT and BULK COMPACT SHOP pay $0.25/kg; bulk is faster. Recycling still pays more.",
-                    "Dampens hazard bangs for quieter compacting. COMPACT and BULK COMPACT SHOP pay $0.30/kg. No compaction fees at any level.",
-                    "Valuables survive compaction and pop into the KEEP crate (dented, 30% value). COMPACT and BULK COMPACT SHOP pay $0.35/kg; recycling still pays more." },
+            new[] { "Auto-compacts at 80% full. COMPACT and BULK COMPACT SHOP pay $1.00/kg; bulk is faster. Recycling still pays more.",
+                    "Dampens hazard bangs for quieter compacting. COMPACT and BULK COMPACT SHOP pay $1.20/kg. No compaction fees at any level.",
+                    "Valuables survive compaction and pop into the KEEP crate (dented, 30% value). COMPACT and BULK COMPACT SHOP pay $1.40/kg; recycling still pays more." },
             9999f, 4.6f, 2207, null,
             new[]
             {
@@ -514,7 +515,7 @@ public static class ScrapazonCatalog
             new[] { 300f, 2500f }, new[] { 4, 7 },
             new[] { "Hazmat Disposal License (Laminated)", "E-Waste Buyback Program" },
             new[] { "Laminated, so it's official.", "They want your batteries. Don't ask why. Don't ask them anything." },
-            new[] { "Hazard items pay $1.50 each instead of $0.75.", "Hazard items pay $4.00 each." },
+            new[] { "Hazard items pay $6.00 each instead of $3.00.", "Hazard items pay $16.00 each." },
             999f, 4.0f, 308, null,
             new[]
             {
@@ -525,8 +526,8 @@ public static class ScrapazonCatalog
             new[] { 1000f, 6000f }, new[] { 4, 8 },
             new[] { "Trophy Shelf (Holds 6 Finds, Judges You)", "Museum Wing (24 Plinths + Velvet Rope)" },
             new[] { "Show off your 6 best finds. The shelf will judge the rest.", "Admission: free. Touching: no." },
-            new[] { "A shelf over the sort station shows 6 of your best finds (fancier displays get first pick; you can still sell them). +40 Rep every midnight.",
-                    "18 more plinths and a velvet rope above it. +160 Rep every midnight." },
+            new[] { "A shelf over the sort station shows 6 of your best finds (fancier displays get first pick; you can still sell them). +120 Rep every midnight.",
+                    "18 more plinths and a velvet rope above it. +480 Rep every midnight." },
             2999f, 4.7f, 445, null,
             new[]
             {
@@ -551,7 +552,7 @@ public static class ScrapazonCatalog
             new[] { 2500f }, new[] { 6 },
             new[] { "Lit Glass Display Case (Fingerprints Sold Separately)" },
             new[] { "Like a jewelry store. In a garage. Next to a garage door." },
-            new[] { "A lit glass case by the garage door shows 4 finds, turning slowly under little lights. +10 Rep every midnight while it shows something, plus Showcase Rep for each Rare (+2), Epic (+4) or Legendary (+8) inside." },
+            new[] { "A lit glass case by the garage door shows 4 finds, turning slowly under little lights. +30 Rep every midnight while it shows something, plus Showcase Rep for each Rare (+6), Epic (+12) or Legendary (+24) inside." },
             5999f, 4.6f, 318, null,
             new[]
             {
@@ -563,7 +564,7 @@ public static class ScrapazonCatalog
             new[] { 9000f }, new[] { 9 },
             new[] { "Pedestal of Honor (Velvet Rope + Spotlight)" },
             new[] { "For your single greatest find. Do not touch. Do not breathe on it." },
-            new[] { "A marble pedestal behind a velvet rope, under its own spotlight, shows your single best find. +25 Rep every midnight while it shows something, plus double Showcase Rep for its find (a Legendary: +16)." },
+            new[] { "A marble pedestal behind a velvet rope, under its own spotlight, shows your single best find. +75 Rep every midnight while it shows something, plus double Showcase Rep for its find (a Legendary: +48)." },
             19999f, 4.9f, 77, "Museum Quality*",
             new[]
             {
@@ -575,7 +576,7 @@ public static class ScrapazonCatalog
             new[] { 22000f }, new[] { 11 },
             new[] { "The Legendary Vault (Epic+ Only, No Riff-Raff)" },
             new[] { "A bank vault for your best garbage. The door weighs more than your truck." },
-            new[] { "A gold-lit vault wall by the office (never behind the truck) with a huge round door: 6 niches for Epic and Legendary finds only. +40 Rep every midnight while it holds something, plus Showcase Rep for each find inside (Epic +4, Legendary +8)." },
+            new[] { "A gold-lit vault wall by the office (never behind the truck) with a huge round door: 6 niches for Epic and Legendary finds only. +120 Rep every midnight while it holds something, plus Showcase Rep for each find inside (Epic +12, Legendary +24)." },
             99999f, 4.8f, 12, "Ultra Exclusive",
             new[]
             {
@@ -652,7 +653,7 @@ public static class ScrapazonCatalog
         // =============================================================== GEAR
         // Personal gear (work gloves, boots, headlamp, treasure wand, rabies vaccine, hard hat, grabber pole) is no longer
         // sold here: it is printed from kept parts in SolidWaste 3D's blueprint tree (Workshop/CallingCatalog.cs).
-        // What stays in this department: consumables, gnomes, the trap and RideShop's grip gloves.
+        // What stays in this department: consumables, gnomes and the trap (RideShop's grip gloves left with the grip meter).
 
         // F3 (Docs/Multiplayer.md §14.3): the bag cannon (truck).
         Up(ShopIds.BagCannon, "truck", null, "Blammo Pneumatics",
@@ -673,19 +674,19 @@ public static class ScrapazonCatalog
             new[] { 600f }, new[] { 4 },
             new[] { "Minivan Meadows Collection Permit (Laminated, Slightly Sticky)" },
             new[] { "An HOA community. Pop. 64 minivans." },
-            new[] { "Opens Minivan Meadows east of Mildly Pleasant Acres. $15 per bag, Rep ×1.5. Trust starts at 40%." },
+            new[] { "Opens Minivan Meadows east of Mildly Pleasant Acres. $45 per bag, Rep ×1.5. Trust starts at 40%." },
             0f, 3.8f, 64, "New district",
             new[]
             {
                 R(3, "the permit is sticky. we don't know why. the HOA won't say", "Karen (HOA President)"),
-                R(5, "they pay $15 a bag. FIFTEEN. for TRASH", "Every Garbage Person"),
+                R(5, "they pay $45 a bag. FORTY-FIVE. for TRASH", "Every Garbage Person"),
                 R(4, "the minivans watch you. all 64 of them", "Brent"),
             }),
         Up(ShopIds.PermitCouponCommons, "permits", new[] { "business" }, "Coupon Commons Merchants' Association",
             new[] { 1800f }, new[] { 5 },
             new[] { "Coupon Commons Commercial Collection Permit" },
             new[] { "Loading alleys, flattened boxes and everyone's closing-time rubbish." },
-            new[] { "After Meadows: cross the river to Coupon Commons. Cardboard-heavy commercial collections pay $25 per bag + $5 on-time tip, Rep ×1.75." },
+            new[] { "After Meadows: cross the river to Coupon Commons. Cardboard-heavy commercial collections pay $75 per bag + $15 on-time tip, Rep ×1.75." },
             0f, 4.1f, 18, "New district",
             new[] { R(5, "the boxes were already flattened. employee of the month", "Pat (Loading Bay)") },
             new[] { P(ShopIds.PermitMinivanMeadows + ":1") }),
@@ -693,7 +694,7 @@ public static class ScrapazonCatalog
             new[] { 3500f }, new[] { 7 },
             new[] { "Snootington Hills Collection Permit (Embossed, Smells Like Old Money)" },
             new[] { "Hedges. Monocles. Very nice trash." },
-            new[] { "After Coupon Commons: opens the scenic northern roads into Snootington Hills. $40 per bag + a $15 tip, Rep ×2. Trust starts at 40%." },
+            new[] { "After Coupon Commons: opens the scenic northern roads into Snootington Hills. $120 per bag + a $45 tip, Rep ×2. Trust starts at 40%." },
             0f, 4.2f, 14, "New district",
             new[]
             {
@@ -704,7 +705,7 @@ public static class ScrapazonCatalog
             new[] { 7000f }, new[] { 8 },
             new[] { "Stackington Heights High-Rise Collection Permit" },
             new[] { "More floors. More doorbells. One very busy loading bay." },
-            new[] { "After Snootington Hills: opens the riverside condo district. Glass- and metal-heavy collections pay $55 per bag + $20 on-time tip, Rep ×2.4." },
+            new[] { "After Snootington Hills: opens the riverside condo district. Glass- and metal-heavy collections pay $165 per bag + $60 on-time tip, Rep ×2.4." },
             0f, 4.3f, 16, "New district",
             new[] { R(4, "please use the service entrance. all forty of us signed this review", "The Condo Board") },
             new[] { P(ShopIds.PermitSnootingtonHills + ":1") }),
@@ -712,7 +713,7 @@ public static class ScrapazonCatalog
             new[] { 12000f }, new[] { 10 },
             new[] { "Billionaire Bluffs Collection Permit (Signed by a Butler)" },
             new[] { "The guard will say 'Name? ...Garbage? ...Fine.'" },
-            new[] { "Raises the Bluffs boom barrier. $80 per bag + a $40 butler tip, Rep ×3. Butler Drops at 7 AM and 5 PM. Trust starts at 40%." },
+            new[] { "Raises the Bluffs boom barrier. $240 per bag + a $120 butler tip, Rep ×3. Butler Drops at 7 AM and 5 PM. Trust starts at 40%." },
             0f, 4.9f, 8, "New district",
             new[]
             {

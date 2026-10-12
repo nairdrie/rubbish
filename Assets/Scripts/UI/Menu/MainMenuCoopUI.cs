@@ -45,7 +45,7 @@ public sealed class MainMenuCoopUI : MonoBehaviour
     ContinueCard card;
     JoinScreen join;
     InviteCards invites;
-    UiButton soloB, hostB, joinB, changeB, crewB, settingsB, quitB;
+    UiButton soloB, hostB, joinB, crewB, settingsB, quitB;
     readonly List<UiButton> columnButtons = new List<UiButton>();
     readonly List<Selectable> chain = new List<Selectable>();
     TextMeshProUGUI versionText;
@@ -180,7 +180,6 @@ public sealed class MainMenuCoopUI : MonoBehaviour
         soloB = MakeButton(UiText.MenuPlaySolo, OnPlaySolo, UiButtonStyle.Primary, HoverKind.PlaySolo);
         hostB = MakeButton(UiText.MenuHostFriends, OnHost, UiButtonStyle.Go, HoverKind.Host);
         joinB = MakeButton(UiText.MenuJoinFriend, OnJoin, UiButtonStyle.Sticker, HoverKind.Join);
-        changeB = MakeButton("Choose business", OnChooseBusiness, UiButtonStyle.Sticker, HoverKind.None);
         crewB = MakeButton(UiText.MenuCrewCard, null, UiButtonStyle.Sticker, HoverKind.CrewCard);
         settingsB = MakeButton(UiText.MenuSettings, OnSettings, UiButtonStyle.Sticker, HoverKind.Settings);
         quitB = MakeButton(UiText.MenuQuit, OnQuit, UiButtonStyle.Danger, HoverKind.Quit);
@@ -323,18 +322,26 @@ public sealed class MainMenuCoopUI : MonoBehaviour
         host.Continue();
     }
 
+    // Nick, 2026-10-09: "first choice should be solo or play with friends THEN a separate choose a save or new menu.
+    // same for join. join with save or new". Continue (the card) is still one click on the last save.
     void OnPlaySolo()
     {
         if (host == null || IsBusy()) return;
-        PlayHonk();
-        host.PlaySolo();
+        BusinessPicker.ShowFor(BusinessPicker.Purpose.Solo, () => { if (host == null || IsBusy()) return; PlayHonk(); host.PlaySolo(); }, () => AfterSavePicker(soloB));
     }
 
     void OnHost()
     {
         if (host == null || IsBusy()) return;
-        PlayHonk();
-        host.HostWithFriends();
+        BusinessPicker.ShowFor(BusinessPicker.Purpose.Host, () => { if (host == null || IsBusy()) return; PlayHonk(); host.HostWithFriends(); }, () => AfterSavePicker(hostB));
+    }
+
+    /// <summary>The save step closed (picked or backed out): the Continue card shows whatever is selected now.</summary>
+    void AfterSavePicker(UiButton back)
+    {
+        if (this == null) return;
+        card?.Show(ContinueCard.FromLegacySave());
+        if (back != null && column != null && column.gameObject.activeInHierarchy) UiKit.Focus(back.gameObject);
     }
 
     void OnJoin()
@@ -354,7 +361,7 @@ public sealed class MainMenuCoopUI : MonoBehaviour
     void OnJoinCode(string code)
     {
         if (host == null || IsBusy()) return;
-        host.Join(code);
+        BusinessPicker.ShowFor(BusinessPicker.Purpose.Join, () => { if (host != null && !IsBusy()) host.Join(code); });
     }
 
     void OnJoinClosed()
@@ -369,17 +376,6 @@ public sealed class MainMenuCoopUI : MonoBehaviour
     void OnSettings()
     {
         SettingsScreen.Show(() => { if (settingsB != null) UiKit.Focus(settingsB.gameObject); });
-    }
-
-    void OnChooseBusiness()
-    {
-        if (IsBusy()) return;
-        BusinessPicker.ShowForPlay(null, () =>
-        {
-            if (this == null) return;
-            card?.Show(ContinueCard.FromLegacySave());
-            if (changeB != null) UiKit.Focus(changeB.gameObject);
-        });
     }
 
     void OnQuit()

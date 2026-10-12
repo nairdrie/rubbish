@@ -20,32 +20,34 @@ public static class RepIds
 /// </summary>
 public static class RepValues
 {
-    public const float BagOnTime = 3f;              // curb bag into the hopper within its district's on-time window
-    public const float BagLate = 1f;                // a late bag (any age)
-    public const float CurbClean = 2f;              // the house's last curb bag was collected
-    public const float ItemSorted = 0.5f;           // correct bin (Magnus counts; CRUSH ALL gives nothing)
-    public const float Contamination = -2f;         // wrong bin (Magnus's misses too)
-    public const float TreasureUncommon = 5f;       // valuable into the KEEP crate, by rarity
-    public const float TreasureRare = 12f;
-    public const float TreasureEpic = 25f;
-    public const float TreasureLegendary = 50f;
-    public const float CleanStreets = 120f;         // × clean01² per unlocked district at midnight
-    public const float NeglectedCurb = -3f;         // per neglected curb at midnight
-    public const float Shift = 150f;                // (top) at midnight, if ≥ ShiftMinBags went into the truck that day
+    // Pace pass 2026-10-12 (Docs/Progression.md §3.6): Rep ×3-4 so one full load of the Curb Pup (about 17 bags, 150 items) earns
+    // rank 2 (350 Rep). The old values are in the comments.
+    public const float BagOnTime = 12f;             // curb bag into the hopper within its district's on-time window (was 3)
+    public const float BagLate = 8f;                // a late bag (any age) (was 1: the messy start's old bags are all late)
+    public const float CurbClean = 10f;             // the house's last curb bag was collected (was 2)
+    public const float ItemSorted = 3f;             // correct bin (Magnus counts; CRUSH ALL gives nothing) (was 0.5)
+    public const float Contamination = -5f;         // wrong bin (Magnus's misses too) (was -2)
+    public const float TreasureUncommon = 15f;      // valuable into the KEEP crate, by rarity (was 5 / 12 / 25 / 50)
+    public const float TreasureRare = 36f;
+    public const float TreasureEpic = 75f;
+    public const float TreasureLegendary = 150f;
+    public const float CleanStreets = 360f;         // × clean01² per unlocked district at midnight (was 120)
+    public const float NeglectedCurb = -6f;         // per neglected curb at midnight (was -3)
+    public const float Shift = 450f;                // (top) at midnight, if ≥ ShiftMinBags went into the truck that day (was 150)
     public const int ShiftMinBags = 5;
-    public const float WorkOrder = 40f;             // (top) per completed Work Order
-    public const float ChessWin = 25f;              // × max(1, chess tier); once per in-game day
-    public const float TrophyShelfL1 = 40f;         // per midnight with trophy_shelf L1
-    public const float TrophyShelfL2 = 160f;        // per midnight with trophy_shelf L2 (museum wing)
+    public const float WorkOrder = 120f;            // (top) per completed Work Order (was 40)
+    public const float ChessWin = 75f;              // × max(1, chess tier); once per in-game day (was 25)
+    public const float TrophyShelfL1 = 120f;        // per midnight with trophy_shelf L1 (was 40)
+    public const float TrophyShelfL2 = 480f;        // per midnight with trophy_shelf L2 (museum wing) (was 160)
     public const float CrewShare = 0.5f;            // a raccoon crew's bags earn half of bag_ontime / bag_late
 
     // WorldLife (Docs/WorldLife.md §9.1). Base values: Ledger.Rep applies the district multiplier; never escalated.
-    public const float NeighborFlattened = -4f;     // a resident / pedestrian flattened by your truck
-    public const float NeighborCarShunt = -3f;      // a car shunted (moving or parked)
-    public const float NeighborMinor = -1f;         // a dog near miss, or a thrown-item flop
-    public const float NoiseComplaint = -1f;        // a night honk near houses (22:00–06:00)
+    public const float NeighborFlattened = -8f;     // a resident / pedestrian flattened by your truck (was -4)
+    public const float NeighborCarShunt = -6f;      // a car shunted (moving or parked) (was -3)
+    public const float NeighborMinor = -2f;         // a dog near miss, or a thrown-item flop (was -1)
+    public const float NoiseComplaint = -2f;        // a night honk near houses (22:00–06:00) (was -1)
     public const int NoiseComplaintsPerNight = 3;   // ...at most this many per night per district
-    public const float Neighborly = 1f;             // a resident handed you their bag ("Take bag")
+    public const float Neighborly = 3f;             // a resident handed you their bag ("Take bag") (was 1)
     public const int NeighborlyPerDay = 10;         // ...at most this many per in-game day
 }
 
@@ -57,6 +59,17 @@ public static class LedgerIds
         HazardFine = "hazard_fine", CleanStreets = "clean_streets", NeglectFine = "neglect_fine", Landfill = "landfill",
         WorkOrder = "work_order", Ebae = "ebae", Pawn = "pawn",
         Hospital = "hospital", Tow = "tow", Style = "style", Purchase = "purchase";
+
+    // Passing out drunk, solo: the cab back to the depot (Docs/Casino.md §5).
+    public const string CabFare = "cab_fare";
+
+    // The Lucky Raccoon (Docs/Casino.md §4, §5): stakes charged by the host, winnings credited by the host, drinks at the bar.
+    public const string CasinoWager = "casino_wager", CasinoPayout = "casino_payout", BarTab = "bar_tab";
+
+    /// <summary>A night out, not the business: stakes, winnings, drinks and the cab home. These postings stay out of the
+    /// day's "Net" (so they never price Work Orders), out of lifetime earnings and out of payroll shares; the shift report
+    /// lists them on lines of their own (<see cref="DailyStats.MoveLeisure"/>).</summary>
+    public static bool IsLeisure(string id) => id == CasinoWager || id == CasinoPayout || id == BarTab || id == CabFare;
 
     // WorldLife (Docs/WorldLife.md §9.1): flattened residents / shunted cars, and the nightly City Works invoice for props.
     public const string NeighborDamages = "neighbor_damages", CityWorks = "city_works";

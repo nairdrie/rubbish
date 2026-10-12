@@ -19,7 +19,7 @@ public partial class ChuckPuppet
     RideRider rideRider;
     Transform rideTruck;
     int rideHold = -1;
-    float ridePoseW, rideLean, rideLat, rideBrake;
+    float ridePoseW, rideLat, rideBrake, rideSide, rideShuffle;
     // Clearance ellipsoids (rig metres): 0 belly, 1 shirt, 2 seat (the splay pushes lowered arms out of these),
     // 3 head ball, 4 cap crown (raised arms are swung out of these; the jump / in-air clips put the mitts on his face).
     const int BodyShapes = 3, AllShapes = 5;
@@ -82,7 +82,7 @@ public partial class ChuckPuppet
     {
         rideTruck = null;
         rideHold = -1;
-        rideLean = rideLat = rideBrake = 0f;
+        rideLat = rideBrake = rideShuffle = 0f;
         if (previewMode && previewRideTruck != null && previewRideHold >= 0 && previewRideHold < RideHolds.Count)
         {
             rideTruck = previewRideTruck;
@@ -96,8 +96,10 @@ public partial class ChuckPuppet
             {
                 rideTruck = rt.transform;
                 rideHold = hold;
-                rideLean = rideRider.IsLocal ? rideRider.Lean : rideRider.RemoteLean;
-                rt.StressAt(rt.DisplayTime, out rideLat, out rideBrake, out _, out _);
+                // Sway with the truck as this machine shows it (cosmetic; riders don't lean or lose grip any more).
+                rideLat = rt.SwayAccel.x;
+                rideBrake = rt.SwayAccel.y;
+                rideShuffle = rideRider.ShuffleWeight;
             }
         }
 
@@ -121,8 +123,11 @@ public partial class ChuckPuppet
             footR.rotation = rightRot;
         }
 
-        float side = RideHolds.IsRung(rideHold) ? RideHolds.Side(rideHold) : 0f;
-        float roll = side * 4f - rideLean * 10f - Mathf.Clamp(rideLat * 1.3f, -6f, 6f);
+        // A seat switch eases the ladder-side twist across instead of popping it at the new hold.
+        float sideTarget = RideHolds.IsRung(rideHold) ? RideHolds.Side(rideHold) : 0f;
+        rideSide = previewMode ? sideTarget : Mathf.MoveTowards(rideSide, sideTarget, dt / 0.3f);
+        float side = rideSide;
+        float roll = side * 4f - Mathf.Clamp(rideLat * 1.3f, -6f, 6f);
         float pitch = 6f + Mathf.Clamp(rideBrake * 0.55f, 0f, 4f);
         if (spine != null)
             spine.rotation = Quaternion.AngleAxis((-side * 7f) * ridePoseW, Vector3.up) *
@@ -137,8 +142,9 @@ public partial class ChuckPuppet
     void PoseRideGrip()
     {
         if (rideTruck == null || rideHold < 0) return;
-        // A snag uses the ordinary carry/hug pose. Release the rail smoothly while the bag is in hand, then re-grip.
-        float gripW = ridePoseW * (1f - carryW);
+        // A snag uses the ordinary carry/hug pose. Release the rail smoothly while the bag is in hand, then re-grip; the same
+        // while shuffling to another hold after a seat switch.
+        float gripW = ridePoseW * (1f - carryW) * (1f - rideShuffle);
         if (gripW <= 0.001f) return;
         GripArm(ref armL, RideHolds.Point(rideTruck, RideHolds.GripMetres(rideHold, true)), gripW);
         GripArm(ref armR, RideHolds.Point(rideTruck, RideHolds.GripMetres(rideHold, false)), gripW);

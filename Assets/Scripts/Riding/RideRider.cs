@@ -5,17 +5,17 @@ using UnityEngine;
 
 /// <summary>
 /// A player riding a truck (package F1, Docs/Multiplayer.md §14.1, §4.4), added at runtime to every player copy (solo
-/// and co-op; no prefab edit). The rider's OWN machine simulates their grip against the truck it shows (stress and
-/// jolts from <see cref="RideTruck"/>, applied at the displayed truck tick) and decides the fling; every other machine
-/// plays the fling from the same truck tick and owner's world start (<see cref="HandsNet"/> carries the event).
+/// and co-op; no prefab edit). Riders stay on solidly (Nick, 12 Oct 2026: no grip meter, no lean, no HOLD ON, no shoving):
 /// <list type="bullet">
-/// <item><b>Grip</b> 0–100 drains with sideways g, hard braking and drift; refills when it's calm. <b>Lean</b> (A/D) into
-/// the turn cuts the drain to 30% (leaning the wrong way: 140%). Grip Gloves, rain (<see cref="Riding.GripDrainScale"/>).</item>
-/// <item><b>HOLD ON!</b> Jolts costing ≥ 15 open a 0.55 s window: Space in it = no loss, a miss = double loss.</item>
-/// <item><b>Fling</b> at 0 grip: launched along the truck's momentum, out of the turn, flailing; AIR TIME readout and a
-/// personal best (<see cref="RideStats"/>). Hedges catch, trampolines bounce, props and pedestrians go over.</item>
-/// <item><b>Dominoes</b>: a flung rider heading at your hold costs you 55 grip (HOLD ON saves it). <b>Shove</b> (RMB) a
-/// neighbouring rider: they get a HOLD ON.</item>
+/// <item><b>Crash fling</b>: only a heavy hit throws you off. <see cref="RideTruck"/>'s sensor reports it from the machine
+/// that simulates the truck; the rider's OWN machine applies it when the truck it shows reaches that tick (the truck's Safety
+/// Bar and Padded Step raise the Δv it takes) and decides the fling; every other machine plays the fling from the same truck
+/// tick and owner's world start (<see cref="HandsNet"/> carries the event). Launched along the truck's momentum, flailing;
+/// AIR TIME readout and a personal best (<see cref="RideStats"/>). Hedges catch, trampolines bounce, props and pedestrians
+/// go over.</item>
+/// <item><b>Switch spot</b> (Shift / RB): shuffle round the back to the next free hold (left ladder → rear-left step →
+/// rear-right step → right ladder → round again). Every machine walks the rider along the back of its own copy of the truck
+/// (<see cref="HoldPose"/>).</item>
 /// <item><b>Drive-by grabs</b>: under 2.5 m/s, LMB snags a curb bag within reach and lobs it into the hopper; snags in a
 /// row build a STREAK (small pay bonus to the truck's business).</item>
 /// <item><b>Solo</b> (no co-op session): this component pins, locks and flies the local player itself (in co-op
@@ -55,9 +55,12 @@ public class RideRider : MonoBehaviour
     Quaternion skelRot;
     Vector3 skelPos;
     bool skelTouched;
+    PlayerBody body;
 
     static HandsNet Net => HandsNet.Instance;
     static bool NetMode => HandsNet.Instance != null && HandsNet.Instance.Active;
+    /// <summary>Co-op's body (added at runtime by HandsNet, maybe after this): its control lock owns the camera there.</summary>
+    PlayerBody Body => body != null ? body : (body = GetComponent<PlayerBody>());
 
     void Awake()
     {
@@ -127,6 +130,15 @@ public class RideRider : MonoBehaviour
         return me != null && me.soloRiding && me.soloTruck == truck && me.soloHold == hold ? me.ClientId : HandsNet.None;
     }
 
+    /// <summary>The holds of <paramref name="truck"/> somebody stands on (a bit per hold), leaving out <paramref name="except"/>.</summary>
+    public static int TakenHolds(RideTruck truck, int except = -1)
+    {
+        int mask = 0;
+        for (int k = 0; k < RideHolds.Count; k++)
+            if (k != except && RiderAt(truck, k) != HandsNet.None) mask |= 1 << k;
+        return mask;
+    }
+
     /// <summary>The local player may climb on (hands free of friends, on their feet, not driving or flying).</summary>
     public bool CanBoard
     {
@@ -163,7 +175,7 @@ public class RideRider : MonoBehaviour
         soloHold = hold;
         SoloLock(true);
         Sfx.Play("clang", transform.position, 0.6f, 1.2f);
-        GameHUD.FloatingText(transform.position + Vector3.up * 2.1f, "Hold on!", new Color(1f, 0.85f, 0.4f), 1f);
+        GameHUD.FloatingText(transform.position + Vector3.up * 2.1f, "All aboard!", new Color(1f, 0.85f, 0.4f), 1f);
         Audit("hitch", rt, hold, null);
     }
 
@@ -201,9 +213,10 @@ public class RideRider : MonoBehaviour
         flight = null;
         flightLandedAt = -9f;
         flingAwaitUntil = 0f;
-        pendingHits.Clear();
-        HoldOnActive = false;
         soloKoUntil = 0f;
+        shuffleHold = -1;
+        ShuffleWeight = 0f;
+        cameraSwing = 0f;
         RestoreRideCamera();
         RestoreSkeleton();
         if (soloLocked) SoloLock(false);
@@ -214,7 +227,7 @@ public class RideRider : MonoBehaviour
     void AimCameraFor(Transform truck, int hold)
     {
         if (!IsLocal || truck == null || tpc == null || yawField == null) return;
-        float yaw = truck.eulerAngles.y - (RideHolds.IsRung(hold) ? RideHolds.Side(hold) * 28f : 0f);
+        float yaw = truck.eulerAngles.y + RideHolds.ViewYaw(hold);
         yawField.SetValue(tpc, yaw);
         lockYaw = yaw;
     }
@@ -318,46 +331,15 @@ public class RideRider : MonoBehaviour
         input.jump = false;
     }
 
-    // ==================================================================================== the rider's own simulation
+    // ==================================================================================== the rider's own machine
 
-    public float Grip { get; private set; } = RideTuning.GripMax;
-    public int Lean { get; private set; }
-    public float GripForHud => IsLocal ? Grip : Time.unscaledTime - remoteGripAt < 1f ? remoteGrip : -1f;
-    float remoteGrip = -1f, remoteGripAt = -9f, lastGripSentAt = -9f;
-
-    public void ReceiveRemoteGrip(byte grip)
-    {
-        remoteGrip = Mathf.Min(grip, (byte)100);
-        remoteGripAt = Time.unscaledTime;
-    }
-    /// <summary>Owner's last lean choice on remote copies, refreshed while riding for late joiners.</summary>
-    public int RemoteLean => Time.unscaledTime - remoteLeanAt < 1.5f ? remoteLean : 0;
-    int remoteLean;
-    float remoteLeanAt = -9f, lastLeanSentAt = -9f;
-    int lastLeanSent = 9;
-
-    public void ReceiveRemoteLean(sbyte lean)
-    {
-        remoteLean = Mathf.Clamp(lean, -1, 1);
-        remoteLeanAt = Time.unscaledTime;
-    }
-    /// <summary>Grip per second being lost right now (HUD).</summary>
-    public float DrainNow { get; private set; }
     /// <summary>The position of this truck's shared Safety Bar (not a per-rider switch).</summary>
     public bool BarDown => TryGetRide(out var rt, out _) && rt != null ? rt.BarDown : true;
 
-    RideTruck cursorTruck;
-    int joltCursor;
-    readonly HashSet<int> consumedJolts = new HashSet<int>();
-    readonly List<RideTruck.Jolt> tmpJolts = new List<RideTruck.Jolt>(8);
-
-    // HOLD ON!
-    public bool HoldOnActive { get; private set; }
-    public float HoldOnStart { get; private set; }
-    float holdOnCost, spaceGraceUntil;
-    Vector3 holdOnPush;
-    ulong holdOnCause = HandsNet.None;
-    byte holdOnFlags;
+    RideTruck crashTruck;
+    int crashCursor;
+    readonly HashSet<int> consumedCrashes = new HashSet<int>();
+    readonly List<RideTruck.Crash> tmpCrashes = new List<RideTruck.Crash>(4);
 
     // feedback for the HUD
     public string Feedback { get; private set; }
@@ -365,17 +347,10 @@ public class RideRider : MonoBehaviour
     public float FeedbackUntil { get; private set; }
 
     // bots
-    /// <summary>Bots: lean −1/0/+1 instead of A/D (null = keys).</summary>
-    public int? BotLean;
-    bool botSpace, botSnag, botShove;
-    public void BotPressSpace() => botSpace = true;
+    bool botSnag;
     public void BotSnag() => botSnag = true;
-    public void BotShove() => botShove = true;
 
-    struct PendingHit { public double t; public RideTruck rt; public float cost; public Vector3 push; public ulong cause; public bool forced; public byte flags; public string word; }
-    readonly List<PendingHit> pendingHits = new List<PendingHit>(4);
-
-    public const byte FlagDomino = 1, FlagShove = 2, FlagCrash = 4, FlagKnock = 8;
+    public const byte FlagCrash = 4, FlagKnock = 8;
 
     void Update()
     {
@@ -396,8 +371,7 @@ public class RideRider : MonoBehaviour
             soloRiding = false; soloTruck = null;
             if (!flying) SoloLock(false);
         }
-        bool space = (!ui && GameControls.Down(KeyCode.Space, GameControls.Action.Jump)) || botSpace;
-        botSpace = false;
+        StepCameraSwing(Time.deltaTime);
         if (flying) { SetHint(null); return; }
         if (soloKoUntil > 0f)
         {
@@ -407,126 +381,36 @@ public class RideRider : MonoBehaviour
         }
         if (!TryGetRide(out var rt, out int hold))
         {
-            if (cursorTruck != null) { cursorTruck = null; HoldOnActive = false; pendingHits.Clear(); consumedJolts.Clear(); }
-            Grip = RideTuning.GripMax;
-            Lean = 0;
-            lastLeanSent = 9;
-            lastGripSentAt = -9f;
-            DrainNow = 0f;
+            if (crashTruck != null) { crashTruck = null; consumedCrashes.Clear(); }
+            switchTo = -1;
             SnagReset();
             SetHint(null);
             return;
         }
-        if (rt != cursorTruck)
+        if (rt != crashTruck)
         {
-            cursorTruck = rt;
-            joltCursor = rt.LastJoltSerial;
-            consumedJolts.Clear();
-            Grip = RideTuning.GripMax;
-            HoldOnActive = false;
-            pendingHits.Clear();
-        }
-        float dt = Time.deltaTime;
-        double D = rt.DisplayTime;
-
-        // ---- lean
-        int lean = 0;
-        if (!ui)
-        {
-            if (Input.GetKey(KeyCode.A)) lean -= 1;
-            if (Input.GetKey(KeyCode.D)) lean += 1;
-            float stick = GameControls.RideLean;
-            if (Mathf.Abs(stick) > 0.35f) lean = stick < 0f ? -1 : 1;
-        }
-        if (BotLean.HasValue) lean = Mathf.Clamp(BotLean.Value, -1, 1);
-        Lean = lean;
-        var leanNet = Net;
-        if (leanNet != null && leanNet.Active && (lean != lastLeanSent || Time.unscaledTime - lastLeanSentAt > 0.75f))
-        {
-            leanNet.LocalRideLean((sbyte)lean);
-            lastLeanSent = lean;
-            lastLeanSentAt = Time.unscaledTime;
+            // Only crashes after climbing on count.
+            crashTruck = rt;
+            crashCursor = rt.LastCrashSerial;
+            consumedCrashes.Clear();
         }
 
-        // ---- steady drain (what the truck is doing at the moment this machine shows)
-        rt.StressAt(D, out float lat, out float brake, out float drift, out float speed);
-        float drain = RideTruck.Drain(lat, brake, drift);
-        if (drain > 0.01f)
+        // ---- crashes the truck took, when this machine shows it taking them
+        tmpCrashes.Clear();
+        rt.CrashesSince(crashCursor, rt.DisplayTime, consumedCrashes, tmpCrashes);
+        for (int i = 0; i < tmpCrashes.Count; i++)
         {
-            float leanMult = 1f;
-            if (Mathf.Abs(lat) > RideTuning.LatFree * 0.6f && lean != 0)
-                leanMult = lean == (int)Mathf.Sign(lat) ? RideTuning.LeanInto : RideTuning.LeanWrong;
-            drain *= leanMult * RideShop.GloveDrainMult(RideShop.Local(RideShop.GripGloves)) * Mathf.Max(0f, Riding.GripDrainScale);
-            Grip -= drain * dt;
-        }
-        else Grip = Mathf.Min(RideTuning.GripMax, Grip + (speed < RideTuning.StoppedSpeed ? RideTuning.RegainStopped : RideTuning.Regain) * dt);
-        DrainNow = drain;
-
-        // ---- jolts the truck took, when this machine shows it taking them
-        tmpJolts.Clear();
-        rt.JoltsSince(joltCursor, D, consumedJolts, tmpJolts);
-        for (int i = 0; i < tmpJolts.Count; i++)
-        {
-            var j = tmpJolts[i];
-            if (j.flingAll)
+            var c = tmpCrashes[i];
+            if (c.dv >= RideTuning.CrashFlingDv(rt.PaddedLevel, rt.BarLevel, rt.BarDown))
             {
-                if (BarSaves(rt, speed)) { Hit(RideTuning.MaxJoltCost, Vector3.zero, HandsNet.None, true, FlagCrash, "CRASH!"); continue; }
-                Fling(rt, hold, Vector3.zero, HandsNet.None, FlagCrash, lat);
+                Fling(rt, hold, Vector3.zero, HandsNet.None, FlagCrash);
                 return;
             }
-            float cost = j.cost * RideShop.PadJoltMult(rt.PaddedLevel);
-            Hit(cost, Vector3.zero, HandsNet.None, true, 0, j.kind == RideTruck.Jolt.KindBump ? "BUMP!" : "WHAM!");
-        }
-
-        // ---- dominoes and shoves stamped at a truck moment
-        for (int i = pendingHits.Count - 1; i >= 0; i--)
-        {
-            var p = pendingHits[i];
-            if (p.rt != rt) { pendingHits.RemoveAt(i); continue; }
-            if (D < p.t) continue;
-            pendingHits.RemoveAt(i);
-            if (p.forced) { Fling(rt, hold, p.push, p.cause, p.flags, lat); return; }
-            Hit(p.cost, p.push, p.cause, true, p.flags, p.word);
-        }
-
-        // ---- HOLD ON! window
-        if (HoldOnActive)
-        {
-            if (space)
-            {
-                HoldOnActive = false;
-                space = false;
-                spaceGraceUntil = Time.time + 0.35f;
-                Say("SAVED!", new Color(0.45f, 1f, 0.5f), 0.9f);
-                Sfx.Play("ding", transform.position, 0.6f, 1.3f);
-                Audit("holdon", rt, hold, new Dictionary<string, object> { { "saved", true }, { "cost", System.Math.Round(holdOnCost, 1) } });
-            }
-            else if (Time.time - HoldOnStart >= RideTuning.HoldOnWindow)
-            {
-                HoldOnActive = false;
-                spaceGraceUntil = Time.time + 0.25f;
-                Grip -= holdOnCost * RideTuning.MissMult;
-                Say("MISSED!", new Color(1f, 0.4f, 0.3f), 0.9f);
-                Sfx.Play("oof", transform.position, 0.7f, 1.1f);
-                Juice.Shake(0.12f, 0.15f);
-                Audit("holdon", rt, hold, new Dictionary<string, object> { { "saved", false }, { "cost", System.Math.Round(holdOnCost, 1) } });
-            }
-        }
-
-        // ---- 0 grip: FLUNG (unless the Safety Bar holds you)
-        if (Grip <= 0f)
-        {
-            if (BarSaves(rt, speed)) Grip = 1f;
-            else { Fling(rt, hold, holdOnPush, holdOnCause, holdOnFlags, lat); return; }
-        }
-
-        if (leanNet != null && leanNet.Active && Time.unscaledTime - lastGripSentAt >= 0.2f)
-        {
-            leanNet.LocalRideGrip((byte)Mathf.Clamp(Mathf.RoundToInt(Grip), 0, 100));
-            lastGripSentAt = Time.unscaledTime;
+            HeldOn(rt, hold, c.dv);
         }
 
         // ---- keys
+        if (!ui && SwitchPressed()) SwitchSpot();
         if (!ui && rt.BarLevel > 0 && GameControls.Down(KeyCode.B, GameControls.Action.SafetyBar)) ToggleBar();
         if (!ui && !NetMode && GameControls.Down(KeyCode.C, GameControls.Action.Cruise))
         {
@@ -539,12 +423,10 @@ public class RideRider : MonoBehaviour
                 Say("SOLO CRUISE!", new Color(0.55f, 1f, 0.75f), 1.2f);
             else GameHUD.Toast(why, ToastStyle.Info, 1.8f);
         }
-        bool shove = (!ui && (Input.GetMouseButtonDown(1) || GameControls.PadDown(GameControls.Action.Shove))) || botShove;
-        botShove = false;
-        if (shove) TryRideShove(rt, hold);
-        if (space && !NetMode && Time.time >= spaceGraceUntil) { Unhitch(); return; }
+        // Co-op's Space hop-off is PlayerBody's (E is HitchStep's "Hop off" in both).
+        if (!ui && !NetMode && GameControls.Down(KeyCode.Space, GameControls.Action.Jump)) { Unhitch(); return; }
 
-        SnagTick(rt, hold, speed, ui);
+        SnagTick(rt, hold, ui);
         if (!NetMode) SetHint(HintText(rt));
     }
 
@@ -558,33 +440,18 @@ public class RideRider : MonoBehaviour
         Sfx.Play("clang", transform.position, 0.5f, down ? 0.9f : 1.3f);
     }
 
-    bool BarSaves(RideTruck rt, float speed) => RideTuning.BarSaves(rt.BarLevel, rt.BarDown, speed);
-
-    /// <summary>Lose <paramref name="cost"/> grip, or open a HOLD ON window for it.</summary>
-    void Hit(float cost, Vector3 push, ulong cause, bool savable, byte flags, string word)
+    /// <summary>A crash this truck's Safety Bar or Padded Step soaked up: a jolt and a word, and the rider stays on.</summary>
+    void HeldOn(RideTruck rt, int hold, float dv)
     {
-        if (cost <= 0f) return;
-        if (!string.IsNullOrEmpty(word) && cost >= 10f) GameHUD.FloatingText(transform.position + Vector3.up * 2.2f, word, new Color(1f, 0.75f, 0.3f), 0.8f);
-        Juice.Shake(Mathf.Clamp(cost * 0.004f, 0.04f, 0.3f), 0.15f);
-        if (savable && cost >= RideTuning.PromptCost)
+        bool bar = rt.BarLevel > 0 && rt.BarDown;
+        Say(bar ? "The Safety Bar held!" : "The padding held!", new Color(1f, 0.85f, 0.2f), 1.1f);
+        GameHUD.FloatingText(transform.position + Vector3.up * 2.2f, "WHAM!", new Color(1f, 0.75f, 0.3f), 0.9f);
+        Juice.Shake(0.22f, 0.2f);
+        Sfx.Play("clang", transform.position, 0.6f, 0.8f);
+        Audit("crashheld", rt, hold, new Dictionary<string, object>
         {
-            if (HoldOnActive)
-            {
-                holdOnCost = Mathf.Max(holdOnCost, cost);
-                if (push.sqrMagnitude > holdOnPush.sqrMagnitude) { holdOnPush = push; holdOnCause = cause; holdOnFlags = flags; }
-                return;
-            }
-            HoldOnActive = true;
-            HoldOnStart = Time.time;
-            holdOnCost = cost;
-            holdOnPush = push;
-            holdOnCause = cause;
-            holdOnFlags = flags;
-            Sfx.Play("squeak", transform.position, 0.7f, 0.8f);
-            return;
-        }
-        Grip -= cost;
-        if (Grip <= 0f) { holdOnPush = push; holdOnCause = cause; holdOnFlags = flags; }
+            { "dv", System.Math.Round(dv, 2) }, { "bar", bar }, { "pad", rt.PaddedLevel },
+        });
     }
 
     void Say(string text, Color c, float secs)
@@ -594,68 +461,118 @@ public class RideRider : MonoBehaviour
         FeedbackUntil = Time.unscaledTime + secs;
     }
 
-    /// <summary>A hit from outside (dogs, raccoons, Riding.KnockOff / GripHit). Only for this machine's own rider.</summary>
-    public void ApplyHit(Vector3 push, float cost, bool forced, bool savable, string word, ulong cause)
+    /// <summary>A knock-off from outside (<see cref="Riding.KnockOff"/>). Only for this machine's own rider.</summary>
+    public void ApplyKnock(Vector3 push, string word, ulong cause)
     {
         if (!IsLocal || !TryGetRide(out var rt, out int hold)) return;
         if (!string.IsNullOrEmpty(word)) GameHUD.FloatingText(transform.position + Vector3.up * 2.3f, word, new Color(1f, 0.6f, 0.3f), 1f);
-        if (forced)
-        {
-            rt.StressAt(rt.DisplayTime, out float lat, out _, out _, out _);
-            Fling(rt, hold, push, cause, FlagKnock, lat);
-            return;
-        }
-        Hit(cost, push, cause, savable, FlagKnock, null);
+        Fling(rt, hold, push, cause, FlagKnock);
     }
 
-    // ==================================================================================== shove and dominoes
+    // ==================================================================================== switching spots
 
-    float lastShoveAt = -9f, shoveImmuneUntil;
+    float lastSwitchAt = -9f, switchAskedAt = -9f;
+    int switchTo = -1;
 
-    void TryRideShove(RideTruck rt, int hold)
+    static bool SwitchPressed() =>
+        GameControls.Down(Keybinds.Defaults.SwitchSpot, GameControls.Action.SwitchSpot) || Input.GetKeyDown(KeyCode.RightShift);
+
+    /// <summary>Move to the next free hold round the back (Shift / RB; bots and tests call it directly): left ladder →
+    /// rear-left step → rear-right step → right ladder → round again, skipping taken holds. Co-op asks the host, which checks
+    /// the hold is still free (two riders never share one); solo moves at once. False when nothing is free.</summary>
+    public bool SwitchSpot()
     {
+        if (!IsLocal || !TryGetRide(out var rt, out int hold) || rt == null) return false;
+        if (Time.time - lastSwitchAt < RideTuning.SwitchCooldown) return false;
+        // Pressed again before the host's answer arrived: carry on round from the hold already asked for (which may lead
+        // back to the one we still stand on: that's free once we've moved).
+        if (switchTo >= 0 && (switchTo == hold || Time.time - switchAskedAt > 1f)) switchTo = -1;
+        int from = switchTo >= 0 ? switchTo : hold;
+        int next = RideHolds.NextFreeHold(from, TakenHolds(rt, hold));
+        if (next < 0)
+        {
+            Say("No free spot!", new Color(1f, 0.6f, 0.4f), 0.9f);
+            Sfx.Play("buzz", transform.position, 0.4f, 1.2f);
+            return false;
+        }
+        lastSwitchAt = Time.time;
         var net = Net;
-        if (net == null || !net.Active || Time.time - lastShoveAt < RideTuning.ShoveCooldown) return;
-        lastShoveAt = Time.time;
-        RideRider best = null;
-        float bestD = RideTuning.ShoveRange * RideTuning.ShoveRange;
-        foreach (var o in all)
+        if (net != null && net.Active)
         {
-            if (o == null || o == this || !o.TryGetRide(out var ort, out _) || ort != rt) continue;
-            float d = (o.transform.position - transform.position).sqrMagnitude;
-            if (d < bestD) { bestD = d; best = o; }
+            net.LocalRideSwitch(rt.NetId, (byte)next);
+            switchTo = next;
+            switchAskedAt = Time.time;
         }
-        Sfx.Play("whoosh", transform.position + Vector3.up, 0.6f, 1.2f);
-        if (best == null) return;
-        net.LocalRideShove(best.ClientId);
-        Audit("shove", rt, hold, new Dictionary<string, object> { { "target", (long)best.ClientId } });
+        else soloHold = next;
+        Audit("switch", rt, next, new Dictionary<string, object> { { "from", hold } });
+        return true;
     }
 
-    /// <summary>Host's word: <paramref name="attacker"/> shoved this rider (every machine; the victim's own one applies it).</summary>
-    public void OnShoved(ulong attacker, Vector3 dir)
-    {
-        GameHUD.FloatingText(transform.position + Vector3.up * 2.2f, "SHOVE!", new Color(1f, 0.55f, 0.2f), 1.1f);
-        if (!IsLocal || !TryGetRide(out var rt, out int hold)) return;
-        if (Time.time < shoveImmuneUntil) return;
-        shoveImmuneUntil = Time.time + RideTuning.ShoveImmune;
-        dir.y = 0f;
-        Hit(RideTuning.ShoveCost, dir.sqrMagnitude > 0.01f ? dir.normalized * 3f : Vector3.zero, attacker, true, FlagShove, null);
-        Audit("shoved", rt, hold, new Dictionary<string, object> { { "by", (long)attacker } });
-    }
+    // Every machine walks a switching rider along the back of its own copy of the truck (truck metres, so they ride the
+    // truck exactly as when pinned); the replicated hold (BodyNet.step / soloHold) only says where they're going.
+    Transform shuffleTruck;
+    int shuffleHold = -1, shuffleFrame = -9;
+    float shuffleFromS, shuffleToS, shuffleStart, shuffleDur, cameraSwing;
 
-    /// <summary>Another rider was flung (every machine): if they're coming at my hold, I may go too.</summary>
-    void OnOtherFlung(ulong rider, RideTruck rt, int theirHold, double tF, Vector3 vel)
+    /// <summary>0 settled on a hold, up to 1 halfway through a switch (the puppet lets go of the rails meanwhile).</summary>
+    public float ShuffleWeight { get; private set; }
+
+    /// <summary>Where this rider stands on <paramref name="hold"/> of <paramref name="truck"/> right now (PlayerBody pins
+    /// co-op riders here, this component solo ones): the hold's pose, or a point on the short shuffle round the back after a
+    /// switch. Boarding, a new truck, or a gap in calls snaps straight to the hold.</summary>
+    public Pose HoldPose(Transform truck, int hold)
     {
-        if (!IsLocal || rt == null || !TryGetRide(out var myRt, out int myHold) || myRt != rt) return;
-        if (!RideHolds.Adjacent(theirHold, myHold)) return;
-        Vector3 toMe = RideHolds.Point(rt.transform, RideHolds.FeetMetres(myHold)) - RideHolds.Point(rt.transform, RideHolds.FeetMetres(theirHold));
-        toMe.y = 0f;
-        Vector3 rel = vel - rt.Velocity; rel.y = 0f;
-        if (Vector3.Dot(rel, toMe) <= 0f) return;
-        pendingHits.Add(new PendingHit
+        var settled = RideHolds.PoseOn(truck, hold);
+        bool fresh = truck != shuffleTruck || shuffleHold < 0 || Time.frameCount - shuffleFrame > 2;
+        shuffleFrame = Time.frameCount;
+        if (fresh)
         {
-            t = tF + 0.08, rt = rt, cost = RideTuning.DominoCost, push = toMe.normalized * 3f, cause = rider, flags = FlagDomino, word = "DOMINO!",
-        });
+            shuffleTruck = truck;
+            shuffleHold = hold;
+            shuffleDur = 0f;
+            ShuffleWeight = 0f;
+            return settled;
+        }
+        if (hold != shuffleHold)
+        {
+            float from = ShuffleS(), to = RideHolds.PathS(hold);
+            // The camera swings out beside the truck for a side ladder, as boarding aims it (your own look offset stays).
+            if (IsLocal) cameraSwing += Mathf.DeltaAngle(RideHolds.ViewYaw(shuffleHold), RideHolds.ViewYaw(hold));
+            shuffleFromS = from;
+            shuffleToS = to;
+            shuffleStart = Time.time;
+            shuffleDur = Mathf.Min(RideTuning.ShuffleMax, RideTuning.ShuffleMin + RideTuning.ShufflePerMetre * Mathf.Abs(to - from));
+            shuffleHold = hold;
+        }
+        if (shuffleDur <= 0f) return settled;
+        float u = (Time.time - shuffleStart) / shuffleDur;
+        if (u >= 1f)
+        {
+            shuffleDur = 0f;
+            ShuffleWeight = 0f;
+            return settled;
+        }
+        ShuffleWeight = Mathf.Sin(u * Mathf.PI);
+        Vector3 at = RideHolds.PathPoint(Mathf.Lerp(shuffleFromS, shuffleToS, u * u * (3f - 2f * u))) +
+                     Vector3.up * (ShuffleWeight * RideTuning.ShuffleHop);
+        return new Pose(RideHolds.Point(truck, at), settled.rotation);
+    }
+
+    float ShuffleS()
+    {
+        if (shuffleDur <= 0f) return RideHolds.PathS(shuffleHold);
+        float u = Mathf.Clamp01((Time.time - shuffleStart) / shuffleDur);
+        return Mathf.Lerp(shuffleFromS, shuffleToS, u * u * (3f - 2f * u));
+    }
+
+    /// <summary>Ease the local camera through a switch's yaw change (solo: our lock; co-op: PlayerBody's).</summary>
+    void StepCameraSwing(float dt)
+    {
+        if (Mathf.Abs(cameraSwing) < 0.01f) { cameraSwing = 0f; return; }
+        float step = cameraSwing * Mathf.Min(1f, dt * 6f);
+        cameraSwing -= step;
+        if (soloLocked) lockYaw += step;
+        else if (Body != null) Body.AddLockYaw(step);
     }
 
     // ==================================================================================== the fling
@@ -677,17 +594,15 @@ public class RideRider : MonoBehaviour
     ulong remoteCause;
     byte remoteFlags;
 
-    void Fling(RideTruck rt, int hold, Vector3 push, ulong cause, byte flags, float lat)
+    void Fling(RideTruck rt, int hold, Vector3 push, ulong cause, byte flags)
     {
         double tF = rt.DisplayTime;
         Transform tt = rt.transform;
-        Vector3 start = RideHolds.Point(tt, RideHolds.FeetMetres(hold)) + Vector3.up * 0.15f;
+        // From where this rider stands right now (mid-switch too); the host bounds it against the hold.
+        Vector3 start = HoldPose(tt, hold).position + Vector3.up * 0.15f;
         Vector3 right = tt.right; right.y = 0f; right = right.sqrMagnitude > 1e-4f ? right.normalized : Vector3.right;
-        Vector3 outward;
         Vector3 flatPush = new Vector3(push.x, 0f, push.z);
-        if (flatPush.sqrMagnitude > 0.01f) outward = flatPush.normalized;
-        else if (Mathf.Abs(lat) > 2f) outward = right * -Mathf.Sign(lat);   // out of the turn
-        else outward = right * RideHolds.Side(hold);
+        Vector3 outward = flatPush.sqrMagnitude > 0.01f ? flatPush.normalized : right * RideHolds.Side(hold);
         Vector3 tv = rt.Velocity;
         Vector3 vel = tv * RideTuning.FlingKeep + outward * (RideTuning.FlingOut + flatPush.magnitude * 0.5f) + Vector3.up * RideTuning.FlingUp;
         if (vel.magnitude > 28f) vel = vel.normalized * 28f;
@@ -700,27 +615,20 @@ public class RideRider : MonoBehaviour
             if (held != null && held.Body != null && !held.Body.isKinematic) held.Body.linearVelocity = vel * 0.9f;
         }
         SnagReset();
-        HoldOnActive = false;
-        pendingHits.Clear();
-        Grip = RideTuning.GripMax;
+        switchTo = -1;
 
         var net = Net;
         if (net != null && net.Active) { net.LocalRideFling(rt.NetId, (byte)hold, tF, start, vel, flags, cause); flingAwaitUntil = Time.time + 3f; }
         else { rt.StopSoloCruise(this); soloRiding = false; soloTruck = null; }
         rt.NoteFling();
         StartFlight(start, vel, true, flags, cause);
-        GameHUD.FloatingText(start + Vector3.up * 2.2f, (flags & FlagDomino) != 0 ? "DOMINO!" : "WAAAAH!", new Color(1f, 0.5f, 0.25f), 1.3f);
+        GameHUD.FloatingText(start + Vector3.up * 2.2f, "WAAAAH!", new Color(1f, 0.5f, 0.25f), 1.3f);
         Juice.Shake(0.3f, 0.3f);
         Audit("fling", rt, hold, new Dictionary<string, object>
         {
             { "tF", System.Math.Round(tF, 4) }, { "start", V(start) }, { "truckPos", V(tt.position) }, { "vel", V(vel) },
             { "flags", flags }, { "cause", cause == HandsNet.None ? -1L : (long)cause }, { "lag", System.Math.Round(rt.Lag, 3) }, { "matches", rt.LagMatches },
         });
-        if ((flags & FlagDomino) != 0 && cause != HandsNet.None)
-        {
-            var c = For(cause);
-            RideEvents.RaiseDomino(c != null ? c.Player : null, Player);
-        }
     }
 
     void StartFlight(Vector3 start, Vector3 vel, bool mine, byte flags, ulong cause)
@@ -742,7 +650,7 @@ public class RideRider : MonoBehaviour
         Sfx.Play("whoosh", start, 0.9f, 0.75f);
     }
 
-    /// <summary>A fling event (every machine, from the host): present another player's fling, or check for dominoes.</summary>
+    /// <summary>A fling event (every machine, from the host): present another player's fling.</summary>
     public static void OnFlungEvent(ulong rider, ulong truckId, byte hold, double tF, Vector3 worldStart, Vector3 vel, byte flags, ulong cause)
     {
         var rt = RideTruck.Find(truckId);
@@ -750,11 +658,9 @@ public class RideRider : MonoBehaviour
         if (r == null) return;
         if (seenFlingTicks.TryGetValue(rider, out double last) && System.Math.Abs(last - tF) < 0.0001) return;
         seenFlingTicks[rider] = tF;
-        bool mine = r != null && r.IsLocal;
-        if (rt != null && !mine) rt.NoteFling();
-        if (r != null && !mine) r.ScheduleRemoteFling(rt, hold, tF, worldStart, vel, flags, cause);
-        var me = LocalRider;
-        if (me != null && me != r) me.OnOtherFlung(rider, rt, hold, tF, vel);
+        if (r.IsLocal) return;
+        if (rt != null) rt.NoteFling();
+        r.ScheduleRemoteFling(rt, hold, tF, worldStart, vel, flags, cause);
     }
 
     void ScheduleRemoteFling(RideTruck rt, int hold, double tF, Vector3 worldStart, Vector3 vel, byte flags, ulong cause)
@@ -784,7 +690,6 @@ public class RideRider : MonoBehaviour
         }
         StartFlight(start, remoteVel, false, remoteFlags, remoteCause);
         if (late > 0.0) flight.FastForward((float)late);
-        if ((remoteFlags & FlagDomino) != 0) GameHUD.FloatingText(start + Vector3.up * 2.2f, "DOMINO!", new Color(1f, 0.5f, 0.25f), 1.3f);
         Audit("flingseen", remoteRt, remoteHold, new Dictionary<string, object>
         {
             { "rider", (long)ClientId }, { "tF", System.Math.Round(remoteTF, 4) }, { "start", V(start) }, { "truckPos", V(truckAt) },
@@ -801,7 +706,7 @@ public class RideRider : MonoBehaviour
         // Solo: stand on the hold of this machine's copy of the truck.
         if (IsLocal && soloRiding && soloTruck != null && !flying)
         {
-            var pose = RideHolds.PoseOn(soloTruck.transform, soloHold);
+            var pose = HoldPose(soloTruck.transform, soloHold);
             transform.SetPositionAndRotation(pose.position, pose.rotation);
             if (cc != null && cc.enabled) cc.enabled = false;
         }
@@ -813,7 +718,7 @@ public class RideRider : MonoBehaviour
             if (remoteRt == null) StartRemoteFlight();
             else if (remoteRt.DisplayTime < remoteTF)
             {
-                var pose = RideHolds.PoseOn(remoteRt.transform, remoteHold);
+                var pose = HoldPose(remoteRt.transform, remoteHold);
                 transform.SetPositionAndRotation(pose.position, pose.rotation);
             }
             else StartRemoteFlight();
@@ -940,16 +845,16 @@ public class RideRider : MonoBehaviour
         SnagCandidate = null;
     }
 
-    void SnagTick(RideTruck rt, int hold, float speed, bool ui)
+    void SnagTick(RideTruck rt, int hold, bool ui)
     {
         if (Streak > 0 && Time.time - lastSnagDoneAt > RideTuning.StreakGap) Streak = 0;
         if (snag != null || snagTossed) { SnagProgress(rt); return; }
         SnagCandidate = null;
         bool want = botSnag || (!ui && (Input.GetMouseButtonDown(0) || GameControls.PadDown(GameControls.Action.Snag)));
         botSnag = false;
-        if (speed > RideTuning.SnagMaxSpeed || rt.Speed > RideTuning.SnagMaxSpeed + 0.5f || carrier == null || carrier.IsCarrying) return;
+        if (rt.Speed > RideTuning.SnagMaxSpeed || carrier == null || carrier.IsCarrying || ShuffleWeight > 0f) return;
         Vector3 hand = RideHolds.Point(rt.transform, RideHolds.HandMetres(hold));
-        float reach = RideTuning.SnagReach + (Lean != 0 ? RideTuning.SnagLeanReach : 0f);
+        float reach = RideTuning.SnagReach;
         Carryable best = null;
         float bestD = reach * reach;
         var list = Carryable.All;
@@ -1044,16 +949,18 @@ public class RideRider : MonoBehaviour
     public string HintText(RideTruck rt)
     {
         bool pad = GameControls.UsingGamepad;
-        int key = (HoldOnActive ? 1 : 0) | (SnagCandidate != null ? 2 : 0) | (NetMode ? 4 : 0) | (rt != null && rt.BarLevel > 0 ? 8 : 0) | (BarDown ? 16 : 0) | (rt != null && rt.SoloCruising ? 32 : 0) | (pad ? 64 : 0);
+        bool canSwitch = rt != null && TryGetRide(out _, out int hold) && RideHolds.NextFreeHold(hold, TakenHolds(rt, hold)) >= 0;
+        int key = (SnagCandidate != null ? 1 : 0) | (NetMode ? 2 : 0) | (rt != null && rt.BarLevel > 0 ? 4 : 0) | (BarDown ? 8 : 0) |
+                  (rt != null && rt.SoloCruising ? 16 : 0) | (pad ? 32 : 0) | (canSwitch ? 64 : 0);
         if (key == hintKey && hintCached != null) return hintCached;
         hintKey = key;
         var sb = new System.Text.StringBuilder(96);
-        sb.Append(HoldOnActive ? (pad ? "HOLD ON!  [A]" : "HOLD ON!  [Space]") :
-                  (pad ? "[Left stick] Lean  [A] Hop off" : "[A/D] Lean  [Space] Hop off"));
+        sb.Append(pad ? "[X/A] Hop off" : $"[{Keybinds.Cap(Keybinds.Defaults.Interact)}/Space] Hop off");
+        if (canSwitch) sb.Append(pad ? "  [RB] Switch spot" : $"  [{Keybinds.Cap(Keybinds.Defaults.SwitchSpot)}] Switch spot");
         if (SnagCandidate != null) sb.Append(pad ? "  [RT] Snag bag" : "  [LMB] Snag bag");
-        if (NetMode) sb.Append(pad ? "  [RB] Shove" : "  [RMB] Shove");
-        else sb.Append(rt != null && rt.SoloCruising ? (pad ? "  [LB] Park cruise" : "  [C] Park cruise") :
-                       (pad ? "  [LB] Solo cruise" : "  [C] Solo cruise"));
+        if (!NetMode)
+            sb.Append(rt != null && rt.SoloCruising ? (pad ? "  [LB] Park cruise" : "  [C] Park cruise") :
+                      (pad ? "  [LB] Solo cruise" : "  [C] Solo cruise"));
         if (rt != null && rt.BarLevel > 0) sb.Append(BarDown ? (pad ? "  [Y] Bar: DOWN" : "  [B] Bar: DOWN") :
                                                       (pad ? "  [Y] Bar: UP" : "  [B] Bar: UP"));
         return hintCached = sb.ToString();
@@ -1065,13 +972,6 @@ public class RideRider : MonoBehaviour
         var r = b != null ? b.GetComponent<RideRider>() : null;
         if (r == null || !r.TryGetRide(out var rt, out _)) return null;
         return r.HintText(rt);
-    }
-
-    /// <summary>Space belongs to HOLD ON right now (PlayerBody mustn't hop the rider off).</summary>
-    public static bool ConsumesSpace(PlayerBody b)
-    {
-        var r = b != null ? b.GetComponent<RideRider>() : null;
-        return r != null && (r.HoldOnActive || r.flying || Time.time < r.spaceGraceUntil);
     }
 
     /// <summary>This player's fling owns their pose (PlayerBody mustn't pin them to the step or run its hop-off): flying,

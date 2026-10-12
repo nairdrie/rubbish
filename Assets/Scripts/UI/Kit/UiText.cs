@@ -57,7 +57,7 @@ public static partial class UiText
     public const string AmbienceVol = "Ambience";
     public const string AmbienceVolDesc = "Crickets, owls and one very loud rooster.";
     public const string MusicVol = "Music";
-    public const string MusicVolDesc = "There's no music yet. Chuck hums.";
+    public const string MusicVolDesc = "Background tunes, the casino band, the shop radio.";
     public const string MuteUnfocused = "Mute when unfocused";
     public const string MuteUnfocusedDesc = "Silence while you're in another window.";
 

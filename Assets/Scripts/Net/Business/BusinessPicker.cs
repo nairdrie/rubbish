@@ -18,7 +18,11 @@ public sealed class BusinessPicker : UiScreen
     Canvas canvas;
     RectTransform card;
     bool menuMode;
-    System.Action menuClosed;
+    System.Action menuClosed, proceed;
+    Purpose purpose;
+
+    /// <summary>What the main menu is about to do with the save that gets picked.</summary>
+    public enum Purpose { Choose, Solo, Host, Join }
     int page;
     string message;
     List<BusinessSlots.Slot> slots;
@@ -45,6 +49,24 @@ public sealed class BusinessPicker : UiScreen
         current.menuMode = true;
         current.menuClosed = closed;
         current.Build(message, BusinessSlots.List());
+        current.Open(true);
+    }
+
+    /// <summary>Main menu, second step: the player has said HOW they want to play (solo, hosting, joining a friend);
+    /// now WHICH save, or a new one. Picking one goes straight on to <paramref name="go"/>; Back returns to the menu.
+    /// Where no picker can be shown (bots, batch mode) it goes straight on with the current save.</summary>
+    public static void ShowFor(Purpose purpose, System.Action go, System.Action closed = null)
+    {
+        if (Application.isBatchMode || !Application.isPlaying || NetBoot.Quitting) { go?.Invoke(); return; }
+        Hide();
+        var c = UiKit.Canvas("[BusinessPicker]", UiLayers.Dialog - 5);
+        current = c.gameObject.AddComponent<BusinessPicker>();
+        current.canvas = c;
+        current.menuMode = true;
+        current.purpose = purpose;
+        current.proceed = go;
+        current.menuClosed = closed;
+        current.Build(null, BusinessSlots.List());
         current.Open(true);
     }
 
@@ -92,12 +114,18 @@ public sealed class BusinessPicker : UiScreen
         card = UiKit.Paper(root, new Vector2(860f, h));
         card.localRotation = Quaternion.Euler(0f, 0f, 0.6f);
 
-        var title = UiKit.InkLabel(card, "Title", menuMode ? "Choose your business" : "Which business are you bringing?", 44f, UiTheme.Ink, TextAlignmentOptions.Center, true);
+        string heading = !menuMode ? "Which business are you bringing?"
+            : purpose == Purpose.Solo ? "Play solo: choose a save" : purpose == Purpose.Host ? "Host with friends: choose a save"
+            : purpose == Purpose.Join ? "Join a friend: choose a save" : "Choose your business";
+        string under = purpose == Purpose.Join ? "Bring one of your own saves, or start a new one. It stays yours."
+            : purpose == Purpose.Solo || purpose == Purpose.Host ? "Pick one to carry on, or start a new one. Nothing is overwritten."
+            : "Every business works solo, hosting, or with friends. Progress stays yours.";
+        var title = UiKit.InkLabel(card, "Title", heading, 44f, UiTheme.Ink, TextAlignmentOptions.Center, true);
         title.enableAutoSizing = true;
         title.fontSizeMax = 44f;
         title.fontSizeMin = 26f;
         UiKit.Place(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -34f), new Vector2(780f, 60f));
-        var sub = UiKit.InkLabel(card, "Sub", "Every business works solo, hosting, or with friends. Progress stays yours.", 24f,
+        var sub = UiKit.InkLabel(card, "Sub", under, 24f,
                                  UiTheme.InkSoft, TextAlignmentOptions.Center, false, FontStyles.Normal);
         UiKit.Place(sub.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -100f), new Vector2(780f, 40f));
 
@@ -115,13 +143,14 @@ public sealed class BusinessPicker : UiScreen
         {
             var s = slots[i];
             bool selected = menuMode && (s.isMain ? BusinessSlots.SelectedId == null : s.id == BusinessSlots.SelectedId);
-            var b = UiKit.Button(card, s.Label + (selected ? "  ·  SELECTED" : ""), () => Pick(s), selected || i == 0 ? UiButtonStyle.Primary : UiButtonStyle.Sticker);
+            string tag = !selected ? "" : purpose == Purpose.Choose ? "  ·  SELECTED" : "  ·  LAST PLAYED";
+            var b = UiKit.Button(card, s.Label + tag, () => Pick(s), selected || i == 0 ? UiButtonStyle.Primary : UiButtonStyle.Sticker);
             b.Size(700f, 72f);
             UiKit.Place(b.Rect, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, y), new Vector2(700f, 72f));
             buttons.Add(b);
             y -= 84f;
         }
-        var fresh = UiKit.Button(card, "Start a new business", PickNew, UiButtonStyle.Go);
+        var fresh = UiKit.Button(card, purpose == Purpose.Choose && menuMode || !menuMode ? "Start a new business" : "Start a new save", PickNew, UiButtonStyle.Go);
         fresh.Size(700f, 72f);
         UiKit.Place(fresh.Rect, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, y), new Vector2(700f, 72f));
         buttons.Add(fresh);
@@ -159,7 +188,9 @@ public sealed class BusinessPicker : UiScreen
         UiTheme.Play(UiTheme.SfxConfirm, 0.45f, 1f);
         if (menuMode)
         {
-            if (BusinessSlots.SelectForPlay(s, out string error)) Hide();
+            var go = proceed;
+            if (purpose == Purpose.Join) { BusinessSlots.BringOnJoin(s); Hide(); go?.Invoke(); return; }
+            if (BusinessSlots.SelectForPlay(s, out string error)) { Hide(); go?.Invoke(); }
             else Build(error, BusinessSlots.List());
             return;
         }
@@ -172,7 +203,9 @@ public sealed class BusinessPicker : UiScreen
         UiTheme.Play(UiTheme.SfxConfirm, 0.45f, 1f);
         if (menuMode)
         {
-            if (BusinessSlots.CreateForPlay(null, out string error)) Hide();
+            var go = proceed;
+            if (purpose == Purpose.Join) { BusinessSlots.BringOnJoin(null); Hide(); go?.Invoke(); return; }
+            if (BusinessSlots.CreateForPlay(null, out string error)) { Hide(); go?.Invoke(); }
             else Build(error, BusinessSlots.List());
             return;
         }

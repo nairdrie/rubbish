@@ -58,6 +58,16 @@ public sealed class TownRulesAndHireCardTests
     }
 
     [Test]
+    public void HireAndFireHaveNoPromptOnAPersonSoTheyNeverOutrankPickUpOrHitch()
+    {
+        // The walk-up "Hire Bob" / "Fire Bob" zone on every other player took E away from picking up a flopped player and from
+        // hitching a ride (Nick, 2026-10-12). The laptop's Payroll app is the only way to the Hire card and to Fire.
+        Assert.IsNull(Type.GetType("HireTarget, Assembly-CSharp", false), "no interactable for hiring or firing a person");
+        Assert.IsNotNull(Type.GetType("PayrollApp, Assembly-CSharp", false), "the laptop's Payroll app stays");
+        Assert.IsNotNull(Hire.GetMethod("Show", BindingFlags.Public | BindingFlags.Static), "the Hire card is still opened from the laptop");
+    }
+
+    [Test]
     public void HireCardBackPopsItsScreenAndDisposesItsCanvas()
     {
         var go = new GameObject("HireCard Esc test");

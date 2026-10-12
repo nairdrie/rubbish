@@ -54,8 +54,9 @@
    - the first-person sort station gets a compact Station mode, so the bin signs aren't covered;
    - the rank chip becomes legible;
    - the top row no longer collides at 5:4 or with large UI scales (§8).
-10. **Co-op adds no new network traffic.** Every view reads state that's already mirrored: curbs (B6), transforms, roster (B1)
-    and rules (C2). Unstuck uses owner authority, or the existing tow drone for the truck (§9).
+10. **Co-op adds almost no network traffic.** Every view reads state that's already mirrored: curbs (B6), transforms, roster (B1)
+    and rules (C2). The one exception is Unstuck, which calls your truck to you with the tow drone: one rate-limited request
+    from a guest to the host per use, and the host's answer (§5.5, §9). Unstuck only moves you when you are really stuck, by owner authority.
 11. **Build:** 6 packages (UP-0 to UP-5), about 15–18 builder-days plus B14's 3, which 3 builders can run in parallel by file
     ownership. There are 11 small requests to other owners (one optional), and **one lint allow needs approval** (`timescale`,
     for the solo freeze) (§10).
@@ -80,7 +81,7 @@
 | Input | No pause menu exists. Esc is read directly by `EbaeUI.cs:168` and `SortStation.cs:267`. Keys are hard-coded `KeyCode`s in about 15 files (E/F interact, G drop, LMB throw, J chug, Ctrl stomp, H horn, Space drift, X arm, hold R tow, R/Q sort station). The Starter Assets Input System drives Move, Look, Jump and Sprint. `activeInputHandler: 2` (both systems). |
 | Cameras | Cinemachine 2.10 virtual cameras: the player cam, the truck cam (FOV 40/60 in `Truck V2.prefab`), and the sort-station first-person cam, which rewrites its FOV every frame (`SortStation.cs:876`, base 64). |
 | Graphics | **One** quality level ("PC") and one URP asset (`Assets/Settings/PC_RPAsset.asset`: render scale 1, MSAA off, shadows 50 m / 4 cascades / 2048 px, soft shadows high). The Windows playtest build defaults to borderless fullscreen and 1280×720 windowed (`Docs/WindowsBuild.md`). |
-| Audio | No AudioMixer and no music. Every sound goes through `Feel/FeelSfxPlayer.cs` pools (`Sfx.MasterVolume` 0.8). Ambience ids are `cricket`, `owl` and `rooster` (`Feel/FeelAmbience.cs`). |
+| Audio | No AudioMixer and, on 1 Oct, no music (music landed on 9 Oct: `Feel/BackgroundMusic.cs`, the casino's `CasinoMusic`; see §6.2). Every sound effect goes through `Feel/FeelSfxPlayer.cs` pools (`Sfx.MasterVolume` 0.8). Ambience ids are `cricket`, `owl` and `rooster` (`Feel/FeelAmbience.cs`). |
 | Map data | All roads, sidewalks, pads and lots are axis-aligned rects named `Road_N`, `Sidewalk_N`, `DepotPad_N` and `Lot_*` (`Editor/NeighborhoodBuilder.cs:450-535`, :767). `Assets/Resources/HouseDirectory.asset` already lists every house with its stopId, address, position and district (`Trash/HouseDirectory.cs`). `Districts.All[i].boundsXZ` holds the district rects. |
 | Live data | `FeelWorld.At(stopId)` gives bags, late count, oldest age and district. `FeelHud.Route.Target` is the arrow's house. `CurbTrash.FreshnessColor(d, age)` is the single colour source for markers and HUD rows. `GameSession.CurbBags` is scene-independent, so it works in the garage. |
 | Co-op | `NetRoster.Entries` (slot, company, display name), `CoopPlayerHooks.Spawned` (event per player), `RosterView.Slot`. `ChuckPartsData.Variants[slot].playerColor`: Chuck tangerine, Dot pink, Ozzie seafoam, Bert cornflower. |
@@ -417,14 +418,50 @@ the loaded scenes.
 - **Co-op:** never freezes. Input is locked and your Dumpling idles where it stands: vulnerable to raccoons and to friends,
   which is the joke. An "on break" sign over your head for others is M2 (§9).
 
-### 5.5 Unstuck (`UI/Pause/Unstuck.cs`)
+### 5.5 Unstuck (`UI/Pause/Unstuck.cs`, `Shop/Truck/TruckCall.cs`)
+
+Nick, 2026-10-12: "lets make the unstuck tool better, it should call the delivery truck to your current location instead".
+**Read as:** "the delivery truck" is the player's own garbage truck, delivered by the Scrapazon Prime Tow drone that already
+rights flipped trucks (Progression §6.1). On foot, Unstuck no longer teleports you somewhere "safe": it calls your truck to where
+you stand. The old hop survives only for a player who is really stuck, or who has nothing to call.
 
 | Situation | What happens | Authority |
 |---|---|---|
-| On foot | Drop the held item (`TrashCarrier.Local.Drop()`), then teleport to the best safe point and toast "Unstuck!": (a) the newest **safe-position ring** sample more than 3 m away (sampled every 2 s while grounded on layer Ground, CharacterController not overlapping a Walls collider); else (b) the nearest sidewalk point from the town map data (Neighborhood); else (c) the scene's PlayerSpawner (an on-demand `FindGameObjectsWithTag`) | owner (the player moves itself; Character Controller off → position → on) |
-| Driving (local driver) | Calls `TruckRecovery.TryStartTow(fromMenu: true, out whyNot)`: the existing tow drone that lifts, rights and sets the truck down on the nearest road. The fee follows TruckRecovery's own rules (−$25 through the Ledger; free with handling L1+) | the driver simulates the truck (`TruckRecovery` header) |
-| Passenger / rear step | Leaves the seat (the existing exit path), then the on-foot rule | owner |
-| Carried by a friend, or flopped | Disabled: "Wriggle free first!" | — |
+| On foot, truck callable | The drone flies in, lifts your truck from wherever it is (parked across town, flipped, wedged, in the river), carries it over the rooftops and sets it down upright on the nearest **clear, drivable** ground beside you, then waves and leaves. You are not moved and you keep what you hold. Toast "Truck's on its way! Don't stand under it." Fee: −$25 through the Ledger, charged to the **caller's** business, free with handling L1+ on the truck's business (the tow's rule); the confirm "Call your truck?" shows only when it costs. An upright truck within 3.2 m is "right there": a toast, no drone, no fee, no cooldown | The caller's machine searches for the spot (`TruckCall.TryFindDrop`) and sends it; the host checks it again and flies the truck (`TruckCall.ServerCall`; it owns a parked truck). A guest's request is one `TruckCallRpc` on `DepotRowNet` |
+| On foot, really stuck | Capsule buried in a wall or a static prop (`Unstuck.Embedded`: 0.6 × the player's real capsule overlaps a Walls / Default collider, so brushing past never counts), or fell out of the world (y below −12 outside the shop and casino pockets): drop the held item, hop to the best safe point **first**, then call the truck there. The hop is the old rule, toast "Unstuck!": (a) the newest **safe-position ring** sample more than 3 m away (sampled every 2 s while grounded on layer Ground, CharacterController not overlapping a Walls collider); else (b) the nearest sidewalk point from the town map data; else (c) the scene's PlayerSpawner | owner (the player moves itself; Character Controller off → position → on) |
+| On foot, nothing to call | No truck in the loaded scenes (solo: it is parked in the other scene), or you are indoors (a Depot Row shop, the casino): the old hop only, and nothing is charged. If the truck can be called but there is no room for it within 60 m (a garage, a fenced yard): the old hop, then the call from the new spot | owner |
+| On foot, truck busy | Someone is driving it ("Truck's in use!"), the drone is already on it ("Truck's coming!") or it isn't yours ("Not your truck!"): the button is disabled with that on its tape (you aren't stuck, so a surprise hop would be wrong). A really stuck player still hops | — |
+| Driving (local driver) | Calls `TruckRecovery.TryStartTow(fromMenu: true, out whyNot)`: the existing tow drone that lifts, rights and sets the truck down on the nearest road. The fee follows TruckRecovery's own rules (−$25 through the Ledger; free with handling L1+), with the same confirm | the driver simulates the truck (`TruckRecovery` header) |
+| Passenger / rear step | Hops off first (`RideRider.Unhitch`; in co-op the host takes you off a moment later and the rule finishes then), then the on-foot rule. Your own truck right under you is "right there" | owner |
+| Piloting the Hoverhog, or flung | Disabled: "Land first!" | — |
+| Carried by a friend, or flopped | Disabled: "Wriggle free first!" (`Unstuck.BlockedReason`, the M2 hook; nothing sets it yet) | — |
+
+**Which truck.** Solo and the legacy flow: the one truck. The one world: the truck of the lot you work for while you are on
+someone's payroll (the work truck), else the truck of the lot you own. The host requires `Permissions.CanDrive` and refuses a
+truck anyone is driving, one that is mid-delivery, or one a driver who just got out still simulates ("still rolling to a stop").
+
+**Where it lands** (`TruckCall.Pick` is pure: `Tools/truckcall_check/check.py` runs it against made-up streets without Unity, and `TruckCallTests` pins the helpers). Rings from 2.8 m to 60 m around you, 24
+spokes each, nearest first; a spot's price is its gap to you plus what it stands on: road or depot pad 0, driveway 1.5,
+pavement 3, grass 4, a footpath 7 (so a road within about 4 m beats grass), +0.2 on your left (the driver's door is on the
+truck's left, so a truck on your right shows it to you), +0.4 facing against you, and +8 with a fence or wall between you and it.
+Hard rules: at least 1.4 m between you and the body box, the box (the truck's `ModelBodyBoxMetres`, from 0.3 m up so kerbs
+don't count) overlaps nothing solid (houses, fences, other trucks and players do; roads, terrain, bags and critters don't),
+the four wheel corners stand on dry ground (not the river or the sea) within 0.7 m of one level. On a road the truck faces along
+it, the way you face; elsewhere it faces the way you face. Ground is found by raycast from above (roofs and river beds are
+ignored by comparing with `TownRelief.Height`), so hills, bluffs and bridges work.
+
+**The drone** (`TruckRecovery.StartDelivery`, the hold-R tow's drone and sounds): fly-in 0.8 s, lift 0.9 s, carry (at most 1.6 s
+for a short hop; across town it takes up to 6 s, arcs up to 16 m and never flies lower than 14 m over the ground mid-way),
+set-down 0.35 s, then the usual thump, dust and wave. A truck parked in a shop bay is dropped in from the sky instead of dragged
+through the world. It stops where it is if somebody climbs in, the truck changes hands, or the caller leaves. In solo and the
+legacy flow the truck's remembered parking spot (`GameSession.TruckPosition`) moves with it.
+
+**Co-op.** The truck's owner (the host, while nobody drives it) moves it, so its pose reaches everyone through its own
+NetworkTransform (a smooth carry, or `Teleport` for the sky drop); the drone is paint: the host tells everyone else when a
+delivery starts and ends (`TowDroneRpc`, `SendTo.NotServer`) and each machine's drone hangs over the replicated truck
+(`TruckRecovery.ObserveTow`). Messages: `TruckCallRpc` guest → host (positions and a yaw, 40 bytes, through a `NetGuard` of
+one every 2 s, burst 2), `TruckCallReplyRpc` host → that guest (a toast; a refusal gives the cooldown back), `TowDroneRpc` ×2.
+All live in `DepotRowNet` (a partial; it is already on `NetSession.prefab`), none of it in the town bake.
 
 Cooldown 10 s. The button shows the remaining seconds. Each use logs `NetAudit.Event("unstuck", …)`.
 
@@ -474,8 +511,8 @@ for real?" / "Yes, I'm tired" / "One more bag".
 |---|---|---|---|---|---|
 | Audio | Master | slider 0–100 | 80 | `AudioListener.volume` | — |
 | | Sound effects | 0–100 | 100 | per-play multiplier in `FeelSfxPlayer` (category SFX) | Feel (UP-1 owns it) |
-| | Ambience | 0–100 | 100 | `FeelSfxPlayer` category Ambience (`cricket`, `owl`, `rooster`) | Feel |
-| | Music | 0–100 | 70 | **hidden** until a music source exists (§13 Q5) | — |
+| | Ambience | 0–100 | 100 | `FeelSfxPlayer` category Ambience (`cricket`, `owl`, `rooster`) and the rain and wind beds (`WeatherFx`). Never music | Feel |
+| | Music | 0–100 | 70 | `GameSettings.MusicVolume`, read every frame by **every music source** and nothing else: `BackgroundMusic` (0.4 × slider; menu and game), the Lucky Raccoon's `CasinoMusic` house band and the workshop scrap radio's tune. Shown since 2026-10-12 (§13 Q5); applies live as it is dragged; the Sound effects and Ambience sliders never scale music | — |
 | | Voice chat | 0–100 | 100 | **hidden** until M3 `IVoiceService` | M3 |
 | | Mute when unfocused | toggle | on | `Application.focusChanged` → listener volume 0 | — |
 | Controls | Look sensitivity | 0.25–3.00× (step 0.05) | 1.00 | **processor override** on the local `PlayerInput`'s Look action (`scaleVector2(x=s,y=s)`, via `ApplyBindingOverride`, no asset edit); the first-person sort-station look | Sorting: `SortStation.cs:831` × `GameSettings.LookSensitivity` |
@@ -692,7 +729,7 @@ both exact and cheap.
 | H6 | `HudLayout` density steps (§8.2) |
 | H7 | Cash panel 360×104. The delta becomes a floating pill that rises from the panel. The company name and tint (B14's `CompanyWalletLabel`) take an 18 px line at the top of the panel once M1 provides them |
 | H8 | Rep floaters rise **upward out of the chip** (y −26 → +10) instead of into the lane |
-| H9 | The Head Office memo moves to the **right column under the route panel** (420 wide), which frees the bottom-right for invite cards |
+| H9 | The Head Office memo moves to the **right column under the route panel** (420 wide), which frees the bottom-right for invite cards (menu only; in game that corner holds the pocket / gear bar, §8.2) |
 | H10 | The lead moves the TEST DATA ROOT watermark to the bottom edge, 14 px high (`SaveRoot.cs` is the lead's; §10.6) |
 
 ### 8.2 `HudLayout` zones (`Feel/HudLayout.cs`)
@@ -709,9 +746,9 @@ Zones are computed every frame in reference units from the HUD root rect, so UI 
  │                                   (LeftCol.right+16 .. RightCol.left−16)  Memo       │
  │                                      top = TopBar.bottom − 16                         │
  │                             CenterStage: reveal, PROMOTED, welcome, Work Order        │
- │ Minimap (bottom-left,                                                                 │
- │  lid + label pill)              BottomDock: prompt (y 64+) + hint chips (y 12+)       │
- │                                 width ≤ min(1100, refW − 2·(minimap block + 16))      │
+ │ Minimap (bottom-left,                                                Pocket / gear  │
+ │  lid + label pill) BottomDock: prompt (y 64+) + hint chips (y 12+)   (bottom-right) │
+ │                    width ≤ min(1100, refW − 2·(max(minimap, pocket) + 16))          │
  └─────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -730,6 +767,18 @@ The minimum is refW ≈ 1040, so the UI-scale slider is capped at 150%: that giv
 2. The minimap steps L → M → S if the left column would reach it. If it still overlaps, it hides while the rabies widget is up.
 3. The bottom dock wraps to 2 rows before it shrinks.
 4. A centre card pushes extra toasts into a queue; it never overlaps them.
+5. The pocket / gear bar owns the bottom-right corner (below). The right column (route panel, memo) ends 16 px above it, and the
+   centred dock is as wide as `refW − 2·(max(minimap block, pocket bar) + 16)` allows, so the three never touch.
+
+**The pocket / gear bar** (`Feel/FeelHudHotbar.cs`, zone `HudZone.Pocket`; 2026-10-12, Nick: the old bar in the middle of the
+bottom edge was "kinda obstructive", "especially while playing chess"). A stack of quick-use slots 24 px in from the right and
+bottom edges, the minimap's mirror image: 138 px wide, one slot per thing you own (GRABBY, BOOST, PACK, TRAP, JUICE, CANNON,
+SHOT, REPEL), same look as before. One column while it stays under 40% of the screen height (`HudLayout.PocketTallShare`), a
+second column past that (283 px wide at most, always narrower than the right lane), and rows that would still push the route
+panel's header off its column are dropped, last slots first (`HudLayout.PocketMaxHeight`, `FeelHudHotbar.Measure`). It is
+**hidden** (and reserves nothing) while the local player is seated at a chess board (`PlayerController.IsPlayingChess`, via
+`FeelHud.HudData.chess`) and in Station mode (the sort station, casino seats, the tug, the Scavenger's lock-pick: they own the keys); it also stays
+off in the laptop, map and solo pause modes, as the dock does. The Big Cleanup scoreboard, which shares the corner, rides above it.
 
 ### 8.3 HUD modes (derived each frame; no new public state)
 
@@ -738,7 +787,7 @@ The minimum is refW ≈ 1040, so the UI-scale slider is capped at 150%: that giv
 | Hidden | `PlayerController.Local == null` | nothing |
 | Map | `FullMap.IsOpen` (interactive) | toasts only |
 | Paused | `PauseMenu.IsOpen` | solo: toasts; co-op: everything, under the dim |
-| Station | `InteractionFocusOverride(Local)` is true (the sort station today; generic for any future focus owner) | a slim pill (cash + time, 56 px tall, y −16..−72), rabies (moved to the bottom-left), toasts in the bottom lane, the dock |
+| Station | `InteractionFocusOverride(Local)` is true (the sort station today; generic for any future focus owner) | a slim pill (cash + time, 56 px tall, y −16..−72), rabies (moved to the bottom-left), toasts in the bottom lane, the dock (no pocket / gear bar) |
 | Laptop | `IsUIBlocking` while no UiStack screen is open | cash, rabies (as today) |
 | Driving | `Local.IsDriving` | everything; the minimap zooms out; the hint chips show driving controls |
 | Street / Depot | default; `TownMapAnchor.Active` picks between them | everything (Depot: no minimap) |
@@ -787,7 +836,7 @@ The constants live in `UI/Kit/UiLayers.cs`.
 
 | Topic | Rule |
 |---|---|
-| Network traffic | **None new.** Every view reads state that's already replicated: curbs (`GameSession.CurbBags` via B6 `NetMirror.SetCurbs`), positions (NetworkTransform), roster (B1 `NetRoster`), rules (C2 `WorldState.Rules`), wallet (B7 `CompanyState`) |
+| Network traffic | **Almost none new.** Every view reads state that's already replicated: curbs (`GameSession.CurbBags` via B6 `NetMirror.SetCurbs`), positions (NetworkTransform), roster (B1 `NetRoster`), rules (C2 `WorldState.Rules`), wallet (B7 `CompanyState`). The exception is Unstuck's truck call, below |
 | Pause | Never freezes a shared world (rule 4). Solo only, decided by `NetSession.IsSolo` |
 | Esc input lock | Local only. Your Dumpling idles and can be bonked (Crew rules). M2 option: a roster flag `Away` shows a "BRB" sign over your head (one bit in `RosterEntry.flags`, set by a guarded request) |
 | Settings | Local only, never networked. FOV and sensitivity affect only your camera |
@@ -795,7 +844,7 @@ The constants live in `UI/Kit/UiLayers.cs`.
 | Crew colours | Slot → `ChuckPartsData.Variants[slot]`, remembered across rejoin by PlayerKey (B1 `SlotTable`) |
 | Trucks | Company tint from `CompanyState.Tint` (M1). Depot Row (M7) trucks show in their own company's tint. Rival trucks are ghosted (MP §4.11) and drawn at 60% opacity on the map |
 | Shotgun navigator (M3) | The full map becomes the navigator's tool: clicks drop **pings** sent over `WorldFx` (a named message, through `NetGuard`), and the driver's minimap and arrow follow them (MP §4.3). Not in this pass; `FullMap` exposes `event Action<Vector3> PingRequested` for it |
-| Unstuck | On foot: owner authority. Truck: the existing driver-side `TruckRecovery` tow. Never moves anyone else. Logged in `NetAudit` |
+| Unstuck | On foot it calls the player's own truck to them (§5.5). A guest sends one `DepotRowNet.TruckCallRpc` (rate-limited by a `NetGuard`); the host validates (whose truck, `Permissions.CanDrive`, nobody driving it, a landing spot that is clear and dry), posts the −$25 tow fee to the caller's business through the Ledger, and flies the truck with the tow drone (it owns a parked truck, so its NetworkTransform carries the move to everyone); `TowDroneRpc` tells the other machines to show the drone. The player is moved only when really stuck (owner authority, as before), and the host never moves a player. Driving: the existing driver-side `TruckRecovery` tow. Logged in `NetAudit` |
 | Kick | Host only, through `SessionService.Kick` (B1). Votekick is for public Towns only (stage 4) |
 | Invites | Hosts only. Guests can see the code they used. Streamer mode hides it by default |
 | Leave wording | Solo "Save & quit", host "Close the shop", guest "Leave Nick's shift". Every path ends in B1's `SaveGuard.ReloadOwn` |
@@ -856,7 +905,7 @@ public static class GameSettings { public static GameSettingsData Current { get;
   public static void Edit(string section, Action<GameSettingsData> change); public static void SaveSoon(); public static void Reset(string section);
   // cheap reads for other systems (no allocation):
   public static float LookSensitivity { get; } public static bool InvertY { get; } public static float FovDelta { get; }
-  public static float ScreenFx01 { get; } public static float SfxVolume { get; } public static float AmbienceVolume { get; }
+  public static float ScreenFx01 { get; } public static float SfxVolume { get; } public static float AmbienceVolume { get; } public static float MusicVolume { get; }
   public static bool ColorblindMarkers { get; } public static bool ReduceFlashing { get; } public static float ToastTime { get; } }
 
 // Save
@@ -864,7 +913,7 @@ public static class SettingsStore { public const string FileName = "settings.jso
   public static bool TryLoad(out string json); public static bool Write(string json); }     // SaveRoot.Path + SafeFile
 
 // Feel (UP-1)
-public enum HudZone { TopLeft, TopRight, LeftColumn, RightColumn, ToastLane, CenterStage, BottomDock, Minimap, BottomLane }
+public enum HudZone { TopLeft, TopRight, LeftColumn, RightColumn, ToastLane, CenterStage, BottomDock, Minimap, BottomLane, Pocket }
 public enum HudDensity { Full, Compact, Tight }
 public static class HudLayout { public static Rect Zone(HudZone z); public static HudDensity Density { get; } public static HudMode Mode { get; } }
 
@@ -935,7 +984,9 @@ C2 ─► W3 (B6 B7 B8 B9 B10) runs alongside; the conflicts are below
 | `Status/RabiesStatus.cs` (the `Apply` caller) + `Status/RabiesCameraSway.cs` | Critters | intensity and amplitude × `GameSettings.ScreenFx01` | rabies intensity |
 | `Trash/CurbTrash.cs:28-40` + `Trash/StopMarker.cs:120` | Trash | colour-blind palette switch, `FreshnessStage(d, age)`, a glyph on the marker | colour-blind markers |
 | `World/DistrictWelcome.cs:62-66` | World | `UiScale.Register(scaler)` | UI scale |
-| `Shop/Truck/TruckRecovery.cs` | Shop (Progression B) | `public bool TryStartTow(bool fromMenu, out string whyNot)` wrapping the existing hold-R path | Unstuck |
+| `Shop/Truck/TruckRecovery.cs` | Shop (Progression B) | `public bool TryStartTow(bool fromMenu, out string whyNot)` wrapping the existing hold-R path (driving); 2026-10-12: `StartDelivery` (the same drone flies an empty truck to a spot beside a player on foot) and `ObserveTow` / `ObserveTowEnd` (the drone on the machines that don't move it) | Unstuck |
+| `Shop/Truck/TruckCall.cs` (new, 2026-10-12) | UI pass | whose truck, who may call it, the landing-spot search (`Pick`) and the host's validation and fee (`ServerCall`) | Unstuck |
+| `World/DepotRow/DepotRowNet.TruckCall.cs` (new, 2026-10-12) | Net | `DepotRowNet` made partial: `TruckCallRpc`, `TruckCallReplyRpc`, `TowDroneRpc` (no new NetworkBehaviour, no prefab edit) | Unstuck |
 | `Core/GameClock.cs` | lead / B6 | `public static void SetHeld(bool held)` (solo only; refuses while remote clients are connected) | solo freeze |
 | `Net/Session/NetSession.cs` | B1 | `public static bool IsSolo` (if B1 doesn't ship it) | pause variants |
 | `Net/Core/Save/SaveRoot.cs` | lead | draw the TEST DATA ROOT watermark at the bottom edge | H10 |
@@ -993,7 +1044,8 @@ Every check reports numbers.
    - a route with 3 rows;
    - the rank chip, a memo and the minimap block;
    - a prompt of 120 characters with an alt row;
-   - a 6-chip hint.
+   - a 6-chip hint;
+   - the pocket / gear bar with all 8 slots (bottom-right; `PocketBarLayoutTests` pins the same overlap rule on numbers).
    Pass: the screen-space rects of zone-owned widgets overlap **0 times** pairwise, and everything is inside the safe rect.
    Report the density step per case.
 2. PREVIEW, Station mode with `chuck_test/20_sort_fp` framing: no HUD rect intersects the bin-sign band (y 90–200 reference).
@@ -1039,8 +1091,16 @@ Every check reports numbers.
 3. **Co-op never freezes** (MPPM2): the host opens Esc for 30 s, and the guest's ΔTotalHours = 0.208 ± 0.01 h. The guest opens
    Esc and the host is unaffected. `Time.timeScale` stays 1 on both.
 4. Unstuck:
-   - on foot inside a wall collider → on Ground within 1 frame, not overlapping Walls;
-   - the cooldown shows 10 s;
+   - on foot inside a wall collider → hopped onto Ground within 1 frame, not overlapping Walls, and the truck is called to
+     the new spot;
+   - on foot in the open → you are not moved and keep your bag; the truck lands upright beside you (at least 1.4 m away, on
+     a road when one is within a few metres, nothing solid in its box), the fee posts once through the Ledger to the caller's
+     business (or nothing with handling L1+), the toast shows, and a truck already within 3.2 m only toasts;
+   - a truck that is being driven, or already on its way, disables the button with the reason; no truck in the scene, or
+     indoors → the old hop;
+   - the cooldown shows 10 s, and a call the host refuses gives it back;
+   - guest (MPPM2): the guest calls their own lot's truck, the host moves it, every machine sees the drone and a clean carry
+     (no sliding through the world); a guest cannot call someone else's truck;
    - driving → `TruckRecovery.TryStartTow` starts the tow, and the fee posts once through the Ledger, or nothing if handling
      L1+.
 5. Leave paths:
@@ -1105,9 +1165,69 @@ Every check reports numbers.
 | Q2 | Should Esc in **solo** freeze the world? | **Yes**: solo freezes, co-op never does |
 | Q3 | Minimap position and orientation | **Bottom-left, heading-up** (north-up in Settings) |
 | Q4 | Map keys | **M** toggles, **hold Tab** peeks |
-| Q5 | Menu music | None at launch; the Music slider stays hidden until there's a track |
+| Q5 | Menu music | ~~None at launch; the Music slider stays hidden until there's a track~~ **Answered by the build:** one calm shuffled bed (`BackgroundMusic`) plays from the menu on, and the Music slider is shown (Settings → Audio) |
 | Q6 | Crew Card button before M4 | Shown, disabled, with "SOON" tape |
 | Q7 | Streamer mode (join code hidden until you click Show) on by default? | **On** |
 | Q8 | "Open shop to friends" from solo: a quick re-host that starts you in the garage now, or wait for MP §2.3's no-reload switch? | Quick re-host now, with clear copy |
 | Q9 | Hand `Feel/**` to the UI pass (builder B)? | Yes, once the lead confirms the Yeet slice isn't editing it |
 | Q10 | Should B14 be built by the UI-pass menu builder (C) on top of UP-4? | **Yes** |
+
+---
+
+## Outdoor camera occlusion (2026-10-08)
+
+Nick: "apply the same camera logic we apply in the shop to other objects in the world... the camera clips behind trees and
+buildings and importantly the depot as you first exit it... it should come closer to the vehicle."
+
+- **What was there:** the walking and driving cameras carry an authored `CinemachineCollider` that only collides with the
+  **Walls** layer (the garage), pinned by `TruckCameraCollisionTests`. Houses and the depot facade are on Default / Ground,
+  and trees only have a trunk capsule, so outdoors nothing pulled the camera in.
+- **What was added:** `Feel/WorldCameraOcclusion.cs`, a Cinemachine extension put on the cameras **at runtime**
+  (`WorldCameraRuntime`: this machine's walking camera, every truck's driving camera; the Hoverhog adds its own). No camera
+  prefab was edited, so the shop rule, its tests and the town bake are untouched.
+  - **Buildings:** a 0.35 m sphere cast from the followed thing to the camera against Default / Ground / Walls. Only
+    static colliders at least 2.5 m tall and 1.5 m wide count (no poles, trunks, fences, parked cars, anything with a
+    rigidbody, the followed vehicle itself). In on the first frame, eased back out, as in the shop.
+  - **Tree canopies:** `WorldCanopies` builds a grid of canopy balls from the renderers of anything named like a tree
+    (`.tree`, `_tree`, `.clump`, `edges.wood`; about 1,200 in today's town), each ball sitting in the top of the tree's
+    bounds so the space under the leaves stays clear. Eased in (0.12 s) and out (0.45 s). Whole woods (over 20 m) are skipped.
+  - Never closer than 1.4 m on foot, 6 m driving, 7 m flying. Off indoors.
+- **Verified (QA copy, solo):** driving out of the depot the camera sat 7.6 m from the truck just in front of the facade
+  (16.8 m, inside the building, before); parked in front of a street tree it came in to 8.8 m. Not tested: co-op, the
+  walking camera by eye, how it feels driving a whole tree-lined street (it may want a longer ease, or raising instead of
+  closing: `WorldCameraOcclusion`'s two time constants and `WorldCameraRuntime`'s minimums are the knobs).
+
+---
+
+## District banner (2026-10-08)
+
+Nick: "can we get a popup somewhere on screen when you move between neighborhoods". `World/DistrictBanner.cs`: a small
+card that slides down under the top HUD row (top centre, 760 x 112) whenever this machine's player crosses into another
+district, on foot, driving or flying: "NOW ENTERING", the district's name in its colour, its tagline and fee per bag,
+or "NO PERMIT YET" when you cannot collect there. 3.2 s, then it fades.
+
+- Rules (`DistrictBannerState`, pinned by `DistrictBannerTests`): you must have been inside the new district for 1.2 s
+  (driving along a border does not flicker), banners are at least 6 s apart, where you start is not announced, and
+  indoors or between districts (Depot Row, bridges, the gaps: anywhere outside every district's rectangle) counts as
+  nowhere, so coming back out where you were says nothing.
+- It stays out of the way of the big first-visit `DistrictWelcome` card (if that card is up, the banner is skipped).
+- Local presentation only. Verified in the QA copy by moving the truck from the Acres into Coupon Commons (the banner
+  showed with "NO PERMIT YET"). Not checked: on foot, in the Hoverhog, at other UI scales.
+
+---
+
+## Music slider and the pocket / gear bar's new corner (2026-10-12)
+
+Nick: "we need a music volume control separate from effects/ambience." and (the bar in the middle of the bottom edge) "kinda
+obstructive ... especially while playing chess ... maybe dont need that ui while in chess UI. or at least move it to a corner."
+
+- **Music slider.** Settings → Audio now has Master, Sound effects, Ambience, **Music**, Mute when unfocused (§6.2). Every music
+  source reads `GameSettings.MusicVolume` and nothing else: `BackgroundMusic` (menu and game), `CasinoMusic` (the house band was on
+  the Ambience slider) and the workshop scrap radio's tune (also Ambience before). Sound-effect stingers (horn tunes, "ding",
+  "legendary") stay on Sound effects. Both menus open the same `SettingsScreen` (`MainMenuCoopUI.OnSettings`, `PauseMenu.OpenSettings`).
+  The band and the radio follow the Music default of 70, so they are 30% quieter than when they rode Ambience at 100.
+- **Pocket / gear bar.** Left the bottom dock for the bottom-right corner (§8.2, `HudZone.Pocket`): one column up to 40% of the
+  screen height, two columns past that, hidden at chess and in Station mode. `PocketBarLayoutTests` and `MusicVolumeSettingTests`
+  pin the numbers; the layout was also run outside the Editor against the compiled assembly (all zones, 13 screen sizes, 3 minimap
+  sizes: no overlaps; frames without a bar are identical to the old layout).
+- **Not checked in the Editor:** how the bar looks and reads in the corner, the Music slider by ear, the casino band's level at 70.

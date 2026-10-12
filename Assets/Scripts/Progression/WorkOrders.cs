@@ -34,7 +34,7 @@ public sealed class WorkOrder
 /// <summary>
 /// Work Orders (§4.5): 3 per shift, rolled deterministically from (day, company seed) with
 /// <c>PickupVisuals.StableHash</c> (no RNG state), progressed by the §9.3 facts, persisted in GameSession counters.
-/// Reward each: max($25, 5% of yesterday's net) through <see cref="Ledger.Credit"/> + 40 Rep × the top district's
+/// Reward each: max($75, 5% of yesterday's net) through <see cref="Ledger.Credit"/> + 120 Rep × the top district's
 /// multiplier through <see cref="Ledger.RepTop"/>.
 /// </summary>
 public static class WorkOrders
@@ -149,7 +149,10 @@ public static class WorkOrders
                 case WorkOrderKind.CleanDistrict:
                 {
                     var unlocked = Districts.Unlocked;
-                    var d = unlocked[Hash($"wo/{seed}/{day}/{i}/district") % unlocked.Count];
+                    var pick = new List<DistrictDef>(unlocked.Count);   // not the district under contract: it is meant to start filthy
+                    foreach (var u in unlocked) if (!Campaign.IsUnderContract(u.id)) pick.Add(u);
+                    if (pick.Count == 0) pick.AddRange(unlocked);
+                    var d = pick[Hash($"wo/{seed}/{day}/{i}/district") % pick.Count];
                     wo.districtId = d.id;
                     wo.target = 1;
                     break;

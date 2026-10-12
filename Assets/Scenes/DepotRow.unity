@@ -69377,8 +69377,6 @@ MonoBehaviour:
   refreshDelay: 0.35
   gazeMaxCamera: 9
   gazeMaxPlayer: 5.5
-  arrangeFocusDistance: 2.2
-  arrangeFocusScore: 3
 --- !u!114 &231285623
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -179799,8 +179797,6 @@ MonoBehaviour:
   refreshDelay: 0.35
   gazeMaxCamera: 9
   gazeMaxPlayer: 5.5
-  arrangeFocusDistance: 2.2
-  arrangeFocusScore: 3
 --- !u!114 &609903125
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -425910,8 +425906,6 @@ MonoBehaviour:
   refreshDelay: 0.35
   gazeMaxCamera: 9
   gazeMaxPlayer: 5.5
-  arrangeFocusDistance: 2.2
-  arrangeFocusScore: 3
 --- !u!114 &1439056653
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -522349,8 +522343,6 @@ MonoBehaviour:
   refreshDelay: 0.35
   gazeMaxCamera: 9
   gazeMaxPlayer: 5.5
-  arrangeFocusDistance: 2.2
-  arrangeFocusScore: 3
 --- !u!114 &1778304165
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -13,7 +13,9 @@ public static class DistrictAccess
         bool employed = Payroll.TryGetLocalJob(out var job);
         bool employerOnline = employed && Businesses.TryGetForClient(job.employerClientId, out _);
         bool employerPermit = employerOnline && Businesses.TryGetForClient(job.employerClientId, out var employer) && BusinessUpgradeNet.HasPermitForBusiness(employer.Id, district);
-        return CrewAllowed(Districts.IsUnlocked(district), employed, employerOnline, employerPermit);
+        // A district won by contract belongs to the whole Town, not to the business that happened to host the win.
+        bool wonForTheTown = Campaign.IsGrantedByContract(district.id) && OpenInTown(district);
+        return CrewAllowed(Districts.IsUnlocked(district) || wonForTheTown, employed, employerOnline, employerPermit);
     }
 
     public static bool OpenInTown(DistrictDef district) => BusinessUpgradeNet.TryTownDistrictTrust(district, out _);

@@ -66,11 +66,9 @@ public class DepotEnvironmentPresentationTests
     public void TheLaptopDeskHasNoMedicalShelfAndShotsAreNotTiedToAKioskAnyMore()
     {
         Assert.IsNull(Type.GetType("RabiesShotKiosk, Assembly-CSharp", false), "the first-aid shelf by the laptop was removed");
-        // A friend's jab is an interaction on the downed player instead (NightRunner ensures one per remote player).
-        var jab = Runtime("RabiesJab");
-        Assert.IsTrue(Runtime("IInteractable").IsAssignableFrom(jab));
-        Assert.AreEqual(3f, (float)jab.GetField("Reach").GetRawConstantValue(), "the same 3 m the host allows for a downed friend");
-        Assert.NotNull(jab.GetMethod("Ensure", Static));
+        // Nor is a shot something a friend can give you on the street: the jab on a downed player was removed (2026-10-12), so
+        // everybody buys their own on Scrapazon.
+        Assert.IsNull(Type.GetType("RabiesJab, Assembly-CSharp", false), "no interaction that cures another player");
 
         // Nothing adds a shelf to a laptop: a bare laptop object keeps no children and no interaction zone.
         var office = Root("Environment test office");

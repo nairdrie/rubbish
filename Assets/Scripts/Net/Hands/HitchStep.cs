@@ -5,11 +5,12 @@ using UnityEngine;
 /// <summary>
 /// A truck's hold points (package N2, Docs/Multiplayer.md §4.4, §13.5 "Hitching"; F1 §14.1 added the side ladders): two rear
 /// steps and a ladder rung on each flank (<see cref="RideHolds"/>). Added at runtime to every truck with a hopper (no prefab
-/// edit), with on-foot <see cref="InteractionZone"/>s behind and beside the truck: E = "Hitch a ride" (any truck, employee
-/// or not), E or Space = "Hop off". Riders are pinned to the hold on each machine's own copy of the truck
-/// (<see cref="PlayerBody"/> in co-op, <see cref="RideRider"/> solo), so rider and truck never jitter apart. It also
-/// measures the truck's speed on this machine (catch it at ≤4.5 m/s; hopping off above 3 m/s is a stumble). F1's grip,
-/// fling and drive-by grabs live on <see cref="RideTruck"/> / <see cref="RideRider"/>.
+/// edit), with one on-foot <see cref="InteractionZone"/> round the back: E anywhere behind the truck, round its rear corners or
+/// alongside its ladders = "Hitch a ride" onto the nearest free hold (any truck, employee or not; no aiming at a spot), E or
+/// Space = "Hop off", Shift = switch spot (<see cref="RideRider.SwitchSpot"/>). Riders are pinned to the hold on each
+/// machine's own copy of the truck (<see cref="PlayerBody"/> in co-op, <see cref="RideRider"/> solo), so rider and truck
+/// never jitter apart. It also measures the truck's speed on this machine (catch it at ≤4.5 m/s; hopping off above 3 m/s is
+/// a stumble). F1's crash flings and drive-by grabs live on <see cref="RideTruck"/> / <see cref="RideRider"/>.
 /// </summary>
 [DisallowMultipleComponent]
 public class HitchStep : MonoBehaviour, IInteractable
@@ -17,6 +18,11 @@ public class HitchStep : MonoBehaviour, IInteractable
     static readonly List<HitchStep> all = new List<HitchStep>();
     public static IReadOnlyList<HitchStep> All => all;
 
+    /// <summary>The ride's place in the E/F list: above everything you can look at or stand by (≤ 2, e.g. the truck's own
+    /// "Enter Truck" when you face it from behind), so E near the back is the ride; below any bag or piece of trash you can reach
+    /// (<see cref="PlayerController.PickUpScore"/>, 2.1+: Nick, 12 Oct 2026, "prioritize bags and trash over boarding"), a held
+    /// bag's toss (3), a downed friend's pickup (3+) and shooing a raccoon (<see cref="CritterPoke"/>).</summary>
+    public const float ZoneScore = 2.05f;
 
     /// <summary>The holds' feet in the truck's local (0.67-scaled) space: 0/1 rear steps, 2/3 side ladder rungs (F1). Metres:
     /// <see cref="RideHolds"/>.</summary>
@@ -55,21 +61,13 @@ public class HitchStep : MonoBehaviour, IInteractable
         if (truck.GetComponentInChildren<HitchStep>(true) != null) return;
         var go = ShopModKit.MetreRoot(truck.transform, "RearStepHitch").gameObject;
         var hs = go.AddComponent<HitchStep>();
-        // One compact pocket per hold, in actual metres (independent of the imported truck's 0.67 scale).
-        for (int hold = 0; hold < RideHolds.Count; hold++)
-        {
-            var bounds = RideHolds.BoardingBounds(hold);
-            Zone(go, hs, bounds.center, bounds.size);
-        }
-    }
-
-    static void Zone(GameObject go, HitchStep hs, Vector3 center, Vector3 size)
-    {
+        // One zone over everything either body can be boarded from. This root shrinks with the Curb Pup, so the box is sized
+        // in rear-loader metres to still cover the Pup's area; CanInteract applies the exact area of the body the truck has.
         var z = go.AddComponent<InteractionZone>();
-        z.center = center;
-        z.size = size;
+        z.center = new Vector3(0f, 0.6f, -3.3f);
+        z.size = new Vector3(6.6f, 4f, 7f);
         z.mode = ZoneMode.OnFoot;
-        z.score = 1.1f;
+        z.score = ZoneScore;
         z.targetOverride = hs;
     }
 
@@ -109,28 +107,14 @@ public class HitchStep : MonoBehaviour, IInteractable
 
     bool RidingThis(RideRider me) => me != null && me.IsRidingTruck(this);
 
-    /// <summary>The nearest free hold the player can actually reach and is looking toward. Never redirects
-    /// someone at an occupied step onto the other side of the truck.</summary>
-    public int FreeStepNear(Vector3 p)
+    /// <summary>The free hold nearest a player standing at <paramref name="p"/>: their own side first, then round the back
+    /// (−1 when all four are taken).</summary>
+    public int BestFreeHold(Vector3 p)
     {
         var rt = RideTruck.For(Truck);
-        if (rt == null) return -1;
+        if (rt == null || Truck == null) return -1;
         if (NetMode && NetObject == null) return -1;
-        int best = -1;
-        float bestD = float.MaxValue;
-        var truckTransform = Truck != null ? Truck.transform : transform.parent;
-        Vector3 local = ShopModKit.ToTruckMetres(truckTransform, p);
-        var view = Camera.main;
-        Vector3 forward = view != null ? view.transform.forward : (Me != null ? Me.transform.forward : truckTransform.forward);
-        Vector3 localForward = TruckModelVisuals.UnmapMetres(truckTransform, Quaternion.Inverse(truckTransform.rotation) * forward);
-        for (int k = 0; k < RideHolds.Count; k++)
-        {
-            if (!RideHolds.WithinBoardingBounds(k, local) || !RideHolds.FacesBoardingHold(k, local, localForward)) continue;
-            if (RideRider.RiderAt(rt, k) != HandsNet.None) continue;
-            float d = (StepPose(k).position - p).sqrMagnitude;
-            if (d < bestD) { bestD = d; best = k; }
-        }
-        return best;
+        return RideHolds.NearestFreeHold(Truck.transform, p, RideRider.TakenHolds(rt));
     }
 
     public bool CanInteract()
@@ -140,17 +124,19 @@ public class HitchStep : MonoBehaviour, IInteractable
         if (NetMode && (NetObject == null || !NetObject.IsSpawned)) return false;
         if (RidingThis(me)) return true;
         if (!me.CanBoard) return false;
+        // Hands full (a bag on its way to the hopper, which is also back here): the hopper's "Toss into truck" is the prompt, not a ride.
+        var carrier = me.Player != null ? me.Player.GetComponent<TrashCarrier>() : null;
+        if (carrier != null && carrier.IsCarrying) return false;
         if (Speed > HandsTuning.HitchMaxSpeed) return false;
-        return FreeStepNear(me.transform.position) >= 0;
+        // Anywhere round the back; a full truck still answers ("No room on the back") rather than going quiet.
+        return RideHolds.InBoardingArea(Truck, me.transform.position);
     }
 
     public string GetInteractionPrompt()
     {
         var me = Me;
         if (RidingThis(me)) return "Hop off";
-        int k = me != null ? FreeStepNear(me.transform.position) : 0;
-        string where = RideHolds.Name(Mathf.Max(0, k));
-        return Speed > 2.5f ? $"Hitch a ride ({where}, RISKY)" : $"Hitch a ride ({where})";
+        return me != null && BestFreeHold(me.transform.position) < 0 ? "No room on the back" : "Hitch a ride";
     }
 
     public void OnInteract(GameObject interactor)
@@ -159,8 +145,10 @@ public class HitchStep : MonoBehaviour, IInteractable
         if (me == null) return;
         if (RidingThis(me)) { me.Unhitch(); return; }
         if (!CanInteract()) return;
-        int k = FreeStepNear(me.transform.position);
-        if (k >= 0) me.Hitch(this, k);
+        int k = BestFreeHold(me.transform.position);
+        if (k >= 0) { me.Hitch(this, k); return; }
+        Sfx.Play("buzz", me.transform.position, 0.5f);
+        GameHUD.Toast("Every step and ladder on this truck is taken.", ToastStyle.Info, 1.6f);
     }
 
     public void Highlight(bool highlight) { }

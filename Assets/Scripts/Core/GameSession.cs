@@ -181,6 +181,13 @@ public static partial class GameSession
     public static bool KeyToCity { get; private set; }
     /// <summary>Sum of every positive AddCash (incremented inside AddCash).</summary>
     public static float TotalCashEarned { get; private set; }
+
+    /// <summary>A credit that was not earnings after all (casino winnings, Docs/Casino.md §4): take it back out of
+    /// <see cref="TotalCashEarned"/>. The cash itself is untouched.</summary>
+    public static void ForgetEarned(float amount)
+    {
+        if (amount > 0f) TotalCashEarned = Mathf.Max(0f, TotalCashEarned - amount);
+    }
     /// <summary>(delta, repId, districtId, worldPos). Fired on every Rep change.</summary>
     public static event Action<float, string, string, Vector3?> RepChanged;
 

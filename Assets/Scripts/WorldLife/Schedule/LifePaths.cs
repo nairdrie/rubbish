@@ -257,7 +257,7 @@ public sealed class CarPath
         if (pts.Length == 1) return pts[0];
         float len = s[seg + 1] - s[seg];
         float u = len > 1e-5f ? Mathf.Clamp01((arc - s[seg]) / len) : 0f;
-        return Vector3.LerpUnclamped(pts[seg], pts[seg + 1], u);
+        return TownRelief.Between(pts[seg], pts[seg + 1], u);          // on the ground between waypoints, not on the chord
     }
 
     public Vector3 PointAt(float arc) => PointAt(arc, out _);
@@ -461,7 +461,7 @@ public sealed class WalkPathBuffer
         float len = cum[a + 1] - cum[a];
         float u = len > 1e-5f ? (s - cum[a]) / len : 0f;
         dir = Dir(a);
-        return Vector3.LerpUnclamped(pts[a], pts[a + 1], u);
+        return TownRelief.Between(pts[a], pts[a + 1], u);
     }
 
     Vector3 Dir(int i)

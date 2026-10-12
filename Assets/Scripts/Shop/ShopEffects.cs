@@ -147,6 +147,8 @@ public static class ShopEffects
                 return $"Garbage Juice™ in your pocket ({GarbageJuiceCans}). Press J to chug: +25% speed for 2 hours.";
             case ShopIds.HornPackMusical:
                 return $"{name} installed! Honk (H) for a little tune.";
+            case HogShop.Hoverhog:
+                return "HOVERHOG delivered! It's on your roof. Take the new stairs by the tipping floor.";
             case ShopIds.TrashFmRadio:
                 return $"{name} installed! TRASH FM plays while you drive.";
         }

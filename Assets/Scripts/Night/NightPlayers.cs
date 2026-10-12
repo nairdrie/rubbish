@@ -90,6 +90,7 @@ public static class NightPlayers
     public static bool IsIndoors(PlayerController pc)
     {
         if (pc == null) return false;
+        if (CasinoWorld.IsInside(pc)) return true;
         if (DepotRowWorld.Active) return DepotRowLayout.InteriorAt(pc.transform.position) >= 0;
         return CritterWorld.InGarage;
     }

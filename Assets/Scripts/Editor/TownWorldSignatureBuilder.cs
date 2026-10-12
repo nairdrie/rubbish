@@ -18,7 +18,8 @@ public static class TownWorldSignatureBuilder
     static readonly string[] Seeds = {
         CoastalCityLayout.BlueprintPath, "Assets/Resources/City/CoastalYards.json",
         NeighborhoodBuilder.DefaultScenePath, DepotRowLayout.ScenePath,
-        StreetGraph.AssetPath, HouseDirectory.AssetPath, TownMapData.AssetPath, TownMapData.TexturePath
+        StreetGraph.AssetPath, HouseDirectory.AssetPath, TownMapData.AssetPath, TownMapData.TexturePath,
+        TownRelief.AssetPath
     };
 
     /// <summary>Call after validated scene/graph/directory/map saves, inside the publisher's rollback scope.</summary>

@@ -17,6 +17,12 @@ public static partial class NeighborhoodBuilder
     // Full migration is a one-time use of the original deterministic lot recipes, NOT the tweak workflow.
     static string ApplyCoastalPlan(Ctx c)
     {
+        try { TownReliefBaker.PipelineBegin(c.root); return ApplyCoastalPlanFlat(c); }
+        finally { TownReliefBaker.PipelineEnd(); }
+    }
+
+    static string ApplyCoastalPlanFlat(Ctx c)
+    {
         CoastalCityLayout.Reload();
         Districts.RefreshLayoutBounds();
         Group(c.root, CoastalCityLayout.MarkerName);
@@ -129,6 +135,7 @@ public static partial class NeighborhoodBuilder
         var errors = CoastalCityValidation.Validate(c.root, c.graph);
         errors.AddRange(TownGameplayAuthoring.ValidateAuthored(c.root));
         if (errors.Count > 0) throw new InvalidOperationException("Coastal city validation: " + string.Join("\n", errors) + "\n" + placementReport);
+        placementReport += TownReliefBaker.PipelineApply(c.root, c.graph) + "\n";
         return $"[Coastal City] revision {CoastalCityLayout.Revision}: {CoastalCityLayout.Roads.Count} road groups, {anchors.Count} preserved homes, {c.stops.Count} collection stops, {c.gates.Count} gates.\n" + placementReport + "\n";
     }
 
@@ -620,6 +627,8 @@ public static partial class NeighborhoodBuilder
             }
             using (var transaction = new CityEditTransaction(allowDirtyDraft, scene, depot))
             {
+                // Terrain relief: every step below lays out a FLAT town; the relief is put back as the last step.
+                TownReliefBaker.PipelineBegin(root);
                 if (residential != null)
                     foreach (var anchor in anchors)
                         if (residential.TryGetValue(anchor.stableId, out var placement)) CoastalResidentialLayout.Configure(anchor, placement);
@@ -651,6 +660,9 @@ public static partial class NeighborhoodBuilder
                 errors.AddRange(TownGameplayAuthoring.ValidateAuthored(root));
                 if (errors.Count > 0) throw new InvalidOperationException("City changes need correction before saving:\n" + string.Join("\n", errors));
 
+                // The flat town is valid: shape the land and lay the town (and its navigation graph) onto it.
+                transaction.WatchAsset(TownReliefBaker.MeshPath); transaction.WatchAsset(TownReliefBaker.TerrainPath); transaction.WatchAsset(TownRelief.AssetPath);
+                string reliefReport = TownReliefBaker.PipelineApply(root, c.graph);
                 Setup_WorldLifeKnock.BakeScene(scene, out _);
 
                 // Validation succeeded. Protect every published output before any disk writer is allowed to run;
@@ -667,11 +679,12 @@ public static partial class NeighborhoodBuilder
                 transaction.SaveWatchedAssets();
                 TownWorldSignatureBuilder.Publish();
                 transaction.Commit();
-                return "Updated " + changed.Count + " road layouts and dependent lots; refreshed " + refreshedRoadSurfaces + " connected road surfaces, depots, navigation, pickup directory and map.\n" + infillReport + report + "\n" + townLifeReport;
+                return "Updated " + changed.Count + " road layouts and dependent lots; refreshed " + refreshedRoadSurfaces + " connected road surfaces, depots, navigation, pickup directory and map.\n" + infillReport + report + "\n" + reliefReport + "\n" + townLifeReport;
             }
         }
         finally
         {
+            TownReliefBaker.PipelineEnd();
             if (c?.graph != null && !AssetDatabase.Contains(c.graph)) Object.DestroyImmediate(c.graph);
             if (previousActive.IsValid() && previousActive.isLoaded) SceneManager.SetActiveScene(previousActive);
             if (openedDepot && depot.IsValid() && depot.isLoaded) EditorSceneManager.CloseScene(depot, true);

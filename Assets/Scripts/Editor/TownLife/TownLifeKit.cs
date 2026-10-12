@@ -244,7 +244,7 @@ public static partial class TownLifeKit
         string path = ContainerPath(relative); MarkUsed(path);
         var c = ContainerFor(path); c.used.Add(name);
         c.meshes.TryGetValue(name, out var mesh);
-        if (mesh != null && SameContent(mesh, data)) { meshesReused++; return mesh; }
+        if (mesh != null && (SameContent(mesh, data) || (StoredUnchanged != null && StoredUnchanged(mesh, data)))) { meshesReused++; Stored?.Invoke(mesh, data); return mesh; }
         PrepareWrite(path);                                   // BEFORE the first byte changes (snapshot for rollback)
         if (c.main == null)
         {
@@ -259,7 +259,31 @@ public static partial class TownLifeKit
         else { Fill(mesh, data); mesh.name = name; }
         EditorUtility.SetDirty(mesh); EditorUtility.SetDirty(c.main);   // main too: SaveAssetIfDirty(main) is what the transaction calls
         meshesWritten++;
+        Stored?.Invoke(mesh, data);
         return mesh;
+    }
+
+    // ------------------------------------------------------------------------------------------ terrain relief
+
+    /// <summary>Called for every mesh a real (non-transient) session stores or reuses, with its FLAT content. The relief
+    /// bake (TownReliefBaker) collects the world-space ground and run meshes here and drapes them in place afterwards.</summary>
+    public static Action<Mesh, MeshData> Stored;
+    /// <summary>Lets the relief bake say "this asset already holds the draped form of exactly this flat content", so an
+    /// unchanged town still writes no assets.</summary>
+    public static Func<Mesh, MeshData, bool> StoredUnchanged;
+    /// <summary>Overwrites a stored mesh (the relief bake's draped content).</summary>
+    public static void FillMesh(Mesh mesh, MeshData data) { Fill(mesh, data); }
+    public static bool SameMesh(Mesh mesh, MeshData data) { return SameContent(mesh, data); }
+
+    /// <summary>Asks the relief bake for LEVEL ground under a feature that cannot slope (a pool, a court, a pond): a
+    /// rectangle size.x across and size.y along the yaw direction. bias sinks (negative) or raises the patch.</summary>
+    public static GameObject LevelPad(Transform parent, string name, Vector3 centre, Vector2 size, float yawDeg, float feather = 5f, float bias = 0f)
+    {
+        var go = new GameObject(Prefix + "pad_" + name); go.transform.SetParent(parent, false);
+        go.transform.SetPositionAndRotation(new Vector3(centre.x, 0f, centre.z), Quaternion.Euler(0f, yawDeg, 0f));
+        var pad = go.AddComponent<TownReliefPad>(); pad.half = size * 0.5f; pad.feather = feather; pad.bias = bias;
+        spawnCount++;
+        return go;
     }
 
     /// <summary>Removes stale mesh sub-assets (runs / ground pieces / props of an earlier build) from every container

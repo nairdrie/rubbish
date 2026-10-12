@@ -27,6 +27,8 @@ PLAYING TOGETHER
      Show). Click "Join a friend", open the Code tab, type it, click Join.
 - Up to 4 people per world. Esc opens the menu (Invite, Settings,
   Unstuck, Leave / Quit). Solo pauses; with friends the world keeps going.
+  Unstuck on foot calls YOUR truck to you (a drone flies it over; $25).
+  Stuck inside a wall? It moves you out first, then calls the truck.
 - Everyone needs the same build. Check the date in BuildInfo.txt.
 
 WHAT'S IN THIS BUILD
@@ -38,9 +40,9 @@ the laptop desk in your shop.
   truck it lands in gets paid.
 - Go anywhere: any street, any shop. You can look around other shops
   but can't touch their trash.
-- Hire each other (walk up and press E, or the Payroll app on the
-  laptop). Employees drive the boss's truck and sort in the boss's
-  shop for an hourly wage. Quit any time from Esc.
+- Hire each other from the Payroll app on your laptop (hire and fire
+  are laptop-only). Employees drive the boss's truck and sort in the
+  boss's shop for an hourly wage. Quit any time from Esc.
 - Sell and trade valuables with each other on ebae (Neighbours tab).
 - Chaos: right mouse = shove / swing, E = pass, snatch, pick up a
   flopped friend or hitch a ride on the back of any truck, Space = get
@@ -55,3 +57,10 @@ SOMETHING BROKE?
    Player-prev.log if you restarted the game after the problem.
 3. Say roughly when it happened and what you were doing.
 The logs include your Steam name but no passwords.
+
+HELP TUNE THE GAME
+The game keeps a private play log (how long things take, where you got
+stuck, what you bought). It never leaves your computer by itself and has
+no names in it. After a play session, zip the "metrics" folder inside
+the same folder as above (...\Archway Games\Rubbish\metrics) and send it
+along. To turn it off, start the game with -nometrics.

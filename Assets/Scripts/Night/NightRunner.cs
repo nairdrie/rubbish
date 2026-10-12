@@ -4,8 +4,8 @@ using UnityEngine.SceneManagement;
 
 /// <summary>
 /// F4's per-machine housekeeping (one DontDestroyOnLoad object, no scene setup): headlamps on every player and their light
-/// budget, a roof spotlight on every truck, the friend's Rabies Shot jab on every other player, rabid looks on other
-/// players, the trap key (T), solo traps across scene loads, and the Raccoon King's boss bar.
+/// budget, a roof spotlight on every truck, rabid looks on other players, the trap key (T), solo traps across scene loads,
+/// and the Raccoon King's boss bar.
 /// </summary>
 [DefaultExecutionOrder(-30)]
 public class NightRunner : MonoBehaviour
@@ -47,7 +47,6 @@ public class NightRunner : MonoBehaviour
                 if (pc == null) continue;
                 if (pc.GetComponent<PlayerHeadlamp>() == null) pc.gameObject.AddComponent<PlayerHeadlamp>();
                 if (!NightPlayers.IsLocal(pc) && pc.GetComponent<RabiesLook>() == null) pc.gameObject.AddComponent<RabiesLook>();
-                if (!NightPlayers.IsLocal(pc)) RabiesJab.Ensure(pc);
             }
             foreach (var t in TruckControllerV2.All) RoofSpotlight.Ensure(t);
         }

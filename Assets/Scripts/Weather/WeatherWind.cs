@@ -40,8 +40,6 @@ public sealed class WeatherWind : MonoBehaviour
         // F3 hook: rain makes the ground slippery everywhere (players slide, trucks drift; Puddles.SlipAt) and leaves rain puddles.
         bool town = WorldLifeRunner.IsAwake;
         Puddles.RainWetness = town ? Weather.Wetness * (Weather.Kind == WeatherKind.Storm ? 1f : 0.65f) : 0f;
-        // F1 hook: rain and gusts drain a rider's grip faster (riders are always outdoors).
-        Riding.GripDrainScale = town ? Weather.GripDrainMul : 1f;
         if (!town || GameSession.IsConnectedGuest || Weather.Rain < 0.3f || Time.time < nextPuddle) return;
         nextPuddle = Time.time + (Weather.Kind == WeatherKind.Storm ? 3f : 6f);
         int rainPuddles = 0;

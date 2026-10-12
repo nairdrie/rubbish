@@ -122,8 +122,9 @@ public static class DepotRowWorld
     /// <summary>The pocket interior the local player is standing (or driving) in, or −1 (street / town / not one world).</summary>
     public static int LocalInterior => DepotRowLayout.InteriorAt(LocalViewPoint);
 
-    /// <summary>True while the local player is inside any shop (garage) in the one world.</summary>
-    public static bool LocalIndoors => Active && LocalInterior >= 0;
+    /// <summary>True while the local player is inside any shop (garage) in the one world, or in the casino pocket
+    /// (<see cref="CasinoWorld"/>, either flow).</summary>
+    public static bool LocalIndoors => (Active && LocalInterior >= 0) || CasinoWorld.LocalInside;
 
     // ------------------------------------------------------------------ poses
 
@@ -204,6 +205,16 @@ public static class DepotRowWorld
             if (seated) pc.currentTruck.ForceExit();
             Run(DoorRoutine(pc, null, InteriorOnFootPose(lot), lot));
         }
+    }
+
+    /// <summary>Local, on foot: the same fade-and-teleport a door does, to any pose (the helipad stairwell).
+    /// <paramref name="intoLot"/>: the pocket interior being entered, or −1 for the street side.</summary>
+    public static bool LocalGoTo(Pose target, int intoLot)
+    {
+        var pc = LocalPlayer;
+        if (pc == null || !pc.IsOwner || Transitioning || pc.IsDriving) return false;
+        Run(DoorRoutine(pc, null, target, intoLot));
+        return true;
     }
 
     static void Run(IEnumerator routine)

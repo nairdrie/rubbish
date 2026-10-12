@@ -140,11 +140,12 @@ public static class Economy
     public const float RouteCompletionBonus = 25f;
 
     // Collection pay: every bag earns a pickup fee when it goes into the truck, scaled by how late you are.
-    public const float PickupFeePerBag = 4f;        // full fee when collected on time
-    public const float CurbClearedBonus = 2f;       // a house's curb is left completely clean
+    // Pace pass 2026-10-12 (Docs/Progression.md §3.6): pickup and curb pay ×3 (was 4 / 2 / 0.25; sorting is ×4, below): one load must be worth a rank.
+    public const float PickupFeePerBag = 12f;       // full fee when collected on time
+    public const float CurbClearedBonus = 6f;       // a house's curb is left completely clean
     public const float OnTimeHours = 4f;            // in-game hours after put-out that still count as on time
     public const float LateFloorHours = 12f;        // pay has decayed to the floor by this age
-    public const float LatePayFloor = 0.25f;        // fraction of the fee still paid when very late
+    public const float LatePayFloor = 0.6f;         // fraction of the fee still paid when very late (the messy start's old bags pay this)
     public const float NeglectedHours = 16f;        // a pile with a bag this old is "neglected" (stinks, squatters move in)
 
     /// <summary>Fraction of PickupFeePerBag earned for a bag of this age (in-game hours). 1 when on time.
@@ -178,19 +179,21 @@ public static class Economy
     public const float HospitalBill = 100f;
     public const float StartingTruckCapacityKg = 120f;
 
-    // Sorting ($ per kg, credited instantly when an item lands in the correct bin). Docs/Progression.md §3.1 rebalance.
+    // Sorting ($ per kg, credited instantly when an item lands in the correct bin). Docs/Progression.md §3.1 rebalance,
+    // ×4 in the 2026-10-12 pace pass (§3.6, sorting is what the game wants you to get good at) before the streak ladder multiplies it
+    // (SortLadder: up to x10).
     public static float RecycleRatePerKg(ItemCategory c) => c switch
     {
-        ItemCategory.Metal => 2.00f,
-        ItemCategory.Plastic => 1.10f,
-        ItemCategory.Glass => 0.55f,
-        ItemCategory.Paper => 0.45f,
+        ItemCategory.Metal => 8.00f,
+        ItemCategory.Plastic => 4.40f,
+        ItemCategory.Glass => 2.20f,
+        ItemCategory.Paper => 1.80f,
         _ => 0f
     };
-    public const float MinRecyclePayout = 0.10f;    // floor per recycled item so tiny things still "ding"
-    public const float HazardDisposalPay = 0.75f;   // per hazard item binned correctly (hazmat_contract: 1.50 / 4.00)
-    public const float WrongBinPenalty = 0.30f;     // "Contaminated!"
-    public const float CompactorScrapPerKg = 0.20f; // base compact pay; unopened bags and loose scrap use the same rate
+    public const float MinRecyclePayout = 0.40f;    // floor per recycled item so tiny things still "ding"
+    public const float HazardDisposalPay = 3.00f;   // per hazard item binned correctly (hazmat_contract: 6.00 / 16.00)
+    public const float WrongBinPenalty = 1.00f;     // "Contaminated!"
+    public const float CompactorScrapPerKg = 0.80f; // base compact pay; unopened bags and loose scrap use the same rate
     public const float HazardCompactFine = 0f;     // legacy API: hazard effects never charge a compaction fee
     public const float LazyDumpPerKg = CompactorScrapPerKg; // bulk compaction is a shortcut, not a different pay scale
     public const float LazyCrushHazardBoomChance = 0.25f; // bulk compact: per-hazard comic boom chance, no cash penalty
@@ -202,15 +205,14 @@ public static class Economy
 
     // Work Orders: pay = max(WorkOrderMinPay, WorkOrderPayFraction × yesterday's net)
     public const float WorkOrderPayFraction = 0.05f;
-    public const float WorkOrderMinPay = 25f;
+    public const float WorkOrderMinPay = 75f;
     public const int WorkOrdersPerDay = 3;
 
-    public const float TowFee = 25f;                // "Hold R" truck recovery without truck_handling L1
+    public const float TowFee = 25f;                // "Hold R" truck recovery, and Esc > Unstuck calling your truck, without truck_handling L1
 
-    // Sort combo: consecutive correct sorts within ComboWindow seconds multiply payouts
-    public const float ComboWindow = 2.5f;
-    public const float ComboStep = 0.1f;            // +10% per combo step
-    public const float ComboMax = 2.0f;             // x2 cap
+    // Sort streak: consecutive correct hand sorts climb SortLadder (x1.5 / x2 / x3 / x4 / x5 / x10). The window is the seconds
+    // allowed between sorts while the streak is cold; hotter tiers get tighter windows (SortLadder.Window).
+    public const float ComboWindow = 3.0f;
 
     // ebag
     public const float PawnFraction = 0.45f;        // instant sell at 45% of market value

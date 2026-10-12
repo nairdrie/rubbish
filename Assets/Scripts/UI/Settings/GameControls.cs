@@ -26,7 +26,7 @@ public static class GameControls
         Horn, Arm, Recover, Drift, TipIt,
         SortPrimary, SortSecondary, StationExit,
         Snag, SafetyBar, Cruise, Map, Back, Pause, PreviousTab, NextTab,
-        Boost, Crush,
+        Boost, Crush, SwitchSpot,
     }
 
     static ButtonControl Button(Action action)
@@ -57,6 +57,7 @@ public static class GameControls
             Action.NextTab => p.rightShoulder,
             Action.Boost => p.leftShoulder,   // Rocket Blades (on foot LB is otherwise free)
             Action.Crush => p.buttonNorth,    // Compactor Backpack: HOLD Y
+            Action.SwitchSpot => p.rightShoulder, // riding the truck's back: RB walks you to the next free step or ladder
             _ => null,
         };
     }
@@ -89,6 +90,4 @@ public static class GameControls
         if (Mathf.Abs(throttle) > Mathf.Abs(result.y)) result.y = throttle;
         return result;
     }
-
-    public static float RideLean => Gamepad.current != null ? Gamepad.current.leftStick.ReadValue().x : 0f;
 }

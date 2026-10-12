@@ -146,6 +146,13 @@ public static class ScrapazonStore
             case ShopIds.RabiesShot: return "Rabies Shot";
             case ShopIds.Repellent: return "Raccoon-Be-Gone";
             case ShopIds.TruckModel: return "Rear-loader Truck";
+            case DumpsterRules.UpgradeId: return "Dumpster Dunker";
+            case HogShop.Hoverhog: return "Hoverhog";
+            case HogShop.Belly: return "Hoverhog Belly";
+            case HogShop.Claw: return "Hoverhog Claw";
+            case HogShop.Rotors: return "Hoverhog Rotors";
+            case HogShop.Battery: return "Hoverhog Battery";
+            case HogShop.SatPad: return "Satellite Pad";
             case ShopIds.TruckCapacity: return "Hopper Extension";
             case ShopIds.TruckTurbo: return "TURBO";
             case ShopIds.AirHorn: return "Air Horn";

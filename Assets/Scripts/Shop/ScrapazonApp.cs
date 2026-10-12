@@ -991,7 +991,7 @@ public class ScrapazonApp
             case ShopIds.ConveyorBelt: return "IN STOCK!";
             case ShopIds.CompactorMk2: return "ACHOO";
             case ShopIds.RecyclingContracts: return "×1.5";
-            case ShopIds.HazmatContract: return "$1.50";
+            case ShopIds.HazmatContract: return "$6.00";
             case ShopIds.TrophyShelf: return "+REP";
             case ShopIds.DisplayPlankShelf: return "WOBBLY";
             case ShopIds.DisplayGlassCase: return "LIT";
@@ -1002,11 +1002,11 @@ public class ScrapazonApp
             case ShopIds.MagnusGripper: return "PINCH";
             case ShopIds.MagnusVision: return "!";
             case ShopIds.BagCannon: return "FWOOMP";
-            case ShopIds.PermitMinivanMeadows: return "$15/BAG";
-            case ShopIds.PermitCouponCommons: return "$25/BAG";
-            case ShopIds.PermitSnootingtonHills: return "$40/BAG";
-            case ShopIds.PermitStackingtonHeights: return "$55/BAG";
-            case ShopIds.PermitBillionaireBluffs: return "$80/BAG";
+            case ShopIds.PermitMinivanMeadows: return "$45/BAG";
+            case ShopIds.PermitCouponCommons: return "$75/BAG";
+            case ShopIds.PermitSnootingtonHills: return "$120/BAG";
+            case ShopIds.PermitStackingtonHeights: return "$165/BAG";
+            case ShopIds.PermitBillionaireBluffs: return "$240/BAG";
             case ShopIds.EbaePowerSeller: return "5% FEE";
             case ShopIds.GoldenTruck: return "24K";
             case ShopIds.GarbageJuice: return "*HIC*";

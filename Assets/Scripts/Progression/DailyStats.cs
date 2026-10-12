@@ -11,6 +11,10 @@ public sealed class DayStats
     public int bags, onTime, crewBags, curbs, items, contamination, treasures, crushes;
     /// <summary>Cash in (credits) / out (charges: fines, wages, hospital...). Purchases are <see cref="spent"/>, not charges.</summary>
     public float credits, charges, spent, rep;
+    /// <summary>A night out (Docs/Casino.md §4, §5): casino winnings paid, stakes put up, and the bar tab with the cab home.
+    /// Kept apart from <see cref="credits"/> / <see cref="charges"/>: gambling is not the business's income, so it never
+    /// prices Work Orders.</summary>
+    public float casinoWon, casinoStaked, barTab;
     public float bestFindValue;
     public string bestFindDefId;
 
@@ -109,9 +113,40 @@ public static class DailyStats
         Raise();
     }
 
+    /// <summary>
+    /// A casino or bar posting (<see cref="LedgerIds.IsLeisure"/>) has already been counted into <see cref="DayStats.credits"/>
+    /// or <see cref="DayStats.charges"/> by the cash change: move it into the night-out lines instead, so "Net" (and with it
+    /// tomorrow's Work Order pay) is the business's own. Pure; returns false for any other posting.
+    /// </summary>
+    public static bool MoveLeisure(DayStats t, LedgerEntry e)
+    {
+        if (t == null || !LedgerIds.IsLeisure(e.id) || (e.kind != Ledger.KindCredit && e.kind != Ledger.KindCharge)) return false;
+        float x = e.amount;
+        if (x > 0f) t.credits = Mathf.Max(0f, t.credits - x);
+        else if (x < 0f) t.charges = Mathf.Max(0f, t.charges + x);
+        if (e.id == LedgerIds.CasinoPayout) t.casinoWon = Mathf.Max(0f, t.casinoWon + x);
+        else if (e.id == LedgerIds.CasinoWager) t.casinoStaked = Mathf.Max(0f, t.casinoStaked - x); // a voided stake comes back as a credit
+        else t.barTab = Mathf.Max(0f, t.barTab - x);
+        return true;
+    }
+
     public static void OnLedgerPosted(LedgerEntry e)
     {
-        if (e.kind != Ledger.KindSpend || NotOurs) return;
+        if (NotOurs) return;
+        if (LedgerIds.IsLeisure(e.id))
+        {
+            var day = Today;
+            if (!MoveLeisure(day, e)) return;
+            if (e.amount > 0f) GameSession.ForgetEarned(e.amount); // winnings are not lifetime earnings
+            SetMoney("credits", day.credits);
+            SetMoney("charges", day.charges);
+            SetMoney("casino_in", day.casinoWon);
+            SetMoney("casino_out", day.casinoStaked);
+            SetMoney("bar", day.barTab);
+            Raise();
+            return;
+        }
+        if (e.kind != Ledger.KindSpend) return;
         // The spend already arrived through CashChanged as a negative change: move it out of the charges.
         var t = Today;
         float x = -e.amount;
@@ -188,6 +223,7 @@ public static class DailyStats
             bags = Get("bags"), onTime = Get("ontime"), crewBags = Get(CrewKey), curbs = Get("curbs"), items = Get("items"),
             contamination = Get("contam"), treasures = Get("treasures"), crushes = Get("crushes"),
             credits = Money("credits"), charges = Money("charges"), spent = Money("spent"), rep = Get("rep") / 10f,
+            casinoWon = Money("casino_in"), casinoStaked = Money("casino_out"), barTab = Money("bar"),
             bestFindValue = Money("best"), bestFindDefId = DefAt(defIdx),
         };
     }
@@ -199,6 +235,7 @@ public static class DailyStats
         W("bags", s.bags); W("ontime", s.onTime); W(CrewKey, s.crewBags); W("curbs", s.curbs); W("items", s.items);
         W("contam", s.contamination); W("treasures", s.treasures); W("crushes", s.crushes);
         M("credits", s.credits); M("charges", s.charges); M("spent", s.spent); W("rep", Mathf.RoundToInt(s.rep * 10f));
+        M("casino_in", s.casinoWon); M("casino_out", s.casinoStaked); M("bar", s.barTab);
         M("best", s.bestFindValue); W("best_def", DefIndex(s.bestFindDefId));
     }
 
@@ -207,6 +244,7 @@ public static class DailyStats
         day = s.day, bags = s.bags, onTime = s.onTime, crewBags = s.crewBags, curbs = s.curbs, items = s.items,
         contamination = s.contamination, treasures = s.treasures, crushes = s.crushes, credits = s.credits,
         charges = s.charges, spent = s.spent, rep = s.rep, bestFindValue = s.bestFindValue, bestFindDefId = s.bestFindDefId,
+        casinoWon = s.casinoWon, casinoStaked = s.casinoStaked, barTab = s.barTab,
     };
 
     // best find stored as (index into ItemCatalog.All) + 1; 0 = none

@@ -395,7 +395,7 @@ public class RaccoonCallingTests
         // The three cheaper districts (Districts.cs): what a late-game owner wants collected while they work the rich ones.
         var cheap = new[] { "mildly_pleasant", "minivan_meadows", "coupon_commons" }.Select(District).ToArray();
         float cheapBags = cheap.Sum(d => F(d, "bagsPerDay")), cheapFees = cheap.Sum(d => F(d, "bagsPerDay") * F(d, "fee"));
-        Assert.AreEqual(93f, cheapBags, 0.01f); Assert.AreEqual(1290f, cheapFees, 0.01f);
+        Assert.AreEqual(93f, cheapBags, 0.01f); Assert.AreEqual(3870f, cheapFees, 0.01f);
         foreach (var d in cheap) Assert.IsTrue((bool)Static("CrewRules", "WorksTier", I(d, "tier")));
         Assert.IsTrue((bool)Static("CrewRules", "WorksTier", I(District("stackington_heights"), "tier")), "spare capacity may spill into tier 3");
         Assert.IsFalse((bool)Static("CrewRules", "WorksTier", I(District("billionaire_bluffs"), "tier")), "the Bluffs' Butler Drops are always the owner's");
@@ -420,7 +420,7 @@ public class RaccoonCallingTests
 
         // KIBBLE is the wage. Plain kibble for everybody; the crew eats dearer once there is a Brain Chip.
         int plain = Tune("FoodCentsPerHeadPerDay"), brainFood = Tune("CrewFoodCentsBrain"), premium = Tune("CrewFoodCentsFullTime");
-        Assert.AreEqual(500, plain); Assert.Less(plain, brainFood); Assert.Less(brainFood * 5, premium);
+        Assert.AreEqual(1500, plain); Assert.Less(plain, brainFood); Assert.Less(brainFood * 5, premium);
         var six = Crew(6, 9, 2, 9, 9);
         Assert.AreEqual(6 * plain, (int)Static("HutchRules", "FoodCents", six, 0)); Assert.AreEqual(6 * brainFood, (int)Static("HutchRules", "FoodCents", six, 1));
         Assert.AreEqual(6 * premium, (int)Static("HutchRules", "FoodCents", six, 2)); Assert.AreEqual(6 * premium, (int)Static("HutchRules", "FoodCents", six, 7));
@@ -430,18 +430,19 @@ public class RaccoonCallingTests
 
         // MONEY, as an upper bound nobody reaches: every bag on time, every bag at the night rate, spare capacity spent in
         // Snootington. Even then the top crew nets less than the old Kevin's Crew did at its top level on paper
-        // (70% x 95% of its 113 bags' fees, less the $900 wage = about $594 a day), and the smaller crews net next to nothing.
+        // (70% x 95% of its 113 bags' fees, less the $900 wage = about $594 a day; x3 here since the 2026-10-12 pace pass, which
+        // tripled every fee and the kibble with them), and the smaller crews net next to nothing.
         float share = Tune("CrewFeeSharePercent") / 100f, night = 1f + (float)T("NightShift").GetField("NightPayBonus").GetRawConstantValue();
         float snoot = F(District("snootington_hills"), "fee");
         float topBest = share * night * (cheapFees + (ceiling - cheapBags) * snoot) - 6 * premium / 100f;
-        Assert.That(topBest, Is.InRange(100f, 594f));
+        Assert.That(topBest, Is.InRange(300f, 1782f));
         // mid, the same way: 60 bags at most, cheapest first (all of the Acres, then Meadows)
         float midBags = Cap(2, 1, 1) * 3, acres = F(cheap[0], "bagsPerDay");
         float midBest = share * night * (acres * F(cheap[0], "fee") + (midBags - acres) * F(cheap[1], "fee")) - 6 * brainFood / 100f;
-        Assert.That(midBest, Is.InRange(0f, 225f), "under what the old mid-level Kevin's Crew netted on paper ($225 a day)");
+        Assert.That(midBest, Is.InRange(0f, 675f), "under what the old mid-level Kevin's Crew netted on paper ($225 a day, x3)");
         // early: twelve bags of the Acres at the very best, against three bowls of kibble
         float earlyBest = share * night * 2 * Cap(1, 1, 0) * F(cheap[0], "fee") - 3 * plain / 100f;
-        Assert.That(earlyBest, Is.InRange(-15f, 15f), "an early crew is company, not income");
+        Assert.That(earlyBest, Is.InRange(-45f, 45f), "an early crew is company, not income");
     }
 
     [Test]

@@ -490,6 +490,10 @@ public abstract class Carryable : MonoBehaviour, IInteractable
         Body.WakeUp();
     }
 
+    /// <summary>A script that just set this down on known-good open ground (a dog re-seating a bag) records it as the spot the
+    /// kill-plane rescue returns to.</summary>
+    public void NoteSafePosition() => RememberSafePosition();
+
     void RememberSafePosition()
     {
         if (transform.position.y < KillPlaneY + 5f) return;

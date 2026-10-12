@@ -70,6 +70,8 @@ public sealed class CoastalYardBoundary : MonoBehaviour
                 {
                     var c = box.transform.TransformPoint(new Vector3(box.center.x, 0, box.center.z - box.size.z * .5f));
                     var d = box.transform.TransformPoint(new Vector3(box.center.x, 0, box.center.z + box.size.z * .5f));
+                    // in plan: on the relief a run and its lot stand at different heights
+                    a.y = b.y = c.y = d.y = 0f;
                     if (Vector3.Distance(a, c) < .03f && Vector3.Distance(b, d) < .03f ||
                         Vector3.Distance(a, d) < .03f && Vector3.Distance(b, c) < .03f) { found = box.enabled; break; }
                 }

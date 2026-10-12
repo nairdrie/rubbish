@@ -208,9 +208,11 @@ public sealed class ScrapazonCareer
             {
                 var permit = ScrapazonCatalog.Get(d.permitId);
                 bool rankOk = Progression.HasRank(d.rankRequired);
-                string lockText = $"LOCKED · Rank {d.rankRequired} ({Progression.RankTitle(d.rankRequired)}) + {Economy.Money(d.permitPrice)} permit";
+                string contractLock = Campaign.LockedReason(d.id);   // opened by winning a contract, not by buying the permit
+                string lockText = contractLock != null ? "LOCKED · " + contractLock
+                    : $"LOCKED · Rank {d.rankRequired} ({Progression.RankTitle(d.rankRequired)}) + {Economy.Money(d.permitPrice)} permit";
                 row.Add(L(lockText, "sz-cr-district-lock"));
-                if (permit != null && rankOk)
+                if (permit != null && rankOk && contractLock == null)
                 {
                     var b = L(ScrapazonStore.CanAfford(permit) ? $"Buy permit · {Economy.Money(d.permitPrice)}" : $"{Economy.Money(d.permitPrice - GameSession.Cash)} short", "sz-cr-btn");
                     string pid = permit.id;
@@ -271,6 +273,12 @@ public sealed class ScrapazonCareer
         return card;
     }
 
+    /// <summary>"+$120.00 / -$85.00": winnings paid out / stakes put up.</summary>
+    public static string CasinoLine(DayStats d) =>
+        d == null || (d.casinoWon <= 0f && d.casinoStaked <= 0f) ? "-" : "+" + Economy.Money(d.casinoWon) + " / -" + Economy.Money(d.casinoStaked);
+    /// <summary>"-$30.00": drinks and the cab home.</summary>
+    public static string BarLine(DayStats d) => d == null || d.barTab <= 0f ? "-" : "-" + Economy.Money(d.barTab);
+
     VisualElement StatsCard()
     {
         var card = Section("sz-cr-col");
@@ -293,6 +301,15 @@ public sealed class ScrapazonCareer
         Row("Treasures", t.treasures.ToString(), y.treasures.ToString());
         Row("Best find", t.BestFindName ?? "-", y.BestFindName ?? "-");
         Row("Net income", Economy.Money(t.Net), Economy.Money(y.Net));
+        // A night out is listed apart: it is not business income and never prices Work Orders (Docs/Casino.md §4).
+        // Two rows: "+$1,069 / -$1,000" in one cell runs into the next column.
+        if (t.casinoWon > 0f || t.casinoStaked > 0f || y.casinoWon > 0f || y.casinoStaked > 0f)
+        {
+            string Cell(float v, string sign) => v > 0f ? sign + Economy.Money(v) : "-";
+            Row("Casino paid out", Cell(t.casinoWon, "+"), Cell(y.casinoWon, "+"));
+            Row("Casino stakes", Cell(t.casinoStaked, "-"), Cell(y.casinoStaked, "-"));
+        }
+        if (t.barTab > 0f || y.barTab > 0f) Row("Bar", BarLine(t), BarLine(y));
         Row("Rep", $"{t.rep:+0;-0;0}", $"{y.rep:+0;-0;0}");
         card.Add(grid);
         return card;

@@ -21,13 +21,14 @@ public static class CityRoadClearance
                 var pose = road.At(road.Length * i / count);
                 for (int channel = -1; channel <= 1; channel++)
                 {
-                    var p = pose.position + pose.rotation * Vector3.right * (channel * lane) + Vector3.up * 1.8f;
+                    // on the relief the probe rides the road; the surfaces the town stands on are not obstacles
+                    var p = TownRelief.Lift(pose.position + pose.rotation * Vector3.right * (channel * lane)) + Vector3.up * 1.8f;
                     int found = Physics.OverlapBoxNonAlloc(p, new Vector3(.85f, 1.5f, 1.2f), hits, pose.rotation, ~0, QueryTriggerInteraction.Ignore);
                     if (found == hits.Length && seen.Add(road.id + "/overflow")) errors.Add(road.name + ": too many colliders to verify road clearance.");
                     for (int h = 0; h < found; h++)
                     {
                         var collider = hits[h];
-                        if (!collider || !(collider.transform.IsChildOf(town) || authoredRoot != null && collider.transform.IsChildOf(authoredRoot)) || collider.bounds.max.y <= pose.position.y + .3f ||
+                        if (!collider || !(collider.transform.IsChildOf(town) || authoredRoot != null && collider.transform.IsChildOf(authoredRoot)) || TownRelief.IsGroundSurface(collider) || TownRelief.TopAboveGround(collider) <= pose.position.y + .3f ||
                             collider.GetComponentInParent<DistrictGate>() != null || collider.attachedRigidbody != null) continue;
                         var anchor = collider.GetComponentInParent<CityRoadAnchor>();
                         string identity = anchor != null ? anchor.stableId : collider.name;

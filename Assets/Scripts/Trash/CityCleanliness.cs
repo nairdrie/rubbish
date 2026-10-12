@@ -85,7 +85,8 @@ public static class CityCleanliness
         {
             _ = Value01;
             float w = 1f;
-            foreach (var d in Districts.All) if (DistrictAccess.OpenInTown(d)) w = Mathf.Min(w, District01(d.id));
+            // A district under contract is meant to start filthy: it doesn't drag everybody's Clean Streets bonus down (Campaign).
+            foreach (var d in Districts.All) if (DistrictAccess.OpenInTown(d) && !Campaign.IsUnderContract(d.id)) w = Mathf.Min(w, District01(d.id));
             return w;
         }
     }
@@ -176,12 +177,17 @@ public static class CityCleanliness
 
         double now = GameClock.TotalHours;
         var bags = GameSession.CurbBags;
+        // The district under contract (Campaign) counts each OLD bag as an equal share of "all the mess", so its bar moves with
+        // every bag taken away instead of sitting at 0% until the last few; every other bag, and every other district, is by age.
+        var contract = Campaign.Active;
         for (int i = 0; i < bags.Count; i++)
         {
             var b = bags[i];
             if (b == null) continue;
             var d = Districts.ForStopId(b.stopId);
-            districtDirt[IndexOf(d)] += BagDirt(d, Math.Max(0, now - b.putOutAtHours));
+            districtDirt[IndexOf(d)] += contract != null && contract.districtId == d.id && CampaignRules.IsBacklogBagId(b.bagId)
+                ? Campaign.HeapDirtPerBag(d)
+                : BagDirt(d, Math.Max(0, now - b.putOutAtHours));
         }
 
         // Litter: only counted in the Neighborhood (the scene with the TrashRoute); remembered while away.
@@ -276,7 +282,8 @@ public static class CityCleanliness
             if (bonus < 0.01f) bonus = 0f;
             totalBonus += bonus;
 
-            int neglected = CurbTrash.NeglectedStopsIn(d);
+            // No neglect fines or Rep losses for the district under contract: its heaps are the job (Campaign).
+            int neglected = Campaign.IsUnderContract(d.id) ? 0 : CurbTrash.NeglectedStopsIn(d);
             neglectedTotal += neglected;
             long bonusPool = GameSession.ToCents(bonus), finePool = GameSession.ToCents(neglected * d.neglectFine);
             for (int i = 0; i < businesses.Count; i++)
