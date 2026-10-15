@@ -192,7 +192,7 @@ public static partial class Progression
                     if (!GameSession.KeyToCity) { whyNot = "Requires the Key to the City"; return false; }
                     continue;
                 }
-                if (GameSession.GetUpgradeLevel(id) < lvl)
+                if (GameSession.GetUpgradeLevel(id) < lvl && !ContractPermitOpen(id))
                 {
                     // Magnus's career steps read as steps ("Requires Step 4: X-Ray Googly Eyes"), not part levels.
                     string step = MagnusCareer.StepLabel(id, lvl);
@@ -202,6 +202,16 @@ public static partial class Progression
             }
         }
         return true;
+    }
+
+    /// <summary>A prerequisite naming a contract district's permit (the Dumpster Dunker's Commons permit) is met once that
+    /// district is open in the Town: a co-op guest's business never gets the permit itself (Docs/Campaign.md §6).</summary>
+    static bool ContractPermitOpen(string permitId)
+    {
+        if (!Campaign.IsContractPermit(permitId)) return false;
+        foreach (var d in Districts.All)
+            if (d.permitId == permitId) return DistrictAccess.OpenInTown(d);
+        return false;
     }
 
     /// <summary>"truck_arm:2" -> ("truck_arm", 2); a bare id means level 1.</summary>

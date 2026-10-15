@@ -25,6 +25,7 @@ What it leaves out: treasure (a find is worth a few dollars to a few hundred, pa
 
 Run:  python3 pace_model.py            both tables, 300 runs each
       python3 pace_model.py sens       the same player types with each NEW knob moved
+      python3 pace_model.py zones      pay and Rep per load in each contract zone (Acres, Meadows, Commons, Hills)
 """
 import random
 import statistics
@@ -213,8 +214,54 @@ def sensitivity():
         table(e, "NEW, but " + label, runs=150)
 
 
+# ------------------------------------------------------------------------------------------------------ zones (2026-10-14)
+# Per-load pay and Rep in each contract zone after the pace pass. Bag stats are campaign_model.py's district rows; fees, tips,
+# curb bonuses, late floors and Rep multipliers are Districts.cs. Commons: about 60% of a fresh put-out goes in the dumpsters,
+# and the old heap is 27 dumpster bags + 15 loose ones, all emptied with the rear-loader (dumpsters need the Dumpster Dunker).
+ZONES = [
+    # name,      kg,   items, sortval, fee,   tip,  curb, floor, repMult, truck kg, stops per load
+    ("Acres",    6.88, 8.93,  3.59,    12.0,  0.0,  6.0,  0.60,  1.00,    120,      7),
+    ("Meadows",  7.76, 9.77,  4.59,    45.0,  0.0,  24.0, 0.20,  1.50,    200,      9),
+    ("Commons",  8.00, 9.74,  4.67,    75.0,  15.0, 54.0, 0.15,  1.75,    200,      6),
+    ("Hills",    9.49, 10.53, 5.52,    120.0, 45.0, 90.0, 0.10,  2.00,    200,      8),
+]
+
+
+def zone_load(econ, p, z, fresh, rng):
+    name, kg, items, sortval, fee, tip, curb, floor, rmul, cap, stops = z
+    bags = int(cap // kg)
+    pay_bag = (fee + tip) if fresh else fee * floor
+    rep_bag = (12.0 if fresh else econ["rep_bag_late"]) * rmul
+    cash = bags * pay_bag + (stops - 1) * curb
+    rep = bags * rep_bag + (stops - 1) * econ["rep_curb"] * rmul
+    global ITEMS, SORTVAL, BAGS
+    saved = (ITEMS, SORTVAL, BAGS)
+    ITEMS, SORTVAL, BAGS = items, sortval, bags
+    try:
+        c, r, t, wrong, mmax, mavg = sort_load(econ, p, rng)
+    finally:
+        ITEMS, SORTVAL, BAGS = saved
+    return cash + c, rep + r * rmul, bags
+
+
+def zones_table(runs=200):
+    print("\n=== Per load in each zone (NEW economy; rear-loader from the Meadows on) ===")
+    print(f"{'zone':8} {'player':10} | bags | old heap load: $     Rep | fresh on-time load: $     Rep")
+    for z in ZONES:
+        for pn in ("typical", "locked in"):
+            p = PLAYERS[pn]
+            old = [zone_load(NEW, p, z, False, random.Random(s)) for s in range(runs)]
+            new = [zone_load(NEW, p, z, True, random.Random(s)) for s in range(runs)]
+            med = statistics.median
+            print(f"{z[0]:8} {pn:10} | {old[0][2]:4d} | {med([o[0] for o in old]):17.0f} {med([o[1] for o in old]):6.0f} | "
+                  f"{med([n[0] for n in new]):20.0f} {med([n[1] for n in new]):6.0f}")
+    print("Key items: rear-loader $600 (rank 1), Dumpster Dunker $2,400 (rank 4, needs Commons open), Dunker II $9,000 (rank 7).")
+
+
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "sens":
+    if len(sys.argv) > 1 and sys.argv[1] == "zones":
+        zones_table()
+    elif len(sys.argv) > 1 and sys.argv[1] == "sens":
         sensitivity()
     else:
         table(OLD, "OLD economy (before 2026-10-12)")

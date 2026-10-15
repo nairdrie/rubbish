@@ -14,7 +14,8 @@ public static class DumpsterShop
         {
             id = DumpsterRules.UpgradeId, kind = ShopItemKind.Upgrade, dept = "truck", tags = new[] { "truck" },
             brand = "Big Tip Hydraulics",
-            prices = new[] { 2400f, 9000f }, maxLevel = 2, rankRequired = new[] { 5, 7 },
+            // Rank 4: the Commons contract needs it, so it must be on sale the moment Commons opens (the Meadows contract is the real gate).
+            prices = new[] { 2400f, 9000f }, maxLevel = 2, rankRequired = new[] { 4, 7 },
             prereqs = new[]
             {
                 new[] { ShopIds.TruckModel + ":1", ShopIds.PermitCouponCommons },
@@ -31,7 +32,7 @@ public static class DumpsterShop
             levelEffects = new[]
             {
                 "Rear-loader only. Back the hopper up to a shop's dumpster, stop, and HOLD B: it lifts the dumpster and tips every bag " +
-                "in it into the truck. Each bag pays like a curb bag. Shops in Coupon Commons put out both.",
+                "in it into the truck. Each bag pays like a curb bag. Shops in Coupon Commons put out both, and the Commons contract can't be won without it.",
                 "Tips more than twice as fast (a full dumpster in about a second).",
             },
             listPrice = 3999f, rating = 4.7f, ratingCount = 1288, badge = "Commercial Grade",

@@ -97,6 +97,7 @@ public sealed class ContractIntroScreen : UiScreen
         if (!first)
         {
             string extra = c.rateMult > 1.01f ? $" Careful: its houses put trash out {Mathf.RoundToInt((c.rateMult - 1f) * 100f)}% more often." : "";
+            if (!string.IsNullOrEmpty(c.note)) extra += " " + c.note;
             return new[]
             {
                 new Page

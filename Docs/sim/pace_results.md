@@ -72,3 +72,20 @@ typical    |     490   451 12.5  |  1.5 /  3.0 | 10.1 min (100%) |  2.0     714 
 skilled    |     692   472  9.8  |  2.6 /  5.0 |  7.7 min (100%) |  2.0    1405    955 | 20.1 min (100%)              | 19.9 min (100%)
 locked in  |     977   486  8.2  |  4.2 / 10.0 |  6.4 min (100%) |  2.0    2180   1126 | 16.2 min (100%)              | 16.2 min (100%)
 ```
+
+## Per load in each contract zone (`python3 Docs/sim/pace_model.py zones`, added 2026-10-14)
+
+```
+
+=== Per load in each zone (NEW economy; rear-loader from the Meadows on) ===
+zone     player     | bags | old heap load: $     Rep | fresh on-time load: $     Rep
+Acres    typical    |   17 |               490    596 |                  571    664
+Acres    locked in  |   17 |               984    636 |                 1065    704
+Meadows  typical    |   25 |              1052   1374 |                 1952   1524
+Meadows  locked in  |   25 |              2088   1470 |                 2988   1620
+Commons  typical    |   25 |              1200   1550 |                 3168   1726
+Commons  locked in  |   25 |              2256   1662 |                 4225   1838
+Hills    typical    |   21 |              1538   1626 |                 4751   1794
+Hills    locked in  |   21 |              2567   1754 |                 5780   1922
+Key items: rear-loader $600 (rank 1), Dumpster Dunker $2,400 (rank 4, needs Commons open), Dunker II $9,000 (rank 7).
+```

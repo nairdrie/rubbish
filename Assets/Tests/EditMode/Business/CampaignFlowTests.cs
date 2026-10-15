@@ -194,7 +194,83 @@ public class CampaignFlowTests
         Assert.AreEqual(1.5f, Rate(Meadows));
         Call("Campaign", "DebugWinActive");
         Assert.AreEqual(1f, Rate(Meadows), "won: the Meadows settle down");
-        Assert.IsNull(ActiveId(), "slice 1 ends at Commons");
+        Assert.AreEqual(Commons, ActiveId(), "the third contract: Commons");
+        Assert.AreEqual(1f, Rate(Commons), "Commons is busy enough already (its shops add a dumpster bag to every put-out)");
+    }
+
+    // ------------------------------------------------------------------ the third contract: Coupon Commons and its dumpsters
+
+    const string Hills = "snootington_hills";
+
+    static int SlotOf(object bag) => (int)bag.GetType().GetField("slot").GetValue(bag);
+
+    [Test]
+    public void WinningTheMeadowsStartsCommonsWithStuffedDumpstersAndLooseHeaps()
+    {
+        Seed();
+        Call("Campaign", "DebugWinActive");                                // Acres -> Meadows
+        Call("Campaign", "DebugWinActive");                                // Meadows -> Commons
+        Assert.IsTrue((bool)Call("DistrictAccess", "OpenInTown", District(Commons)));
+        Assert.AreEqual(Commons, ActiveId());
+
+        var old = OldBags(Commons);
+        Assert.AreEqual(42, old.Count, "the whole Commons heap fits under its curb cap");
+        int inDumpsters = 0, loose = 0;
+        var perStopDumpster = new Dictionary<string, int>();
+        foreach (var b in old)
+        {
+            int slot = SlotOf(b);
+            if ((bool)Call("DumpsterRules", "IsDumpsterSlot", slot))
+            {
+                inDumpsters++;
+                string stop = (string)b.GetType().GetField("stopId").GetValue(b);
+                perStopDumpster[stop] = (perStopDumpster.TryGetValue(stop, out int n) ? n : 0) + 1;
+            }
+            else { loose++; Assert.Less(slot, 8, "a loose bag sits in a curb slot"); }
+        }
+        Assert.AreEqual(27, inDumpsters, "the locked part: only the Dumpster Dunker reaches it");
+        Assert.AreEqual(15, loose, "and loose curb heaps like the earlier districts");
+        Assert.AreEqual(27, (int)Call("Campaign", "BacklogInDumpsters", Commons));
+        foreach (var kv in perStopDumpster) Assert.LessOrEqual(kv.Value, 6, "a dumpster holds 6");
+        Assert.Greater(perStopDumpster.Count, 1, "spread over the shops, not one dumpster");
+        Assert.IsFalse((bool)Call("DistrictAccess", "OpenInTown", District(Hills)), "Hills waits for the Commons contract");
+    }
+
+    [Test]
+    public void WinningCommonsGrantsTheHillsAndTheCampaignRunsOutThere()
+    {
+        Seed();
+        for (int i = 0; i < 3; i++) Call("Campaign", "DebugWinActive");
+        Assert.AreEqual(1, (int)Call("GameSession", "GetUpgradeLevel", "permit_snootington_hills"));
+        Assert.IsTrue((bool)Call("DistrictAccess", "OpenInTown", District(Hills)));
+        Assert.IsNull(ActiveId(), "no fourth contract yet: Heights and the Bluffs open by rank and permit");
+        Assert.AreEqual(1, Counter("campaign_won_" + Commons));
+    }
+
+    [Test]
+    public void TheHillsPermitIsNoLongerForSaleButTheDunkerIsOnceCommonsIsOpen()
+    {
+        Seed();
+        var hills = Call("ScrapazonCatalog", "Get", "permit_snootington_hills");
+        var dunker = Call("ScrapazonCatalog", "Get", "truck_dumpster_lift");
+        bool CanBuy(object item, out string why)
+        {
+            var args = new object[] { item, 1, null };
+            bool ok = (bool)R("Progression").GetMethod("CanBuy", Static).Invoke(null, args);
+            why = (string)args[2];
+            return ok;
+        }
+        Call("Progression", "DebugSetRank", 12);
+        Call("GameSession", "SetUpgradeLevel", "truck_model", 1);
+        Assert.IsFalse(CanBuy(hills, out string why), "won by contract, never bought");
+        StringAssert.Contains("Coupon Commons", why);
+        Assert.IsFalse(CanBuy(dunker, out why), "Commons is still locked");
+
+        Call("Campaign", "DebugWinActive");
+        Call("Campaign", "DebugWinActive");
+        Assert.IsTrue(CanBuy(dunker, out why), why);
+        // (A co-op guest's business never holds the Commons permit itself; Progression.ContractPermitOpen lets the Town's open
+        // district stand in for it. Offline the Town IS this business, so that path needs a session to show.)
     }
 
     [Test]

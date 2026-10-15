@@ -4,9 +4,10 @@ using Unity.Netcode;
 using UnityEngine;
 
 /// <summary>
-/// Every number of the first campaign slice in one place (Docs/Campaign.md §14). Slice 1 covers two contracts: clean the
-/// Acres to open the Meadows, clean the Meadows to open Coupon Commons. A district under contract STARTS MESSY (a heap of old
-/// bags on its curbs) and its permit is no longer for sale: the city hands it over when the contract is won.
+/// Every number of the campaign contracts in one place (Docs/Campaign.md §14, §14.9). Three contracts: clean the Acres to open
+/// the Meadows, the Meadows to open Coupon Commons, and Commons to open Snootington Hills. A district under contract STARTS
+/// MESSY (a heap of old bags on its curbs) and its permit is no longer for sale: the city hands it over when the contract is won.
+/// Commons hides most of its old bags in the shops' dumpsters, which only a rear-loader with the Dumpster Dunker can empty.
 /// </summary>
 public static class CampaignTuning
 {
@@ -18,6 +19,10 @@ public static class CampaignTuning
     public const double HoldHours = 24.0;
     /// <summary>Old bags each contract district starts with (a Curb Pup holds about 17 of them).</summary>
     public const int AcresBacklog = 56, MeadowsBacklog = 48;
+    /// <summary>Coupon Commons' old bags: <see cref="CommonsInDumpsters"/> of them spread over its shops' dumpsters (the "locked
+    /// filth": no hand, arm or crew can reach them), the rest loose in curb heaps like the Acres and the Meadows. Under its
+    /// 48-bag curb cap with room to spare.</summary>
+    public const int CommonsBacklog = 42, CommonsInDumpsters = 27;
     /// <summary>The Meadows' houses put trash out this much more often while its contract is running ("the second town is
     /// harder"). It still scales with the people online like every district: CurbTrashSpawner.RateScale / CapacityScale.</summary>
     public const float MeadowsRateMult = 1.5f;
@@ -37,10 +42,16 @@ public sealed class CampaignContract
     public readonly string districtId, unlocksId;
     public readonly int backlog;
     public readonly float rateMult;
+    /// <summary>How many of the old bags go in the district's dumpsters, one per dumpster in turn (dumpster districts only;
+    /// 0 = all loose on the curbs). The rest are curb heaps.</summary>
+    public readonly int inDumpsters;
+    /// <summary>One extra line for the contract's card and letter: what this district needs that the last one didn't (or null).</summary>
+    public readonly string note;
 
-    public CampaignContract(string districtId, string unlocksId, int backlog, float rateMult)
+    public CampaignContract(string districtId, string unlocksId, int backlog, float rateMult, int inDumpsters = 0, string note = null)
     {
         this.districtId = districtId; this.unlocksId = unlocksId; this.backlog = backlog; this.rateMult = rateMult;
+        this.inDumpsters = inDumpsters; this.note = note;
     }
 
     public DistrictDef District => Districts.Get(districtId);
@@ -192,6 +203,9 @@ public static class Campaign
     {
         new CampaignContract(Districts.MildlyPleasant, Districts.MinivanMeadows, CampaignTuning.AcresBacklog, 1f),
         new CampaignContract(Districts.MinivanMeadows, Districts.CouponCommons, CampaignTuning.MeadowsBacklog, CampaignTuning.MeadowsRateMult),
+        new CampaignContract(Districts.CouponCommons, Districts.SnootingtonHills, CampaignTuning.CommonsBacklog, 1f,
+            CampaignTuning.CommonsInDumpsters,
+            $"Most of it is stuffed in the shops' dumpsters. Hands can't empty a dumpster: you need the rear-loader and the Dumpster Dunker ({Scrapazon.Name} > Truck)."),
     };
 
     public static IReadOnlyList<CampaignContract> Contracts => contracts;
@@ -429,6 +443,23 @@ public static class Campaign
         int heaps = CampaignRules.HeapCount(left, houses.Count);
         float trust = GameSession.GetDistrictTrust(d.id, d.trustStart);
         int placed = 0, guard = 0, seq = placedThisSession;
+
+        // Dumpster districts: the old bags fill the dumpsters first (the part only the Dumpster Dunker can clear), so a resumed
+        // clean-up puts back the dumpster bags before the curb heaps.
+        if (c.inDumpsters > 0 && DumpsterRules.HasDumpster(d.id))
+        {
+            int want = Mathf.Min(left, c.inDumpsters);
+            for (int round = 0; round < DumpsterRules.Capacity && placed < want; round++)
+                foreach (var h in houses)
+                {
+                    if (placed >= want) break;
+                    if (GameSession.CurbBags.Count >= CurbTrashSpawner.Cap || CurbTrash.BagsIn(d) >= CurbTrashSpawner.CurbCap(d)) break;
+                    int slot = DumpsterRules.FreeSlot(CurbTrash.StatsFor(h.stopId).usedSlotMask);
+                    if (slot < 0) continue;
+                    if (PlaceOld(d, h, slot, trust, ref seq)) placed++;
+                }
+        }
+
         while (placed < left && guard++ < left * 8 + 64)
         {
             if (GameSession.CurbBags.Count >= CurbTrashSpawner.Cap || CurbTrash.BagsIn(d) >= CurbTrashSpawner.CurbCap(d)) break;
@@ -445,16 +476,8 @@ public static class Campaign
                 }
                 if (!put) break;
             }
-            string bagId = CampaignRules.BacklogBagId(h.stopId, ++seq);
-            if (GameSession.FindCurbBag(bagId) != null) continue;
-            // The district's own profile: no Rookie Luck, no gnomes. Fifty-odd bags at four times the treasure would buy the shop.
-            var contents = ItemCatalog.RollBag(bagId, PickupVisuals.StableHash(bagId), h.wealth, h.address, d.loot, trust);
-            if (contents == null) break;
-            if (string.IsNullOrEmpty(contents.bagId)) contents.bagId = bagId;
-            if (string.IsNullOrEmpty(contents.foundAt)) contents.foundAt = h.address;
-            double age = CampaignRules.BacklogAgeHours(d.neglectedHours, (uint)PickupVisuals.StableHash("age:" + bagId));
-            GameSession.AddCurbBag(new CurbBag { bagId = contents.bagId, stopId = h.stopId, slot = slot, putOutAtHours = GameClock.TotalHours - age, contents = contents });
-            placed++;
+            if (PlaceOld(d, h, slot, trust, ref seq)) placed++;
+            else if (GameSession.FindCurbBag(CampaignRules.BacklogBagId(h.stopId, seq)) == null) break;   // could not roll a bag at all
         }
         placedThisSession = seq;
         unplaced = Mathf.Max(0, left - placed);
@@ -468,9 +491,39 @@ public static class Campaign
             GameSession.SetCounter(IntroKey + d.id, 1);
             HeadOffice.Send($"Contract: {d.name}",
                 $"{d.name} has not seen a collection in a very long time. There are {left} old bags out there and the raccoons are running the place. " +
+                (string.IsNullOrEmpty(c.note) ? "" : c.note + " ") +
                 $"Clear them, then keep the district at {Mathf.RoundToInt(CampaignTuning.Threshold * 100f)}% clean for {CampaignTuning.HoldHours:0} hours straight (one full day, night included) " +
                 $"and the city will hand you {c.Unlocks.name}.");
         }
+    }
+
+    /// <summary>One old bag at <paramref name="h"/>'s <paramref name="slot"/> (a curb slot, or a dumpster slot). False when the id
+    /// is already out (a resumed session) or the bag could not be rolled.</summary>
+    static bool PlaceOld(DistrictDef d, CurbTrashSpawner.House h, int slot, float trust, ref int seq)
+    {
+        string bagId = CampaignRules.BacklogBagId(h.stopId, ++seq);
+        if (GameSession.FindCurbBag(bagId) != null) return false;
+        // The district's own profile: no Rookie Luck, no gnomes. Fifty-odd bags at four times the treasure would buy the shop.
+        var contents = ItemCatalog.RollBag(bagId, PickupVisuals.StableHash(bagId), h.wealth, h.address, d.loot, trust);
+        if (contents == null) return false;
+        if (string.IsNullOrEmpty(contents.bagId)) contents.bagId = bagId;
+        if (string.IsNullOrEmpty(contents.foundAt)) contents.foundAt = h.address;
+        double age = CampaignRules.BacklogAgeHours(d.neglectedHours, (uint)PickupVisuals.StableHash("age:" + bagId));
+        GameSession.AddCurbBag(new CurbBag { bagId = contents.bagId, stopId = h.stopId, slot = slot, putOutAtHours = GameClock.TotalHours - age, contents = contents });
+        return true;
+    }
+
+    /// <summary>Old bags of one district sitting in its dumpsters right now (the part only the Dumpster Dunker can clear).</summary>
+    public static int BacklogInDumpsters(string districtId)
+    {
+        var bags = GameSession.CurbBags;
+        int n = 0;
+        for (int i = 0; i < bags.Count; i++)
+        {
+            var b = bags[i];
+            if (b != null && DumpsterRules.IsDumpsterSlot(b.slot) && CampaignRules.IsBacklogBagId(b.bagId) && Districts.ForStopId(b.stopId).id == districtId) n++;
+        }
+        return n;
     }
 
     // ------------------------------------------------------------------ host: the tick

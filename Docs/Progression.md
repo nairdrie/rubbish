@@ -1866,9 +1866,11 @@ garbage bags." Code: `Assets/Scripts/Trash/Dumpsters/` (`DumpsterRules` holds th
 
 | id | Lv | $ | Rank | Prereq | Title | Effect |
 |---|---|---|---|---|---|---|
-| `truck_dumpster_lift` | 1 | 2,400 | 5 | `truck_model:1`, `permit_coupon_commons` | *Dumpster Dunker Rear Tipper (Lifts 1 Dumpster, 0 Feelings)* | rear-loader only: back the hopper up to a dumpster (within 4.2 m behind, 1.9 m either side, 42° of square), stop, **hold B** (pad: d-pad down) 0.6 s. It lifts in 1.3 s and tips a bag every 0.45 s into the truck through `TruckHopper.CollectCurbBag`, so each pays the district fee and tip, and the stop's "Curb clean!" bonus lands when both its curb and its dumpster are empty. Stops when the truck is full (the rest stays in) or if you drive off |
+| `truck_dumpster_lift` | 1 | 2,400 | **4** (was 5; 2026-10-14) | `truck_model:1`, `permit_coupon_commons` | *Dumpster Dunker Rear Tipper (Lifts 1 Dumpster, 0 Feelings)* | rear-loader only: back the hopper up to a dumpster (within 4.2 m behind, 1.9 m either side, 42° of square), stop, **hold B** (pad: d-pad down) 0.6 s. It lifts in 1.3 s and tips a bag every 0.45 s into the truck through `TruckHopper.CollectCurbBag`, so each pays the district fee and tip, and the stop's "Curb clean!" bonus lands when both its curb and its dumpster are empty. Stops when the truck is full (the rest stays in) or if you drive off |
 | | 2 | 9,000 | 7 | `truck_dumpster_lift:1` | *Dumpster Dunker II: Twin Rams* | a bag every 0.18 s |
 
+- **The Commons contract (2026-10-14, `Campaign.md` §14.9):** Commons now starts messy with 27 old bags in its dumpsters and 15 loose,
+  and winning it grants Snootington Hills, so the Dunker is the key item of the third zone.
 - **Co-op.** Host-authoritative like TIP IT: a guest driver asks through `DumpsterNet` (the host re-checks the seat, the
   level, the model, reach, speed, the permit of the truck's business and the truck's room), every machine plays the lift.
   The level replicates as nibble 14 of `BusinessUpgradeInfo.truckLevels` (one nibble left). Protocol 20.

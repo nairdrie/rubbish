@@ -168,7 +168,9 @@ public class TruckDumpsterLift : MonoBehaviour
         }
         var district = target != null && target.Stop != null ? target.Stop.District : null;
         bool own = string.IsNullOrEmpty(business) || business == Businesses.LocalId;
-        bool permit = district == null || district.tier <= 1 || (own ? Districts.IsUnlocked(district) : BusinessUpgradeNet.HasPermitForBusiness(business, district));
+        // A district won by contract is open to the whole Town (DistrictAccess), so no business needs its own permit there.
+        bool permit = district == null || district.tier <= 1 || (Campaign.IsGrantedByContract(district.id) && DistrictAccess.OpenInTown(district)) ||
+                      (own ? Districts.IsUnlocked(district) : BusinessUpgradeNet.HasPermitForBusiness(business, district));
         return DumpsterRules.Check(driver, Level, RearLoader, Busy, FlatSpeed, reach, bags, permit, fits);
     }
 

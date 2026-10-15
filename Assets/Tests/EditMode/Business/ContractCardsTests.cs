@@ -24,6 +24,18 @@ public class ContractCardsTests
     }
 
     [Test]
+    public void TheCommonsCardSaysTheDumpstersNeedTheDunker()
+    {
+        var commons = Words(Contract("coupon_commons"), false);
+        Assert.AreEqual(1, commons.Length);
+        StringAssert.Contains("42", commons[0], "the old bags");
+        StringAssert.Contains("dumpsters", commons[0]);
+        StringAssert.Contains("Dumpster Dunker", commons[0]);
+        StringAssert.Contains("rear-loader", commons[0]);
+        StringAssert.Contains("Snootington Hills", commons[0], "what it earns");
+    }
+
+    [Test]
     public void ALaterContractGetsOneCardAndTheMeadowsSayTheyAreBusier()
     {
         var acres = Words(Contract("mildly_pleasant"), false);

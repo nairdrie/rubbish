@@ -534,3 +534,36 @@ HUD reads "Paused" behind it). `LaptopCoach` lives inside the laptop's own UI To
 - `Rubbish > Debug > UI Shots > Contract And Tutorial` renders the bar, the cards and the banner to PNGs without playing
   (`UiShots.RunBatch` for batch mode): the way to look at a layout change.
 
+### 14.9 The third contract: Coupon Commons and its dumpsters (built 2026-10-14)
+
+Nick, 2026-10-14: "implement the pickup of dumpsters in commercial area ... with the correct required upgrade and ensure game
+balance changes we made above proceed and are balanced into the third zone", and "that zone should contain both. dumpsters and
+same loose bags from previous zones". The dumpsters and the Dumpster Dunker were already built (`Progression.md` §6.11); what
+was missing was a reason to need them and a campaign past Commons.
+
+- **The contract.** Winning the Meadows grants Coupon Commons, which starts messy like the first two: **42 old bags, 27 of them in
+  the shops' dumpsters** (spread one per dumpster in turn, at most 6 each) **and 15 loose** in curb heaps. Same rules: clear every old
+  bag, get the bar over 90%, hold it 24 game hours. Winning it grants **Snootington Hills** (its $3,500 permit is no longer for sale;
+  Heights and the Bluffs still open by rank and permit). `CampaignTuning.CommonsBacklog` / `CommonsInDumpsters`, the third row of
+  `Campaign.contracts`.
+- **The required kit.** Loose bags need nothing new. The dumpster bags can only be emptied by a **rear-loader with the Dumpster
+  Dunker** (hands, the side arm, the Hoverhog and the raccoon crew can't reach them), and the win needs every old bag gone, so the
+  contract can't be won without it. That is the "locked filth" of §4, and the Dunker is Commons' key item of §5.
+- **Fresh trash** there is both too, as before: every shop's put-out adds a dumpster bag and about 60% of new bags go in the dumpster
+  while it has room.
+- **Gates moved.** The Dunker is **rank 4** (was 5) so it is on sale the moment Commons opens; its other prerequisites are unchanged
+  (the rear-loader and Commons open). A prerequisite that names a contract district's permit now counts as met when that district
+  is open in the Town (`Progression.ContractPermitOpen`), and the lift's permit check accepts a contract-won district
+  (`TruckDumpsterLift`), so a co-op guest can buy and use a Dunker in a Commons the host won.
+- **The card and the letter** say it: "Most of it is stuffed in the shops' dumpsters... you need the rear-loader and the Dumpster
+  Dunker" (`CampaignContract.note`).
+- **Balance after the 2026-10-12 pace pass** (`sim/pace_model.py zones`, model only): per load, Commons pays more than the Meadows
+  and less than the Hills in both cash and Rep (typical, rear-loader: old heap ~$1,200 / 1,550 Rep, fresh on-time ~$3,200 / 1,700 Rep).
+  The Dunker ($2,400) is about one Meadows load, so it is affordable on arrival; rank 4 is long passed by then (two contracts mean at
+  least two midnights).
+- **Old saves.** A save with the Hills permit counts as having won Commons. A save with Commons open but not the Hills gets a messy
+  Commons and a running contract next session.
+- **Not tested in play:** the whole contract. EditMode: `CampaignFlowTests` (the heap: 42, 27 in dumpsters, 15 loose; the win grants
+  the Hills; the Hills permit can't be bought; the Dunker can once Commons is open), `ContractCardsTests`, `DumpsterRulesTests`.
+  Known: a Hills gate pressed below rank 7 before the win still says "Rank 7" (the baked gate script; the sign itself is right).
+

@@ -694,7 +694,7 @@ public static class ScrapazonCatalog
             new[] { 3500f }, new[] { 7 },
             new[] { "Snootington Hills Collection Permit (Embossed, Smells Like Old Money)" },
             new[] { "Hedges. Monocles. Very nice trash." },
-            new[] { "After Coupon Commons: opens the scenic northern roads into Snootington Hills. $120 per bag + a $45 tip, Rep ×2. Trust starts at 40%." },
+            new[] { "Win the Coupon Commons contract (keep it 90% clean for 24 hours; empty its dumpsters with the Dumpster Dunker) and the city opens the scenic northern roads into Snootington Hills. $120 per bag + a $45 tip, Rep ×2. Trust starts at 40%." },
             0f, 4.2f, 14, "New district",
             new[]
             {

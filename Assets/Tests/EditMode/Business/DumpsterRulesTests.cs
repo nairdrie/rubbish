@@ -117,7 +117,7 @@ public class DumpsterRulesTests
         Assert.AreEqual("truck", Field<string>(item, "dept"));
         Assert.AreEqual(2, Field<int>(item, "maxLevel"));
         CollectionAssert.AreEqual(new[] { 2400f, 9000f }, Field<float[]>(item, "prices"));
-        CollectionAssert.AreEqual(new[] { 5, 7 }, Field<int[]>(item, "rankRequired"));
+        CollectionAssert.AreEqual(new[] { 4, 7 }, Field<int[]>(item, "rankRequired"), "rank 4: on sale the moment the Meadows contract opens Commons");
         CollectionAssert.AreEquivalent(new[] { "truck_model:1", "permit_coupon_commons" }, Field<string[][]>(item, "prereqs")[0]);
     }
 

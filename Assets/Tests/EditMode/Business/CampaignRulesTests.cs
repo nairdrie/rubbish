@@ -170,7 +170,7 @@ public class CampaignRulesTests
 
     [TestCase("permit_minivan_meadows", true)]
     [TestCase("permit_coupon_commons", true)]
-    [TestCase("permit_snootington_hills", false)]
+    [TestCase("permit_snootington_hills", true)]   // the Commons contract (2026-10-14)
     [TestCase("permit_stackington_heights", false)]
     [TestCase("permit_billionaire_bluffs", false)]
     [TestCase("truck_turbo", false)]
@@ -196,7 +196,8 @@ public class CampaignRulesTests
     [Test]
     public void OtherPermitsAreStillGatedByRankAndTheChainLikeBefore()
     {
-        var item = R("ScrapazonCatalog").GetMethod("Get", Static).Invoke(null, new object[] { "permit_snootington_hills" });
+        // Heights is the first permit past the contracts (Acres -> Meadows -> Commons -> Hills)
+        var item = R("ScrapazonCatalog").GetMethod("Get", Static).Invoke(null, new object[] { "permit_stackington_heights" });
         var args = new object[] { item, 1, null };
         Assert.IsFalse((bool)Call("Progression", "CanBuy", args));
         StringAssert.DoesNotContain("contract", (string)args[2]);
@@ -207,7 +208,9 @@ public class CampaignRulesTests
     {
         Assert.IsNotNull(Call("Campaign", "LockedReason", "minivan_meadows"));
         Assert.IsNotNull(Call("Campaign", "LockedReason", "coupon_commons"));
-        Assert.IsNull(Call("Campaign", "LockedReason", "snootington_hills"));
+        Assert.IsNotNull(Call("Campaign", "LockedReason", "snootington_hills"), "won with the Commons contract");
+        Assert.IsNull(Call("Campaign", "LockedReason", "stackington_heights"));
+        Assert.IsNull(Call("Campaign", "LockedReason", "billionaire_bluffs"));
         Assert.IsNull(Call("Campaign", "LockedReason", "mildly_pleasant"));
     }
 
